@@ -29,3 +29,13 @@ CREATE TABLE command_logs (
     message TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE discovered_units (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    device_id VARCHAR(100),
+    mac VARCHAR(50),
+    ip VARCHAR(50),
+    name VARCHAR(100),
+    model VARCHAR(100),
+    last_seen DATETIME,
+    online TINYINT DEFAULT 1
+);
