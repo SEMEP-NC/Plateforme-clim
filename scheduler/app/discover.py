@@ -20,10 +20,18 @@ def load_discovery_config():
         raise Exception("No discovery configuration found")
 
     return {
-        "start_ip": row[0],
-        "end_ip": row[1],
-        "ports": [int(x.strip()) for x in row[2].split(',') if x.strip()],
-        "slave_ids": [int(x.strip()) for x in row[3].split(',') if x.strip()]
+        "start_ip": row["start_ip"],
+        "end_ip": row["end_ip"],
+        "ports": [
+            int(x.strip())
+            for x in row["ports"].split(',')
+            if x.strip()
+        ],
+        "slave_ids": [
+            int(x.strip())
+            for x in row["slave_ids"].split(',')
+            if x.strip()
+        ]
     }
 
 
