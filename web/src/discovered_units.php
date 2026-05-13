@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $config = $db->query("SELECT * FROM discovery_config LIMIT 1")
              ->fetch(PDO::FETCH_ASSOC);
              
-$units = $pdo->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->fetchAll();
+$units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->fetchAll();
 ?>
 
 <!DOCTYPE html>
