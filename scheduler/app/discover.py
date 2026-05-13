@@ -12,7 +12,16 @@ BIT_START = 88
 BIT_END = 247
 
 def scan_ip_range():
-    return [str(ip) for ip in ipaddress.IPv4Network(f"{IP_RANGE_START}/24", strict=False)]
+    start_ip = int(ipaddress.IPv4Address(IP_RANGE_START))
+    end_ip = int(ipaddress.IPv4Address(IP_RANGE_END))
+
+    if start_ip > end_ip:
+        raise ValueError("IP_RANGE_START doit être <= IP_RANGE_END")
+
+    return [
+        str(ipaddress.IPv4Address(ip))
+        for ip in range(start_ip, end_ip + 1)
+    ]
 
 
 def check_ui_bits(ip, port, slave_id):
