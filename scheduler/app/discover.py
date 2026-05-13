@@ -31,33 +31,56 @@ def check_ui_bits(ip, port, slave_id):
     client = ModbusTcpClient(ip, port=port)
 
     if not client.connect():
-        return None
+        return []
 
     try:
-        # IMPORTANT : pas de slave dans read_coils
         result = client.read_coils(
             BIT_START,
             BIT_END - BIT_START + 1
         )
 
-        return result.bits if result else []
+        if not result:
+            return []
+
+        bits = result.bits
+
+        if not bits:
+            return []
+
+        # transformation UI
+        devices = []
+
+        for i, bit in enumerate(bits):
+            if bit:
+                ui_number = BIT_START + i
+
+                devices.append({
+                    "ui": ui_number,
+                    "ip": ip,
+                    "port": port,
+                    "slave": slave_id
+                })
+
+        return devices
 
     except Exception as e:
         print("Modbus error:", e)
-        return None
+        return []
 
     finally:
         client.close()
-        
+
 def discover():
     devices = []
 
-    ips = scan_ip_range()
-
-    for ip in ips:
+    for ip in scan_ip_range():
         for port in PORTS:
             for slave in SLAVE_IDS:
-                devices.extend(check_ui_bits(ip, port, slave))
+
+                result = check_ui_bits(ip, port, slave)
+
+                if result:
+                    devices.extend(result)
 
     return devices
 
