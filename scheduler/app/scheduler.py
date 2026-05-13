@@ -4,54 +4,82 @@ from modbus_client import send_command
 from discovery import discover_gree_devices, save_devices
 
 INTERVAL = 900
+DISCOVERY_INTERVAL = 30  # 30s
+
+last_discovery = 0
 
 
-while True:
-
-    print('Lecture planning...')
-
+def process_planning():
     conn = get_connection()
+    cur = conn.cursor()
 
-    with conn.cursor() as cursor:
-
-        sql = """
-        SELECT
-            schedules.*,
-            equipments.ip,
-            equipments.slave_id
-
+    cur.execute("""
+        SELECT schedules.*, equipments.*
         FROM schedules
-
-        JOIN equipments
-            ON equipments.id = schedules.equipment_id
-
+        JOIN equipments ON equipments.id = schedules.equipment_id
         WHERE executed = 0
         AND execution_time <= NOW()
-        """
+    """)
 
-        cursor.execute(sql)
+    rows = cur.fetchall()
 
-        schedules = cursor.fetchall()
+    for row in rows:
 
-        for schedule in schedules:
+        try:
+            # uniquement Modbus ici (discovery = inventory, pas execution)
+            if row["type"] == "modbus":
 
-            print(schedule)
+                send_modbus(
+                    row["ip"],
+                    row["slave_id"],
+                    row["action"],
+                    row["temperature"]
+                )
 
-            send_command(
-                schedule['ip'],
-                schedule['slave_id'],
-                schedule['action'],
-                schedule['temperature']
+            # marquage exécuté
+            cur.execute(
+                "UPDATE schedules SET executed = 1 WHERE id = %s",
+                (row["id"],)
             )
 
-            update_sql = "UPDATE schedules SET executed = 1 WHERE id = %s"
+        except Exception as e:
+            print("Erreur exécution planning:", e)
 
-            cursor.execute(update_sql, (schedule['id']))
-
-        conn.commit()
-
+    conn.commit()
     conn.close()
 
-    print('Pause 15 minutes...')
 
-    time.sleep(INTERVAL)
+def run_discovery_if_needed():
+    global last_discovery
+
+    now = time.time()
+
+    if now - last_discovery >= DISCOVERY_INTERVAL:
+
+        print("🔎 Discovery Modbus en cours...")
+
+        devices = discover()   # <-- scan IP + Modbus bits 88-247
+        save(devices)          # <-- enregistrement DB
+
+        print(f"✔ Discovery terminé: {len(devices)} UI détectées")
+
+        last_discovery = now
+
+
+def main():
+    print("🚀 Scheduler HVAC démarré")
+
+    while True:
+
+        # 1. découverte équipements (UI detection)
+        run_discovery_if_needed()
+
+        # 2. exécution planning
+        process_planning()
+
+        # 3. pause
+        time.sleep(INTERVAL)
+
+
+if __name__ == "__main__":
+    main()
