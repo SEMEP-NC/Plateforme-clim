@@ -28,33 +28,45 @@ def scan_ip_range():
 
 
 def check_ui_bits(ip, port, slave_id):
+    print(f"[DISCOVERY] ▶ Connecting {ip}:{port} slave={slave_id}")
+
     client = ModbusTcpClient(ip, port=port)
-    client.connect()
-    client.unit_id = slave_id
-    
-    if not client.connect():
-        return []
 
     try:
+        if not client.connect():
+            print(f"[DISCOVERY] ❌ Connection failed {ip}:{port}")
+            return []
+
+        print(f"[DISCOVERY] ✔ Connected {ip}:{port}")
+
+        # NOTE: selon pymodbus version, unit_id peut être ignoré
+        try:
+            client.unit_id = slave_id
+        except Exception:
+            print(f"[DISCOVERY] ⚠ unit_id not supported by this pymodbus version")
+
+        print(f"[DISCOVERY] ▶ Reading coils {BIT_START} → {BIT_END} ({BIT_END - BIT_START + 1} bits)")
+
         result = client.read_coils(
             BIT_START,
-            BIT_END - BIT_START + 1
+            (BIT_END - BIT_START + 1)
         )
 
         if not result:
+            print(f"[DISCOVERY] ⚠ No response from {ip}:{port}")
             return []
 
-        bits = result.bits
+        bits = result.bits or []
 
-        if not bits:
-            return []
+        print(f"[DISCOVERY] ✔ Received {len(bits)} bits from {ip}:{port}")
 
-        # transformation UI
         devices = []
 
         for i, bit in enumerate(bits):
             if bit:
                 ui_number = BIT_START + i
+
+                print(f"[DISCOVERY] 🎯 UI FOUND → UI{ui_number} @ {ip}:{port}")
 
                 devices.append({
                     "ui": ui_number,
@@ -63,15 +75,19 @@ def check_ui_bits(ip, port, slave_id):
                     "slave": slave_id
                 })
 
+        if not devices:
+            print(f"[DISCOVERY] ◻ No UI detected on {ip}:{port}")
+
         return devices
 
     except Exception as e:
-        print("Modbus error:", e)
+        print(f"[DISCOVERY] ❌ Modbus error {ip}:{port} → {e}")
         return []
 
     finally:
         client.close()
-
+        print(f"[DISCOVERY] ⛔ Closed connection {ip}:{port}")
+        
 def discover():
     devices = []
 
