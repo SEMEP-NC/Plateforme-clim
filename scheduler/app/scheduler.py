@@ -1,7 +1,7 @@
 import time
 from db import get_connection
 from modbus_client import send_command
-from discover import discover_gree_devices, save_devices
+from discover import discover, save
 
 INTERVAL = 900
 DISCOVERY_INTERVAL = 30  # 30s
