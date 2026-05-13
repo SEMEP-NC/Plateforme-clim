@@ -18,7 +18,8 @@ def run_discovery():
 
         return jsonify({
             "status": "success",
-            "devices_found": len(devices)
+            "devices_found": len(devices),
+            "devices": devices
         })
 
     except Exception as e:
