@@ -2,3 +2,4 @@ pymysql
 pymodbus
 requests
 pymodbus==3.5.4
+flask
