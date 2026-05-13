@@ -1,60 +1,74 @@
-import socket
-import json
-import time
-from db import get_connection
-
-BROADCAST_PORT = 7000
-DISCOVERY_MSG = b'{"t":"scan"}'
+from pymodbus.client import ModbusTcpClient
+BIT_END = 247
 
 
-def discover_gree_devices():
+def scan_ip_range():
+    return [str(ip) for ip in ipaddress.IPv4Network(f"{IP_RANGE_START}/24", strict=False)]
+
+
+def check_ui_bits(ip, port, slave_id):
+    client = ModbusTcpClient(ip, port=port)
+
+    try:
+        if not client.connect():
+            return []
+
+        result = client.read_coils(BIT_START, BIT_END - BIT_START + 1, slave=slave_id)
+
+        if result.isError():
+            return []
+
+        found = []
+
+        for i, bit in enumerate(result.bits):
+            if bit == 1:
+                ui_number = BIT_START + i
+
+                found.append({
+                    "ui": ui_number,
+                    "ip": ip,
+                    "port": port,
+                    "slave_id": slave_id
+                })
+
+        return found
+
+    except Exception as e:
+        print("Discovery error:", e)
+        return []
+
+    finally:
+        client.close()
+
+
+def discover():
     devices = []
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    sock.settimeout(3)
+    ips = scan_ip_range()
 
-    sock.sendto(DISCOVERY_MSG, ('255.255.255.255', BROADCAST_PORT))
-
-    start = time.time()
-
-    while time.time() - start < 3:
-        try:
-            data, addr = sock.recvfrom(1024)
-            msg = json.loads(data.decode(errors='ignore'))
-
-            devices.append({
-                "ip": addr[0],
-                "device_id": msg.get("id"),
-                "mac": msg.get("mac"),
-                "name": msg.get("name", "Gree AC"),
-                "model": msg.get("model", "unknown")
-            })
-
-        except Exception:
-            continue
+    for ip in ips:
+        for port in PORTS:
+            for slave in SLAVE_IDS:
+                devices.extend(check_ui_bits(ip, port, slave))
 
     return devices
 
 
-def save_devices(devices):
+def save(devices):
     conn = get_connection()
     cur = conn.cursor()
 
     for d in devices:
         cur.execute("""
-            INSERT INTO discovered_units (device_id, mac, ip, name, model, last_seen, online)
-            VALUES (%s, %s, %s, %s, %s, NOW(), 1)
-            ON DUPLICATE KEY UPDATE
-                ip = VALUES(ip),
-                last_seen = NOW(),
-                online = 1
+            INSERT INTO discovered_units(device_id, mac, ip, name, model, last_seen, online)
+            VALUES(%s,%s,%s,%s,%s,NOW(),1)
+            ON DUPLICATE KEY UPDATE last_seen=NOW(), online=1
         """, (
-            d["device_id"],
-            d["mac"],
-            d["ip"],
-            d["name"],
-            d["model"]
+            f"UI-{d['ui']}",
+            None,
+            d['ip'],
+            f"UI {d['ui']}",
+            "Modbus-UI"
         ))
 
     conn.commit()
