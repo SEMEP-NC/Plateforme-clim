@@ -1,6 +1,15 @@
 from pymodbus.client import ModbusTcpClient
-BIT_END = 247
+from db import get_connection
+import ipaddress
 
+# CONFIGURATION
+IP_RANGE_START = "10.0.0.50"
+IP_RANGE_END   = "10.0.0.50"
+PORTS = [1502]
+SLAVE_IDS = [1]
+
+BIT_START = 88
+BIT_END = 247
 
 def scan_ip_range():
     return [str(ip) for ip in ipaddress.IPv4Network(f"{IP_RANGE_START}/24", strict=False)]
