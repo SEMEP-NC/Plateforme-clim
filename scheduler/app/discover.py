@@ -30,43 +30,25 @@ def scan_ip_range():
 def check_ui_bits(ip, port, slave_id):
     client = ModbusTcpClient(ip, port=port)
 
+    if not client.connect():
+        return None
+
     try:
-        if not client.connect():
-            return []
-
-        client.unit_id = slave_id
-
+        # IMPORTANT : pas de slave dans read_coils
         result = client.read_coils(
             BIT_START,
             BIT_END - BIT_START + 1
         )
 
-        if result.isError():
-            return []
-
-        found = []
-
-        for i, bit in enumerate(result.bits):
-            if bit == 1:
-                ui_number = BIT_START + i
-
-                found.append({
-                    "ui": ui_number,
-                    "ip": ip,
-                    "port": port,
-                    "slave_id": slave_id
-                })
-
-        return found
+        return result.bits if result else []
 
     except Exception as e:
-        print("Discovery error:", e)
-        return []
+        print("Modbus error:", e)
+        return None
 
     finally:
         client.close()
-
-
+        
 def discover():
     devices = []
 
