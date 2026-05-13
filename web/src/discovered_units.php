@@ -21,7 +21,6 @@ $units = $pdo->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->
     <thead>
         <tr>
             <th>ID Device</th>
-            <th>MAC</th>
             <th>IP</th>
             <th>Nom</th>
             <th>Modèle</th>
@@ -34,7 +33,6 @@ $units = $pdo->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->
         <?php foreach($units as $u): ?>
             <tr>
                 <td><?= htmlspecialchars($u['device_id']) ?></td>
-                <td><?= htmlspecialchars($u['mac']) ?></td>
                 <td><?= htmlspecialchars($u['ip']) ?></td>
                 <td><?= htmlspecialchars($u['name']) ?></td>
                 <td><?= htmlspecialchars($u['model']) ?></td>

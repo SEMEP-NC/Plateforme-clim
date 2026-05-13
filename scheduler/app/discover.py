@@ -64,15 +64,19 @@ def check_ui_bits(ip, port, slave_id):
 
         for i, bit in enumerate(bits):
             if bit:
-                ui_number = BIT_START + i
+                coil_address = BIT_START + i
+                ui_number = coil_address - 87
 
                 print(f"[DISCOVERY] 🎯 UI FOUND → UI{ui_number} @ {ip}:{port}")
+
+                power = read_ui_power(client, ui_number)
 
                 devices.append({
                     "ui": ui_number,
                     "ip": ip,
                     "port": port,
-                    "slave": slave_id
+                    "slave": slave_id,
+                    "power": power
                 })
 
         if not devices:
@@ -87,7 +91,41 @@ def check_ui_bits(ip, port, slave_id):
     finally:
         client.close()
         print(f"[DISCOVERY] ⛔ Closed connection {ip}:{port}")
-        
+
+def read_ui_power(client, ui_number):
+    register = 123 + (25 * (ui_number - 1))
+
+    print(
+        f"[DISCOVERY] ▶ Reading power register "
+        f"UI{ui_number} -> register {register}"
+    )
+
+    try:
+        result = client.read_holding_registers(
+            address=register,
+            count=1
+        )
+
+        if not result or not result.registers:
+            print(
+                f"[DISCOVERY] ⚠ No power value for UI{ui_number}"
+            )
+            return None
+
+        power = result.registers[0]
+
+        print(
+            f"[DISCOVERY] ✔ UI{ui_number} power={power}"
+        )
+
+        return power
+
+    except Exception as e:
+        print(
+            f"[DISCOVERY] ❌ Power read error UI{ui_number}: {e}"
+        )
+        return None
+
 def discover():
     devices = []
 
@@ -117,7 +155,7 @@ def save(devices):
             None,
             d['ip'],
             f"UI {d['ui']}",
-            "Modbus-UI"
+            f"UI {d['power']}"
         ))
 
     conn.commit()
