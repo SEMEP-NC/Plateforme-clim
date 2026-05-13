@@ -35,7 +35,15 @@ $units = $pdo->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->
                 <td><?= htmlspecialchars($u['device_id']) ?></td>
                 <td><?= htmlspecialchars($u['ip']) ?></td>
                 <td><?= htmlspecialchars($u['name']) ?></td>
-                <td><?= htmlspecialchars($u['model']) ?></td>
+                <td>
+                    <?php $model = $u['model'];
+                        if (is_numeric($model)) {
+                            echo number_format($model / 10, 1) . 'kW';
+                        } else {
+                            echo htmlspecialchars($model);
+                        }
+                    ?>
+                </td>
                 <td><?= $u['last_seen'] ?></td>
                 <td><?= $u['online'] ? '🟢' : '🔴' ?></td>
             </tr>

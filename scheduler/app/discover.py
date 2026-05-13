@@ -155,7 +155,7 @@ def save(devices):
             None,
             d['ip'],
             f"UI {d['ui']}",
-            f"UI {d['power']}"
+            d['power']
         ))
 
     conn.commit()

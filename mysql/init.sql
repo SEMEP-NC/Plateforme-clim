@@ -35,7 +35,7 @@ CREATE TABLE discovered_units (
     mac VARCHAR(50),
     ip VARCHAR(50),
     name VARCHAR(100),
-    model VARCHAR(100),
+    model INT,
     last_seen DATETIME,
     online TINYINT DEFAULT 1
 );
