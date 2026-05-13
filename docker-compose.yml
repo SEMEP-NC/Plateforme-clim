@@ -42,6 +42,8 @@ services:
   scheduler:
     build: ./scheduler
     container_name: clim_scheduler
+    ports:
+    - "5001:5001"
     restart: always
     depends_on:
       db:

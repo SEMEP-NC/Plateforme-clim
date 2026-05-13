@@ -1,18 +1,19 @@
 <?php
 
-$output = [];
-$returnCode = 0;
+$url = "http://clim_scheduler:5001/run-discovery";
 
-exec(
-    "docker exec clim_scheduler python /app/discovery_manual.py 2>&1",
-    $output,
-    $returnCode
-);
+$options = [
+    "http" => [
+        "method" => "POST",
+        "header" => "Content-Type: application/json",
+        "timeout" => 60
+    ]
+];
 
-header('Content-Type: application/json');
+$context = stream_context_create($options);
 
-echo json_encode([
-    'success' => $returnCode === 0,
-    'return_code' => $returnCode,
-    'output' => $output
-]);
+$response = file_get_contents($url, false, $context);
+
+header("Content-Type: application/json");
+
+echo $response;
