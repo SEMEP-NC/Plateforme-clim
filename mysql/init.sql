@@ -39,3 +39,17 @@ CREATE TABLE discovered_units (
     last_seen DATETIME,
     online TINYINT DEFAULT 1
 );
+CREATE TABLE IF NOT EXISTS discovery_config (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    start_ip VARCHAR(64) NOT NULL,
+    end_ip VARCHAR(64) NOT NULL,
+    ports VARCHAR(255) NOT NULL,
+    slave_ids VARCHAR(255) NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+INSERT INTO discovery_config(start_ip, end_ip, ports, slave_ids)
+SELECT '10.0.0.50', '10.0.0.50', '1502', '1'
+WHERE NOT EXISTS (
+    SELECT 1 FROM discovery_config
+);

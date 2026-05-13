@@ -1,6 +1,36 @@
 <?php
 require 'config/db.php';
 
+$db = get_db();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    $start_ip = $_POST['start_ip'];
+    $end_ip = $_POST['end_ip'];
+    $ports = $_POST['ports'];
+    $slave_ids = $_POST['slave_ids'];
+
+    $stmt = $db->prepare("
+        UPDATE discovery_config
+        SET
+            start_ip=?,
+            end_ip=?,
+            ports=?,
+            slave_ids=?
+        WHERE id=1
+    ");
+
+    $stmt->execute([
+        $start_ip,
+        $end_ip,
+        $ports,
+        $slave_ids
+    ]);
+}
+
+$config = $db->query("SELECT * FROM discovery_config LIMIT 1")
+             ->fetch(PDO::FETCH_ASSOC);
+             
 $units = $pdo->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->fetchAll();
 ?>
 
@@ -11,12 +41,103 @@ $units = $pdo->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->
     <title>Clims détectées (Gree)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
+<script>
+    async function runDiscovery() {
+
+        if (!confirm('Launch discovery now ?')) {
+            return;
+        }
+
+        try {
+
+            const response = await fetch('run_discovery.php');
+
+            const result = await response.json();
+
+            alert(
+                'Discovery finished\n\n' +
+                result.output.join('\n')
+            );
+
+            location.reload();
+
+        } catch (e) {
+
+            alert('Discovery error: ' + e);
+        }
+    }
+</script>
 <body class="container mt-5">
 
 <h1>Climatiseurs détectés automatiquement</h1>
 
 <a href="index.php" class="btn btn-secondary mb-3">Retour</a>
+<div style="
+    border:1px solid #ccc;
+    padding:20px;
+    margin-bottom:20px;
+    border-radius:10px;
+">
 
+    <h2>Configuration Discovery</h2>
+
+    <form method="POST">
+
+        <div style="margin-bottom:10px;">
+            <label>START IP</label><br>
+            <input
+                type="text"
+                name="start_ip"
+                value="<?= htmlspecialchars($config['start_ip']) ?>"
+                style="width:300px;"
+            >
+        </div>
+
+        <div style="margin-bottom:10px;">
+            <label>END IP</label><br>
+            <input
+                type="text"
+                name="end_ip"
+                value="<?= htmlspecialchars($config['end_ip']) ?>"
+                style="width:300px;"
+            >
+        </div>
+
+        <div style="margin-bottom:10px;">
+            <label>PORTS (comma separated)</label><br>
+            <input
+                type="text"
+                name="ports"
+                value="<?= htmlspecialchars($config['ports']) ?>"
+                style="width:300px;"
+            >
+        </div>
+
+        <div style="margin-bottom:10px;">
+            <label>SLAVE IDS (comma separated)</label><br>
+            <input
+                type="text"
+                name="slave_ids"
+                value="<?= htmlspecialchars($config['slave_ids']) ?>"
+                style="width:300px;"
+            >
+        </div>
+
+        <button type="submit">
+            💾 Save Configuration
+        </button>
+
+        <button
+            type="button"
+            onclick="runDiscovery()"
+            style="margin-left:10px;"
+        >
+            🔎 Run Discovery
+        </button>
+
+    </form>
+
+</div>
 <table class="table table-bordered">
     <thead>
         <tr>

@@ -2,11 +2,38 @@ from pymodbus.client import ModbusTcpClient
 from db import get_connection
 import ipaddress
 
-# CONFIGURATION
-IP_RANGE_START = "10.0.0.50"
-IP_RANGE_END   = "10.0.0.50"
-PORTS = [1502]
-SLAVE_IDS = [1]
+def load_discovery_config():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT start_ip, end_ip, ports, slave_ids
+        FROM discovery_config
+        LIMIT 1
+    """)
+
+    row = cur.fetchone()
+
+    conn.close()
+
+    if not row:
+        raise Exception("No discovery configuration found")
+
+    return {
+        "start_ip": row[0],
+        "end_ip": row[1],
+        "ports": [int(x.strip()) for x in row[2].split(',') if x.strip()],
+        "slave_ids": [int(x.strip()) for x in row[3].split(',') if x.strip()]
+    }
+
+
+CONFIG = load_discovery_config()
+
+IP_RANGE_START = CONFIG["start_ip"]
+IP_RANGE_END = CONFIG["end_ip"]
+PORTS = CONFIG["ports"]
+SLAVE_IDS = CONFIG["slave_ids"]
+
 
 BIT_START = 88
 BIT_END = 247
