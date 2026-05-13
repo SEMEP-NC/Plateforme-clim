@@ -8,7 +8,37 @@ DISCOVERY_INTERVAL = 30  # 30s
 
 last_discovery = 0
 
+def wait_for_db():
+    print("⏳ Waiting for DB...")
 
+    for i in range(30):
+        try:
+            conn = pymysql.connect(
+                host='db',
+                user='climuser',
+                password='climpassword',
+                database='clim_manager'
+            )
+            conn.close()
+            print("✅ DB ready")
+            return
+
+        except Exception as e:
+            print(f"DB not ready ({i}/30)")
+            time.sleep(2)
+
+    raise Exception("DB unreachable")
+    
+def main():
+    wait_for_db()   # <-- IMPORTANT
+
+    print("🚀 Scheduler HVAC démarré")
+
+    while True:
+        run_discovery_if_needed()
+        process_planning()
+        time.sleep(900)
+        
 def process_planning():
     conn = get_connection()
     cur = conn.cursor()
