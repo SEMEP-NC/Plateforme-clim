@@ -3,6 +3,10 @@ from db import get_connection
 from modbus_client import send_command
 from discover import discover, save
 
+import sys
+print("🚀 Scheduler STARTED", flush=True)
+sys.stdout.reconfigure(line_buffering=True)
+
 INTERVAL = 900
 DISCOVERY_INTERVAL = 30  # 30s
 
@@ -30,13 +34,17 @@ def wait_for_db():
     raise Exception("DB unreachable")
     
 def main():
-    wait_for_db()   # <-- IMPORTANT
+    wait_for_db()
 
-    print("🚀 Scheduler HVAC démarré")
+    print("🚀 Scheduler HVAC démarré", flush=True)
 
     while True:
+        print("🔁 Loop tick", flush=True)
+
         run_discovery_if_needed()
         process_planning()
+
+        print("😴 sleep 900s", flush=True)
         time.sleep(900)
         
 def process_planning():

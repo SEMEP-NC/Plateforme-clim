@@ -21,6 +21,7 @@ def scan_ip_range():
     return [
         str(ipaddress.IPv4Address(ip))
         for ip in range(start_ip, end_ip + 1)
+        print(f"🔎 Scanning {ip}", flush=True)
     ]
 
 
@@ -31,7 +32,11 @@ def check_ui_bits(ip, port, slave_id):
         if not client.connect():
             return []
 
-        result = client.read_coils(BIT_START, BIT_END - BIT_START + 1, slave=slave_id)
+        result = client.read_coils(
+            BIT_START,
+            BIT_END - BIT_START + 1,
+            unit=slave_id
+        )
 
         if result.isError():
             return []

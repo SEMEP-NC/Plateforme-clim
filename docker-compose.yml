@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
 
   web:
@@ -21,6 +19,7 @@ services:
   db:
     image: mariadb:11
     restart: always
+    container_name: clim_db
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: clim_manager
