@@ -186,7 +186,7 @@ def save(devices):
             VALUES(%s,%s,%s,%s,%s,NOW(),1)
             ON DUPLICATE KEY UPDATE last_seen=NOW(), online=1
         """, (
-            f"UI-{d['ui']}",
+            f"UI-{ui} @ {ip}",
             None,
             d['ip'],
             f"UI {d['ui']}",

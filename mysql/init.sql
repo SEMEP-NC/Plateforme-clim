@@ -30,8 +30,7 @@ CREATE TABLE command_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE discovered_units (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    device_id VARCHAR(100),
+    device_id VARCHAR(100) PRIMARY KEY,
     mac VARCHAR(50),
     ip VARCHAR(50),
     name VARCHAR(100),
