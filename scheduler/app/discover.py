@@ -29,7 +29,9 @@ def scan_ip_range():
 
 def check_ui_bits(ip, port, slave_id):
     client = ModbusTcpClient(ip, port=port)
-
+    client.connect()
+    client.unit_id = slave_id
+    
     if not client.connect():
         return []
 
