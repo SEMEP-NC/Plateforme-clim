@@ -22,6 +22,11 @@ services:
     image: mariadb:11
     container_name: clim_db
     restart: always
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: clim_manager
@@ -38,7 +43,8 @@ services:
     container_name: clim_scheduler
     restart: always
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   db_data:

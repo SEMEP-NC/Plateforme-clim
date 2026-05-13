@@ -79,7 +79,16 @@ def main():
 
         # 3. pause
         time.sleep(INTERVAL)
+def safe_run():
+    try:
+        run_discovery_if_needed()
+    except Exception as e:
+        print("Discovery error:", e)
 
+    try:
+        process_planning()
+    except Exception as e:
+        print("Planning error:", e)
 
 if __name__ == "__main__":
     main()
