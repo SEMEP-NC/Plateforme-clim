@@ -8,7 +8,11 @@ try:
     print(f"Detected devices: {len(devices)}")
 
     save(devices)
-
+    cur.execute("""
+            UPDATE discovered_units
+            SET online = 0
+            WHERE last_seen < (NOW() - INTERVAL 2 MINUTE)
+        """)
     print("Discovery completed")
 
 except Exception as e:
