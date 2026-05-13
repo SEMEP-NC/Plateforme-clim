@@ -53,8 +53,8 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
             const response = await fetch('run_discovery.php');
 
             const result = await response.json();
-            const output = data.output ?? [];
-            const devices = data.devices_found ?? 0;
+            const output = result.output ?? [];
+            const devices = result.devices_found ?? 0;
 
             alert(
                 "Discovery finished\n\n" +
