@@ -11,6 +11,8 @@ SLAVE_IDS = [1]
 BIT_START = 88
 BIT_END = 247
 
+print(f"🔎 Scanning {ip}", flush=True)
+
 def scan_ip_range():
     start_ip = int(ipaddress.IPv4Address(IP_RANGE_START))
     end_ip = int(ipaddress.IPv4Address(IP_RANGE_END))
@@ -21,7 +23,7 @@ def scan_ip_range():
     return [
         str(ipaddress.IPv4Address(ip))
         for ip in range(start_ip, end_ip + 1)
-        print(f"🔎 Scanning {ip}", flush=True)
+        
     ]
 
 
