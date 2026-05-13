@@ -20,18 +20,22 @@ services:
 
   db:
     image: mariadb:11
-    container_name: clim_db
     restart: always
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: clim_manager
       MYSQL_USER: climuser
       MYSQL_PASSWORD: climpassword
+
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -prootpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 #    ports:
 #      - "3306:3306"
     volumes:
