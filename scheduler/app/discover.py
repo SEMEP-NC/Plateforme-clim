@@ -34,10 +34,11 @@ def check_ui_bits(ip, port, slave_id):
         if not client.connect():
             return []
 
+        client.unit_id = slave_id
+
         result = client.read_coils(
             BIT_START,
-            BIT_END - BIT_START + 1,
-            unit=slave_id
+            BIT_END - BIT_START + 1
         )
 
         if result.isError():
