@@ -193,5 +193,15 @@ def save(devices):
             d['power']
         ))
 
+def cleanup_offline_devices():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        UPDATE discovered_units
+        SET online = 0
+        WHERE last_seen < (NOW() - INTERVAL 2 MINUTE)
+    """)
+    
     conn.commit()
     conn.close()
