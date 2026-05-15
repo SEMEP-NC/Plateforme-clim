@@ -52,6 +52,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         curl_close($ch);
     }
+
+    if (isset($_POST['save_equipments'])) {
+
+        $selected = $_POST['selected'] ?? [];
+        $names = $_POST['name'] ?? [];
+
+        foreach ($selected as $device_id) {
+
+            $name = $names[$device_id] ?? $device_id;
+
+            // récupérer IP + slave depuis discovered_units
+            $stmt = $db->prepare("SELECT ip FROM discovered_units WHERE device_id=?");
+            $stmt->execute([$device_id]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row) continue;
+
+            $ip = $row['ip'];
+
+            // insert / update equipments
+            $stmt = $db->prepare("
+                INSERT INTO equipments (name, ip, slave_id, enabled)
+                VALUES (?, ?, 1, 1)
+                ON DUPLICATE KEY UPDATE
+                    name=VALUES(name),
+                    enabled=1
+            ");
+
+            $stmt->execute([
+                $name,
+                $ip
+            ]);
+        }
+    }
 }
 
 $config = $db->query("SELECT * FROM discovery_config LIMIT 1")
@@ -124,15 +158,15 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
             >
         </div>
 
-        <button type="submit">
-            💾 Save Configuration
+        <button type="submit" name="save_equipments" value="1" class="btn btn-primary">
+            💾 Save selected equipments
         </button>
 
         <button
             type="submit"
             name="run_discovery"
             value="1"
-            style="margin-left:10px;"
+            class="btn btn-primary"
         >
             🔎 Save + Run Discovery
         </button>
@@ -140,40 +174,58 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
     </form>
 
 </div>
-
-<table class="table table-bordered">
-    <thead>
-        <tr>
-            <th>ID Device</th>
-            <th>IP</th>
-            <th>Nom</th>
-            <th>Modèle</th>
-            <th>Dernière vue</th>
-            <th>Online</th>
-        </tr>
-    </thead> 
-
-    <tbody>
-        <?php foreach($units as $u): ?>
+<form method="POST">
+    <input type="checkbox" onclick="document.querySelectorAll('input[name=\'selected[]\']').forEach(c => c.checked = this.checked)">
+Select all
+    <table class="table table-bordered">
+        <thead>
             <tr>
-                <td><?= htmlspecialchars($u['device_id']) ?></td>
-                <td><?= htmlspecialchars($u['ip']) ?></td>
-                <td><?= htmlspecialchars($u['name']) ?></td>
-                <td>
-                    <?php $model = $u['model'];
-                        if (is_numeric($model)) {
-                            echo number_format($model / 10, 1) . 'kW';
-                        } else {
-                            echo htmlspecialchars($model);
-                        }
-                    ?>
-                </td>
-                <td><?= $u['last_seen'] ?></td>
-                <td><?= $u['online'] ? '🟢' : '🔴' ?></td>
+                <th></th>
+                <th>Equipement</th>
+                <th>Nom</th>
+                <th>Modèle</th>
+                <th>Dernière vue</th>
+                <th>Online</th>
             </tr>
-        <?php endforeach; ?>
-    </tbody>
-</table>
+        </thead>
+
+        <tbody>
+            <?php foreach($units as $u): ?>
+                <tr>
+                    <!-- checkbox -->
+                    <td>
+                        <input type="checkbox" name="selected[]" value="<?= htmlspecialchars($u['device_id']) ?>">
+                    </td>
+
+                    <td><?= htmlspecialchars($u['device_id']) ?></td>
+
+
+                    <!-- NAME EDITABLE -->
+                    <td>
+                        <input type="text"
+                            name="name[<?= htmlspecialchars($u['device_id']) ?>]"
+                            value="<?= htmlspecialchars($u['name']) ?>"
+                            class="form-control form-control-sm">
+                    </td>
+
+                    <td>
+                        <?php $model = $u['model'];
+                            if (is_numeric($model)) {
+                                echo number_format($model / 10, 1) . 'kW';
+                            } else {
+                                echo htmlspecialchars($model);
+                            }
+                        ?>
+                    </td>
+
+                    <td><?= $u['last_seen'] ?></td>
+                    <td><?= $u['online'] ? '🟢' : '🔴' ?></td>
+
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+</form>
 
 </body>
 </html>

@@ -1,7 +1,7 @@
 <?php
 require 'config/db.php';
-
-$equipments = $pdo->query("SELECT * FROM equipments")->fetchAll();
+$db = get_db();
+$equipments = $db->query("SELECT * FROM equipments")->fetchAll();
 ?>
 
 <!DOCTYPE html>
