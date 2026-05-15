@@ -139,128 +139,129 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
 
 <body class="container mt-5">
 
-<h1>Climatiseurs détectés automatiquement</h1>
+    <h1>Climatiseurs détectés automatiquement</h1>
 
-<a href="index.php" class="btn btn-secondary mb-3">Retour</a>
-<div style="
-    border:1px solid #ccc;
-    padding:20px;
-    margin-bottom:20px;
-    border-radius:10px;
-">
+    <a href="index.php" class="btn btn-secondary mb-3">Retour</a>
+        <form method="POST">
+            <div style="
+                border:1px solid #ccc;
+                padding:20px;
+                margin-bottom:20px;
+                border-radius:10px;
+            ">
 
-    <h2>Configuration Discovery</h2>
+            <h2>Configuration Discovery</h2>
 
-    <form method="POST" id="discoveryForm">
+            
 
-        <div style="margin-bottom:10px;">
-            <label>START IP</label><br>
-            <input
-                type="text"
-                name="start_ip"
-                value="<?= htmlspecialchars($config['start_ip']) ?>"
-                style="width:300px;"
-            >
-        </div>
+                <div style="margin-bottom:10px;">
+                    <label>START IP</label><br>
+                    <input
+                        type="text"
+                        name="start_ip"
+                        value="<?= htmlspecialchars($config['start_ip']) ?>"
+                        style="width:300px;"
+                    >
+                </div>
 
-        <div style="margin-bottom:10px;">
-            <label>END IP</label><br>
-            <input
-                type="text"
-                name="end_ip"
-                value="<?= htmlspecialchars($config['end_ip']) ?>"
-                style="width:300px;"
-            >
-        </div>
+                <div style="margin-bottom:10px;">
+                    <label>END IP</label><br>
+                    <input
+                        type="text"
+                        name="end_ip"
+                        value="<?= htmlspecialchars($config['end_ip']) ?>"
+                        style="width:300px;"
+                    >
+                </div>
 
-        <div style="margin-bottom:10px;">
-            <label>PORTS (comma separated)</label><br>
-            <input
-                type="text"
-                name="ports"
-                value="<?= htmlspecialchars($config['ports']) ?>"
-                style="width:300px;"
-            >
-        </div>
+                <div style="margin-bottom:10px;">
+                    <label>PORTS (comma separated)</label><br>
+                    <input
+                        type="text"
+                        name="ports"
+                        value="<?= htmlspecialchars($config['ports']) ?>"
+                        style="width:300px;"
+                    >
+                </div>
 
-        <div style="margin-bottom:10px;">
-            <label>SLAVE IDS (comma separated)</label><br>
-            <input
-                type="text"
-                name="slave_ids"
-                value="<?= htmlspecialchars($config['slave_ids']) ?>"
-                style="width:300px;"
-            >
-        </div>
+                <div style="margin-bottom:10px;">
+                    <label>SLAVE IDS (comma separated)</label><br>
+                    <input
+                        type="text"
+                        name="slave_ids"
+                        value="<?= htmlspecialchars($config['slave_ids']) ?>"
+                        style="width:300px;"
+                    >
+                </div>
 
-        <button type="submit" name="save_equipments" value="1" class="btn btn-primary">
-            💾 Sauvegarder
-        </button>
+                <button type="submit" name="save_equipments" value="1" class="btn btn-primary">
+                    💾 Sauvegarder
+                </button>
 
-        <button
-            type="submit"
-            name="run_discovery"
-            value="1"
-            class="btn btn-primary"
-        >
-            🔎 Recherche
-        </button>
+                <button
+                    type="submit"
+                    name="run_discovery"
+                    value="1"
+                    class="btn btn-primary"
+                >
+                    🔎 Recherche
+                </button>
 
-    </form>
+            
 
-</div>
-<form method="POST">
-    <input type="checkbox" onclick="document.querySelectorAll('input[name=\'selected[]\']').forEach(c => c.checked = this.checked)">
-Select all
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th></th>
-                <th>Equipement</th>
-                <th>Nom</th>
-                <th>Modèle</th>
-                <th>Dernière vue</th>
-                <th>Online</th>
-            </tr>
-        </thead>
+            </div>
 
-        <tbody>
-            <?php foreach($units as $u): ?>
-                <tr>
-                    <!-- checkbox -->
-                    <td>
-                        <input type="checkbox" name="selected[]" value="<?= htmlspecialchars($u['device_id']) ?>">
-                    </td>
+            <input type="checkbox" onclick="document.querySelectorAll('input[name=\'selected[]\']').forEach(c => c.checked = this.checked)">
+            Select all
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Equipement</th>
+                        <th>Nom</th>
+                        <th>Modèle</th>
+                        <th>Dernière vue</th>
+                        <th>Online</th>
+                    </tr>
+                </thead>
 
-                    <td><?= htmlspecialchars($u['device_id']) ?></td>
+                <tbody>
+                    <?php foreach($units as $u): ?>
+                        <tr>
+                            <!-- checkbox -->
+                            <td>
+                                <input type="checkbox" name="selected[]" value="<?= htmlspecialchars($u['device_id']) ?>">
+                            </td>
+
+                            <td><?= htmlspecialchars($u['device_id']) ?></td>
 
 
-                    <!-- NAME EDITABLE -->
-                    <td>
-                        <input type="text"
-                            name="name[<?= htmlspecialchars($u['device_id']) ?>]"
-                            value="<?= htmlspecialchars($u['name']) ?>"
-                            class="form-control form-control-sm">
-                    </td>
+                            <!-- NAME EDITABLE -->
+                            <td>
+                                <input type="text"
+                                    name="name[<?= htmlspecialchars($u['device_id']) ?>]"
+                                    value="<?= htmlspecialchars($u['name']) ?>"
+                                    class="form-control form-control-sm">
+                            </td>
 
-                    <td>
-                        <?php $model = $u['model'];
-                            if (is_numeric($model)) {
-                                echo number_format($model / 10, 1) . 'kW';
-                            } else {
-                                echo htmlspecialchars($model);
-                            }
-                        ?>
-                    </td>
+                            <td>
+                                <?php $model = $u['model'];
+                                    if (is_numeric($model)) {
+                                        echo number_format($model / 10, 1) . 'kW';
+                                    } else {
+                                        echo htmlspecialchars($model);
+                                    }
+                                ?>
+                            </td>
 
-                    <td><?= $u['last_seen'] ?></td>
-                    <td><?= $u['online'] ? '🟢' : '🔴' ?></td>
+                            <td><?= $u['last_seen'] ?></td>
+                            <td><?= $u['online'] ? '🟢' : '🔴' ?></td>
 
-                </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
-</form>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </form>
 
 </body>
 </html>
