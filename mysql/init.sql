@@ -7,7 +7,9 @@ CREATE TABLE equipments (
     power INT,
     UI INT NOT NULL,
     enabled TINYINT DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE KEY uniq_name_ip (name, ip)
 );
 
 CREATE TABLE schedules (

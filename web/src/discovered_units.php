@@ -80,8 +80,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 INSERT INTO equipments (name, ip, slave_id, port, UI, power, enabled)
                 VALUES (?, ?, ?, ?, ?, ?, 1)
                 ON DUPLICATE KEY UPDATE
-                    name=VALUES(name),
-                    enabled=1
+                    slave_id = VALUES(slave_id),
+                    port = VALUES(port),
+                    UI = VALUES(UI),
+                    power = VALUES(power),
+                    enabled = 1
             ");
 
             $stmt->execute([
