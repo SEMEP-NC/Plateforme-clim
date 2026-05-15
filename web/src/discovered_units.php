@@ -29,16 +29,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
      // LANCEMENT DISCOVERY
     if (isset($_POST['run_discovery'])) {
 
-        $output = [];
-        $returnCode = 0;
+        $ch = curl_init();
 
-        exec(
-            "docker exec clim_scheduler python /app/discover.py 2>&1",
-            $output,
-            $returnCode
+        curl_setopt($ch, CURLOPT_URL,
+            "http://clim_scheduler:5001/run-discovery"
         );
 
-        $discovery_result = implode("\n", $output);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 300);
+
+        $response = curl_exec($ch);
+
+        if (curl_errno($ch)) {
+
+            $discovery_result =
+                "Scheduler error: " . curl_error($ch);
+
+        } else {
+
+            $discovery_result = json_decode($response, true);
+        }
+
+        curl_close($ch);
     }
 }
 
@@ -128,6 +140,15 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
     </form>
 
 </div>
+    <?php if (!empty($discovery_result)): ?>
+
+    <div class="alert alert-info">
+        <pre>
+    <?= htmlspecialchars(print_r($discovery_result, true)) ?>
+        </pre>
+    </div>
+
+    <?php endif; ?>
 <table class="table table-bordered">
     <thead>
         <tr>
