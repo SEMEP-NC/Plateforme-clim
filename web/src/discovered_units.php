@@ -140,15 +140,7 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
     </form>
 
 </div>
-    <?php if (!empty($discovery_result)): ?>
 
-    <div class="alert alert-info">
-        <pre>
-    <?= htmlspecialchars(print_r($discovery_result, true)) ?>
-        </pre>
-    </div>
-
-    <?php endif; ?>
 <table class="table table-bordered">
     <thead>
         <tr>
