@@ -192,6 +192,8 @@ def save(devices):
             f"UI {d['ui']}",
             d['power']
         ))
+    conn.commit()
+    conn.close()
 
 def cleanup_offline_devices():
     conn = get_connection()
@@ -202,6 +204,6 @@ def cleanup_offline_devices():
         SET online = 0
         WHERE last_seen < (NOW() - INTERVAL 2 MINUTE)
     """)
-    
+
     conn.commit()
     conn.close()
