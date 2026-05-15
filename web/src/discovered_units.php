@@ -166,7 +166,7 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
             type="submit"
             name="run_discovery"
             value="1"
-            style="margin-left:10px;"
+            class="btn btn-primary"
         >
             🔎 Save + Run Discovery
         </button>
@@ -180,8 +180,8 @@ Select all
     <table class="table table-bordered">
         <thead>
             <tr>
-                <th>ID Device</th>
-                <th>IP</th>
+                <th></th>
+                <th>Equipement</th>
                 <th>Nom</th>
                 <th>Modèle</th>
                 <th>Dernière vue</th>
@@ -198,7 +198,7 @@ Select all
                     </td>
 
                     <td><?= htmlspecialchars($u['device_id']) ?></td>
-                    <td><?= htmlspecialchars($u['ip']) ?></td>
+
 
                     <!-- NAME EDITABLE -->
                     <td>
