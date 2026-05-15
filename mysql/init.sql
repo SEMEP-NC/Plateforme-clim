@@ -2,7 +2,10 @@ CREATE TABLE equipments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     ip VARCHAR(50) NOT NULL,
+    port INT NOT NULL,
     slave_id INT NOT NULL,
+    power INT,
+    UI INT NOT NULL,
     enabled TINYINT DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -31,7 +34,8 @@ CREATE TABLE command_logs (
 );
 CREATE TABLE discovered_units (
     device_id VARCHAR(100) PRIMARY KEY,
-    mac VARCHAR(50),
+    port INT,
+    slave_id INT,
     ip VARCHAR(50),
     name VARCHAR(100),
     model INT,

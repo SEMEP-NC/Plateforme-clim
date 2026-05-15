@@ -70,11 +70,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$row) continue;
 
             $ip = $row['ip'];
+            $slave_id = $row['slave_id'];
+            $port = $row['port'];
+            $UI = $row['UI'];
 
             // insert / update equipments
             $stmt = $db->prepare("
-                INSERT INTO equipments (name, ip, slave_id, enabled)
-                VALUES (?, ?, 1, 1)
+                INSERT INTO equipments (name, ip, slave_id, port, UI, power, enabled)
+                VALUES (?, ?, ?, ?, ?, 1)
                 ON DUPLICATE KEY UPDATE
                     name=VALUES(name),
                     enabled=1
@@ -159,7 +162,7 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
         </div>
 
         <button type="submit" name="save_equipments" value="1" class="btn btn-primary">
-            💾 Save selected equipments
+            💾 Sauvegarder
         </button>
 
         <button
@@ -168,7 +171,7 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
             value="1"
             class="btn btn-primary"
         >
-            🔎 Save + Run Discovery
+            🔎 Recherche
         </button>
 
     </form>

@@ -182,14 +182,15 @@ def save(devices):
 
     for d in devices:
         cur.execute("""
-            INSERT INTO discovered_units(device_id, mac, ip, name, model, last_seen, online)
-            VALUES(%s,%s,%s,%s,%s,NOW(),1)
+            INSERT INTO discovered_units(device_id, port, slave_id, ip, name, model, last_seen, online)
+            VALUES(%s,%s,%s,%s,%s,%s,NOW(),1)
             ON DUPLICATE KEY UPDATE last_seen=NOW(), online=1
         """, (
-            f"UI-{d['ui']} @ {d['ip']}",
-            None,
+            f"UI-{d['ui']} @ {d['ip']}:{d['port']}",
+            d['port'],
+            d['slave_id'],
             d['ip'],
-            f"UI {d['ui']}",
+            d['ui'],
             d['power']
         ))
     conn.commit()
