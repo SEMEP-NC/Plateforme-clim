@@ -72,8 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ip = $row['ip'];
             $slave_id = $row['slave_id'];
             $port = $row['port'];
-            $UI = $row['UI'];
-            $power = $row['power'];
+            $UI = $row['name'];
+            $power = $row['model'];
 
             // insert / update equipments
             $stmt = $db->prepare("
