@@ -151,7 +151,7 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
             <th>Dernière vue</th>
             <th>Online</th>
         </tr>
-    </thead>
+    </thead> 
 
     <tbody>
         <?php foreach($units as $u): ?>
