@@ -53,34 +53,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         curl_close($ch);
     }
 
-    if (isset($_POST['save_equipments'])) {
+  if (isset($_POST['save_equipments'])) {
 
         $selected = $_POST['selected'] ?? [];
         $names = $_POST['name'] ?? [];
 
+        error_log("[EQUIPMENTS] save_equipments START");
+        error_log("[EQUIPMENTS] selected count=" . count($selected));
+
         foreach ($selected as $device_id) {
+
+            error_log("[EQUIPMENTS] processing device_id=" . $device_id);
 
             $name = $names[$device_id] ?? $device_id;
 
-            // récupérer IP + slave depuis discovered_units
             $stmt = $db->prepare("SELECT * FROM discovered_units WHERE device_id=?");
             $stmt->execute([$device_id]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$row) continue;
-            $device_id = $row['device_id'];
+            if (!$row) {
+                error_log("[EQUIPMENTS] NOT FOUND device_id=" . $device_id);
+                continue;
+            }
 
-            preg_match('/UI-(\d+)\s*@\s*([\d\.]+):(\d+)/', $device_id, $m);
+            error_log("[EQUIPMENTS] FOUND row=" . json_encode($row));
 
-            if (!$m) continue;
+            $deviceId = $row['device_id'];
+
+            preg_match('/UI-(\d+)\s*@\s*([\d\.]+):(\d+)/', $deviceId, $m);
+
+            if (!$m) {
+                error_log("[EQUIPMENTS] regex FAILED device_id=" . $deviceId);
+                continue;
+            }
 
             $UI = (int)$m[1];
+
             $ip = $row['ip'];
             $slave_id = $row['slave_id'];
             $port = $row['port'];
             $power = $row['model'];
 
-            // insert / update equipments
+            error_log("[EQUIPMENTS] parsed UI=$UI ip=$ip port=$port slave=$slave_id power=$power");
+
             $stmt = $db->prepare("
                 INSERT INTO equipments (name, ip, slave_id, port, UI, power, enabled)
                 VALUES (?, ?, ?, ?, ?, ?, 1)
@@ -100,7 +115,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $UI,
                 $power
             ]);
+
+            error_log("[EQUIPMENTS] UPSERT OK device_id=" . $deviceId);
         }
+
+        error_log("[EQUIPMENTS] save_equipments END");
     }
 }
 
