@@ -26,6 +26,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ports,
         $slave_ids
     ]);
+     // LANCEMENT DISCOVERY
+    if (isset($_POST['run_discovery'])) {
+
+        $output = [];
+        $returnCode = 0;
+
+        exec(
+            "docker exec clim_scheduler python /app/discover.py 2>&1",
+            $output,
+            $returnCode
+        );
+
+        $discovery_result = implode("\n", $output);
+    }
 }
 
 $config = $db->query("SELECT * FROM discovery_config LIMIT 1")
@@ -41,58 +55,7 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
     <title>Clims détectées (Gree)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<script>
 
-async function runDiscovery() {
-
-    if (!confirm('Launch discovery now ?')) {
-        return;
-    }
-
-    try {
-
-        // 1. récupérer le form
-        const form = document.getElementById('discoveryForm');
-
-        // 2. envoyer le POST config
-        const formData = new FormData(form);
-
-        const saveResponse = await fetch(window.location.href, {
-            method: 'POST',
-            body: formData
-        });
-
-        if (!saveResponse.ok) {
-            throw new Error("Failed to save configuration");
-        }
-
-        // 3. lancer discovery
-        const response = await fetch('run_discovery.php');
-
-        const result = await response.json();
-
-        const output = result.output ?? [];
-        const devices = result.devices_found ?? 0;
-
-        alert(
-            "Discovery finished\n\n" +
-            "Devices: " + devices + "\n\n" +
-            (Array.isArray(output)
-                ? output.join("\n")
-                : output)
-        );
-
-        location.reload();
-
-    } catch (e) {
-
-        console.error(e);
-
-        alert('Discovery error: ' + e);
-    }
-}
-
-</script>
 <body class="container mt-5">
 
 <h1>Climatiseurs détectés automatiquement</h1>
@@ -154,11 +117,12 @@ async function runDiscovery() {
         </button>
 
         <button
-            type="button"
-            onclick="runDiscovery()"
+            type="submit"
+            name="run_discovery"
+            value="1"
             style="margin-left:10px;"
         >
-            🔎 Run Discovery
+            🔎 Save + Run Discovery
         </button>
 
     </form>
