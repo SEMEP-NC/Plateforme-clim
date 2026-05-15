@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = $names[$device_id] ?? $device_id;
 
             // récupérer IP + slave depuis discovered_units
-            $stmt = $db->prepare("SELECT ip FROM discovered_units WHERE device_id=?");
+            $stmt = $db->prepare("SELECT * FROM discovered_units WHERE device_id=?");
             $stmt->execute([$device_id]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -73,11 +73,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $slave_id = $row['slave_id'];
             $port = $row['port'];
             $UI = $row['UI'];
+            $power = $row['power'];
 
             // insert / update equipments
             $stmt = $db->prepare("
                 INSERT INTO equipments (name, ip, slave_id, port, UI, power, enabled)
-                VALUES (?, ?, ?, ?, ?, 1)
+                VALUES (?, ?, ?, ?, ?, ?, 1)
                 ON DUPLICATE KEY UPDATE
                     name=VALUES(name),
                     enabled=1
@@ -85,7 +86,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt->execute([
                 $name,
-                $ip
+                $ip,
+                $slave_id,
+                $port,
+                $UI,
+                $power
             ]);
         }
     }
