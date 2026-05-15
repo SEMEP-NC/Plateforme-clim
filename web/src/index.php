@@ -14,6 +14,6 @@
     <a href="schedules.php" class="btn btn-success">Planning</a>
     <a href="discovered_units.php" class="btn btn-warning">Détection automatique</a>
 </div>
-
+<p> test //<p>
 </body>
 </html>
