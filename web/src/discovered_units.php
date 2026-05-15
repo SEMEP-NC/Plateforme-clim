@@ -68,11 +68,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$row) continue;
+            $device_id = $row['device_id'];
 
+            preg_match('/UI-(\d+)\s*@\s*([\d\.]+):(\d+)/', $device_id, $m);
+
+            if (!$m) continue;
+
+            $UI = (int)$m[1];
             $ip = $row['ip'];
             $slave_id = $row['slave_id'];
             $port = $row['port'];
-            $UI = $row['name'];
             $power = $row['model'];
 
             // insert / update equipments
