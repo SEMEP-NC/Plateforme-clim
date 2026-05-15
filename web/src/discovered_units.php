@@ -42,33 +42,56 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <script>
-    async function runDiscovery() {
 
-        if (!confirm('Launch discovery now ?')) {
-            return;
-        }
+async function runDiscovery() {
 
-        try {
-
-            const response = await fetch('run_discovery.php');
-
-            const result = await response.json();
-            const output = result.output ?? [];
-            const devices = result.devices_found ?? 0;
-
-            alert(
-                "Discovery finished\n\n" +
-                "Devices: " + devices + "\n" +
-                output.join ? output.join("\n") : ""
-            );
-
-            location.reload();
-
-        } catch (e) {
-
-            alert('Discovery error: ' + e);
-        }
+    if (!confirm('Launch discovery now ?')) {
+        return;
     }
+
+    try {
+
+        // 1. récupérer le form
+        const form = document.getElementById('discoveryForm');
+
+        // 2. envoyer le POST config
+        const formData = new FormData(form);
+
+        const saveResponse = await fetch(window.location.href, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!saveResponse.ok) {
+            throw new Error("Failed to save configuration");
+        }
+
+        // 3. lancer discovery
+        const response = await fetch('run_discovery.php');
+
+        const result = await response.json();
+
+        const output = result.output ?? [];
+        const devices = result.devices_found ?? 0;
+
+        alert(
+            "Discovery finished\n\n" +
+            "Devices: " + devices + "\n\n" +
+            (Array.isArray(output)
+                ? output.join("\n")
+                : output)
+        );
+
+        location.reload();
+
+    } catch (e) {
+
+        console.error(e);
+
+        alert('Discovery error: ' + e);
+    }
+}
+
 </script>
 <body class="container mt-5">
 
@@ -84,7 +107,7 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
 
     <h2>Configuration Discovery</h2>
 
-    <form method="POST">
+    <form method="POST" id="discoveryForm">
 
         <div style="margin-bottom:10px;">
             <label>START IP</label><br>
