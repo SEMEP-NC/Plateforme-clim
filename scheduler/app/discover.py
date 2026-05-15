@@ -188,7 +188,7 @@ def save(devices):
         """, (
             f"UI-{d['ui']} @ {d['ip']}:{d['port']}",
             d['port'],
-            d['slave_id'],
+            d['slave'],
             d['ip'],
             d['ui'],
             d['power']
