@@ -35,12 +35,7 @@ def load_discovery_config():
     }
 
 
-CONFIG = load_discovery_config()
 
-IP_RANGE_START = CONFIG["start_ip"]
-IP_RANGE_END = CONFIG["end_ip"]
-PORTS = CONFIG["ports"]
-SLAVE_IDS = CONFIG["slave_ids"]
 
 
 BIT_START = 88
@@ -48,9 +43,9 @@ BIT_END = 247
 
 
 
-def scan_ip_range():
-    start_ip = int(ipaddress.IPv4Address(IP_RANGE_START))
-    end_ip = int(ipaddress.IPv4Address(IP_RANGE_END))
+def scan_ip_range(config):
+    start_ip = int(ipaddress.IPv4Address(config["start_ip"]))
+    end_ip = int(ipaddress.IPv4Address(config["end_ip"]))
 
     if start_ip > end_ip:
         raise ValueError("IP_RANGE_START doit être <= IP_RANGE_END")
@@ -58,9 +53,7 @@ def scan_ip_range():
     return [
         str(ipaddress.IPv4Address(ip))
         for ip in range(start_ip, end_ip + 1)
-        
     ]
-
 
 def check_ui_bits(ip, port, slave_id):
     print(f"[DISCOVERY] ▶ Connecting {ip}:{port} slave={slave_id}")
@@ -162,11 +155,27 @@ def read_ui_power(client, ui_number):
         return None
 
 def discover():
+
+    config = load_discovery_config()
+
+    print(
+        f"[DISCOVERY] CONFIG "
+        f"start={config['start_ip']} "
+        f"end={config['end_ip']} "
+        f"ports={config['ports']} "
+        f"slaves={config['slave_ids']}"
+    )
+
     devices = []
 
-    for ip in scan_ip_range():
-        for port in PORTS:
-            for slave in SLAVE_IDS:
+    for ip in scan_ip_range(config):
+        for port in config["ports"]:
+            for slave in config["slave_ids"]:
+
+                print(
+                    f"[DISCOVERY] Scanning "
+                    f"{ip}:{port} slave={slave}"
+                )
 
                 result = check_ui_bits(ip, port, slave)
 
