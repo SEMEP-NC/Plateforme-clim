@@ -3,6 +3,8 @@ from db import get_connection
 import ipaddress
 
 def load_discovery_config():
+    print("[DISCOVERY] Loading configuration from database")
+
     conn = get_connection()
     cur = conn.cursor()
 
@@ -17,6 +19,7 @@ def load_discovery_config():
     conn.close()
 
     if not row:
+        print("[DISCOVERY] ❌ No discovery configuration found")
         raise Exception("No discovery configuration found")
 
     return {
@@ -33,7 +36,7 @@ def load_discovery_config():
             if x.strip()
         ]
     }
-
+    print(f"[DISCOVERY] ✔ Config loaded: {config}")
 
 
 
@@ -44,6 +47,11 @@ BIT_END = 247
 
 
 def scan_ip_range(config):
+    print(
+        f"[DISCOVERY] Building IP range "
+        f"{config['start_ip']} -> {config['end_ip']}"
+    )
+
     start_ip = int(ipaddress.IPv4Address(config["start_ip"]))
     end_ip = int(ipaddress.IPv4Address(config["end_ip"]))
 
@@ -54,6 +62,9 @@ def scan_ip_range(config):
         str(ipaddress.IPv4Address(ip))
         for ip in range(start_ip, end_ip + 1)
     ]
+    print(f"[DISCOVERY] ✔ {len(ips)} IP(s) generated")
+    print(f"[DISCOVERY] IP list: {ips}")
+
 
 def check_ui_bits(ip, port, slave_id):
     print(f"[DISCOVERY] ▶ Connecting {ip}:{port} slave={slave_id}")
@@ -83,7 +94,14 @@ def check_ui_bits(ip, port, slave_id):
         if not result:
             print(f"[DISCOVERY] ⚠ No response from {ip}:{port}")
             return []
+            
+        if hasattr(result, "isError") and result.isError():
+            print(f"[DISCOVERY] ❌ Modbus error response {ip}:{port} → {result}")
+            return []
 
+        if not hasattr(result, "bits"):
+            print(f"[DISCOVERY] ❌ Invalid response type {type(result)} → {result}")
+            return []
         bits = result.bits or []
 
         print(f"[DISCOVERY] ✔ Received {len(bits)} bits from {ip}:{port}")
@@ -156,6 +174,10 @@ def read_ui_power(client, ui_number):
 
 def discover():
 
+    print("\n[DISCOVERY] ====================================")
+    print("[DISCOVERY] START")
+    print("[DISCOVERY] ====================================\n")
+
     config = load_discovery_config()
 
     print(
@@ -179,8 +201,17 @@ def discover():
 
                 result = check_ui_bits(ip, port, slave)
 
+                print(
+                    f"[DISCOVERY] Result "
+                    f"{len(result)} device(s)"
+                )
+
                 if result:
                     devices.extend(result)
+    print(
+        f"[DISCOVERY] ✔ Discovery completed "
+        f"{len(devices)} device(s) found"
+    )
 
     return devices
 
