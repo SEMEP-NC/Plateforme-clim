@@ -42,7 +42,7 @@ def load_discovery_config():
 
 
 
-BIT_START = 88
+BIT_START = 120
 BIT_END = 247
 
 
