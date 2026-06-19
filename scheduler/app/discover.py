@@ -150,8 +150,10 @@ def read_ui_power(client, ui_number):
     try:
         result = client.read_holding_registers(
             address=register,
-            count=1
-        )
+            count=1,
+            slave=slave_id
+        ),
+        
 
         if not result or not result.registers:
             print(
