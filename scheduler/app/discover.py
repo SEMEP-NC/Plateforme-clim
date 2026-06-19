@@ -113,7 +113,7 @@ def check_ui_bits(ip, port, slave_id):
         for i, bit in enumerate(bits):
             if bit:
                 coil_address = BIT_START + i
-                ui_number = coil_address - 87
+                ui_number = coil_address - 119
 
                 print(f"[DISCOVERY] 🎯 UI FOUND → UI{ui_number} @ {ip}:{port}")
 
