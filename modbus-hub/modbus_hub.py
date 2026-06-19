@@ -86,7 +86,7 @@ def ensure_connected(client, ip, port):
 # MODBUS CORE
 # =========================
 
-def modbus_read_coils(ip, port, address, count, slave):
+def modbus_read_coils(ip, port, address, count, device_id):
     lock = get_lock(ip, port)
 
     with lock:
@@ -95,9 +95,12 @@ def modbus_read_coils(ip, port, address, count, slave):
         if not ensure_connected(client, ip, port):
             raise Exception(f"Cannot connect to {ip}:{port}")
 
-        log.info(f"[MODBUS] READ COILS {ip}:{port} addr={address} count={count} slave={slave}")
+        log.info(
+            f"[MODBUS] READ COILS {ip}:{port} "
+            f"addr={address} count={count} device_id={device_id}"
+        )
 
-        result = client.read_coils(address, count, slave=slave)
+        result = client.read_coils(address, count, device_id=device_id)
 
         if result.isError():
             log.error(f"[MODBUS] COILS ERROR {result}")
@@ -106,7 +109,7 @@ def modbus_read_coils(ip, port, address, count, slave):
         return result
 
 
-def modbus_read_register(ip, port, address, slave):
+def modbus_read_register(ip, port, address, device_id):
     lock = get_lock(ip, port)
 
     with lock:
@@ -115,9 +118,16 @@ def modbus_read_register(ip, port, address, slave):
         if not ensure_connected(client, ip, port):
             raise Exception(f"Cannot connect to {ip}:{port}")
 
-        log.info(f"[MODBUS] READ REG {ip}:{port} addr={address} slave={slave}")
+        log.info(
+            f"[MODBUS] READ REG {ip}:{port} "
+            f"addr={address} device_id={device_id}"
+        )
 
-        result = client.read_holding_registers(address, count=1, slave=slave)
+        result = client.read_holding_registers(
+            address,
+            count=1,
+            device_id=device_id
+        )
 
         if result.isError():
             log.error(f"[MODBUS] REG ERROR {result}")
@@ -136,12 +146,12 @@ def read_unified(payload: dict):
 
     ip = payload.get("ip")
     port = payload.get("port")
-    slave = payload.get("slave", DEFAULT_SLAVE)
+    device_id = payload.get("slave", DEFAULT_SLAVE)
     address = payload.get("address")
     count = payload.get("count", 1)
     mode = payload.get("type", "coils")
 
-    key = f"{mode}:{ip}:{port}:{slave}:{address}:{count}"
+    key = f"{mode}:{ip}:{port}:{device_id}:{address}:{count}"
 
     cached = cache_get(key)
     if cached is not None:
@@ -152,11 +162,11 @@ def read_unified(payload: dict):
 
     try:
         if mode == "coils":
-            result = modbus_read_coils(ip, port, address, count, slave)
+            result = modbus_read_coils(ip, port, address, count, device_id)
             data = {"bits": result.bits}
 
         elif mode == "register":
-            result = modbus_read_register(ip, port, address, slave)
+            result = modbus_read_register(ip, port, address, device_id)
             data = {"registers": result.registers}
 
         else:
@@ -191,7 +201,7 @@ async def write_worker():
             port = job["port"]
             address = job["address"]
             value = job["value"]
-            slave = job.get("slave", DEFAULT_SLAVE)
+            device_id = job.get("slave", DEFAULT_SLAVE)
 
             lock = get_lock(ip, port)
 
@@ -199,9 +209,16 @@ async def write_worker():
                 client = get_client(ip, port)
 
                 if ensure_connected(client, ip, port):
-                    log.info(f"[WRITE] {ip}:{port} {address}={value}")
+                    log.info(
+                        f"[WRITE] {ip}:{port} "
+                        f"{address}={value} device_id={device_id}"
+                    )
 
-                    client.write_register(address, value, slave=slave)
+                    client.write_register(
+                        address,
+                        value,
+                        device_id=device_id
+                    )
 
         except Exception as e:
             log.error(f"[WRITE ERROR] {e}")
