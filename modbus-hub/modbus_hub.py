@@ -26,7 +26,7 @@ app = FastAPI(title="Modbus Hub V2")
 # CONFIG
 # =========================
 
-DEFAULT_SLAVE = 1
+DEFAULT_DEVICE_ID = 1
 CACHE_TTL = 2  # seconds
 
 # =========================
@@ -46,7 +46,7 @@ def cache_set(key, value):
     cache_time[key] = time.time()
 
 # =========================
-# LOCKS PAR DEVICE
+# LOCKS PAR DEVICE (IP:PORT)
 # =========================
 
 locks = {}
@@ -73,17 +73,13 @@ def get_client(ip, port):
     return clients[key]
 
 def ensure_connected(client, ip, port):
-    try:
-        if not client.connect():
-            log.error(f"[MODBUS] CONNECT FAIL {ip}:{port}")
-            return False
-        return True
-    except Exception as e:
-        log.error(f"[MODBUS] CONNECT ERROR {ip}:{port} -> {e}")
+    if not client.connect():
+        log.error(f"[MODBUS] CONNECT FAIL {ip}:{port}")
         return False
+    return True
 
 # =========================
-# MODBUS CORE
+# MODBUS CORE (FIXED PYMODBUS 3.x)
 # =========================
 
 def modbus_read_coils(ip, port, address, count, device_id):
@@ -100,13 +96,8 @@ def modbus_read_coils(ip, port, address, count, device_id):
             f"addr={address} count={count} device_id={device_id}"
         )
 
-        result = client.read_coils(address, count, device_id=device_id)
-
-        if result.isError():
-            log.error(f"[MODBUS] COILS ERROR {result}")
-            raise Exception(str(result))
-
-        return result
+        # ✅ pymodbus 3.x: positional ONLY
+        return client.read_coils(address, count, device_id)
 
 
 def modbus_read_register(ip, port, address, device_id):
@@ -119,21 +110,11 @@ def modbus_read_register(ip, port, address, device_id):
             raise Exception(f"Cannot connect to {ip}:{port}")
 
         log.info(
-            f"[MODBUS] READ REG {ip}:{port} "
-            f"addr={address} device_id={device_id}"
+            f"[MODBUS] READ REG {ip}:{port} addr={address} device_id={device_id}"
         )
 
-        result = client.read_holding_registers(
-            address,
-            count=1,
-            device_id=device_id
-        )
-
-        if result.isError():
-            log.error(f"[MODBUS] REG ERROR {result}")
-            raise Exception(str(result))
-
-        return result
+        # ✅ positional ONLY
+        return client.read_holding_registers(address, 1, device_id)
 
 # =========================
 # API READ
@@ -146,7 +127,8 @@ def read_unified(payload: dict):
 
     ip = payload.get("ip")
     port = payload.get("port")
-    device_id = payload.get("slave", DEFAULT_SLAVE)
+    device_id = payload.get("device_id", DEFAULT_DEVICE_ID)
+
     address = payload.get("address")
     count = payload.get("count", 1)
     mode = payload.get("type", "coils")
@@ -163,10 +145,20 @@ def read_unified(payload: dict):
     try:
         if mode == "coils":
             result = modbus_read_coils(ip, port, address, count, device_id)
+
+            if result.isError():
+                log.error(f"[MODBUS] ERROR {result}")
+                return {"success": False, "error": str(result)}
+
             data = {"bits": result.bits}
 
         elif mode == "register":
             result = modbus_read_register(ip, port, address, device_id)
+
+            if result.isError():
+                log.error(f"[MODBUS] ERROR {result}")
+                return {"success": False, "error": str(result)}
+
             data = {"registers": result.registers}
 
         else:
@@ -199,9 +191,10 @@ async def write_worker():
         try:
             ip = job["ip"]
             port = job["port"]
+            device_id = job.get("device_id", DEFAULT_DEVICE_ID)
+
             address = job["address"]
             value = job["value"]
-            device_id = job.get("slave", DEFAULT_SLAVE)
 
             lock = get_lock(ip, port)
 
@@ -209,16 +202,10 @@ async def write_worker():
                 client = get_client(ip, port)
 
                 if ensure_connected(client, ip, port):
-                    log.info(
-                        f"[WRITE] {ip}:{port} "
-                        f"{address}={value} device_id={device_id}"
-                    )
+                    # ✅ positional ONLY
+                    client.write_register(address, value, device_id)
 
-                    client.write_register(
-                        address,
-                        value,
-                        device_id=device_id
-                    )
+                    log.info(f"[WRITE] {ip}:{port} {address}={value}")
 
         except Exception as e:
             log.error(f"[WRITE ERROR] {e}")
@@ -239,6 +226,6 @@ def shutdown():
     for c in clients.values():
         try:
             c.close()
-        except Exception:
+        except:
             pass
     log.info("[HUB] stopped")
