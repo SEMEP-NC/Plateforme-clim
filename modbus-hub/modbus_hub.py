@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from pymodbus.client import ModbusTcpClient
 
 # =========================
-# LOGGING SETUP
+# LOGGING
 # =========================
 
 logging.basicConfig(
@@ -14,7 +14,7 @@ logging.basicConfig(
     format="%(asctime)s [HUB] %(levelname)s - %(message)s"
 )
 
-log = logging.getLogger("modbus-hub")
+log = logging.getLogger("hub")
 
 # =========================
 # APP
@@ -23,11 +23,11 @@ log = logging.getLogger("modbus-hub")
 app = FastAPI(title="Modbus Hub V2")
 
 # =========================
-# CONFIG DEFAULTS
+# CONFIG
 # =========================
 
 DEFAULT_SLAVE = 1
-CACHE_TTL = 2  # seconds
+CACHE_TTL = 2
 
 # =========================
 # CACHE
@@ -38,22 +38,18 @@ cache_time = {}
 
 def cache_get(key):
     if key in cache and (time.time() - cache_time[key]) < CACHE_TTL:
-        log.info(f"[CACHE] HIT {key}")
         return cache[key]
-
-    log.info(f"[CACHE] MISS {key}")
     return None
-
 
 def cache_set(key, value):
     cache[key] = value
     cache_time[key] = time.time()
-    log.info(f"[CACHE] SET {key}")
 
 # =========================
-# LOCKS (PAR DEVICE)
+# CONNECTION POOL (IMPORTANT FIX)
 # =========================
 
+clients = {}
 locks = {}
 
 def get_lock(ip, port):
@@ -62,65 +58,54 @@ def get_lock(ip, port):
         locks[key] = threading.Lock()
     return locks[key]
 
+def get_client(ip, port):
+    key = f"{ip}:{port}"
+
+    if key not in clients:
+        log.info(f"[POOL] Creating client {key}")
+        clients[key] = ModbusTcpClient(ip, port=port, timeout=5)
+
+    return clients[key]
+
+def ensure_connected(client, ip, port):
+    if not client.connect():
+        log.error(f"[MODBUS] CONNECT FAIL {ip}:{port}")
+        return False
+    return True
+
 # =========================
 # MODBUS CORE
 # =========================
 
-def get_client(ip, port):
-    return ModbusTcpClient(ip, port=port, timeout=3)
-
-
 def modbus_read_coils(ip, port, address, count, slave):
-    log.info(f"[MODBUS] READ COILS {ip}:{port} addr={address} count={count} slave={slave}")
-
     lock = get_lock(ip, port)
 
     with lock:
         client = get_client(ip, port)
 
-        if not client.connect():
-            log.error(f"[MODBUS] CONNECT FAIL {ip}:{port}")
+        if not ensure_connected(client, ip, port):
             raise Exception(f"Cannot connect to {ip}:{port}")
 
-        log.info(f"[MODBUS] CONNECT OK {ip}:{port}")
+        log.info(f"[MODBUS] READ COILS {ip}:{port} addr={address} count={count} slave={slave}")
 
-        result = client.read_coils(address, count, slave=slave)
-
-        client.close()
-
-        if result.isError():
-            log.error(f"[MODBUS] COILS ERROR {ip}:{port} -> {result}")
-            raise Exception(str(result))
-
-        log.info(f"[MODBUS] COILS OK {ip}:{port}")
-        return result
+        return client.read_coils(address, count, slave=slave)
 
 
 def modbus_read_register(ip, port, address, slave):
-    log.info(f"[MODBUS] READ REG {ip}:{port} addr={address} slave={slave}")
-
     lock = get_lock(ip, port)
 
     with lock:
         client = get_client(ip, port)
 
-        if not client.connect():
-            log.error(f"[MODBUS] CONNECT FAIL {ip}:{port}")
+        if not ensure_connected(client, ip, port):
             raise Exception(f"Cannot connect to {ip}:{port}")
 
-        result = client.read_holding_registers(address, count=1, slave=slave)
+        log.info(f"[MODBUS] READ REG {ip}:{port} addr={address} slave={slave}")
 
-        client.close()
-
-        if result.isError():
-            log.error(f"[MODBUS] REG ERROR {ip}:{port} -> {result}")
-            raise Exception(str(result))
-
-        log.info(f"[MODBUS] REG OK {ip}:{port}")
-        return result
+        return client.read_holding_registers(address, count=1, slave=slave)
 
 # =========================
-# UNIFIED READ API
+# API
 # =========================
 
 @app.post("/read")
@@ -139,24 +124,35 @@ def read_unified(payload: dict):
 
     cached = cache_get(key)
     if cached is not None:
+        log.info(f"[CACHE] HIT {key}")
         return {"success": True, "cached": True, **cached}
+
+    log.info(f"[CACHE] MISS {key}")
 
     try:
         if mode == "coils":
             result = modbus_read_coils(ip, port, address, count, slave)
+
+            if result.isError():
+                log.error(f"[API] MODBUS ERROR {result}")
+                return {"success": False, "error": str(result)}
+
             data = {"bits": result.bits}
 
         elif mode == "register":
             result = modbus_read_register(ip, port, address, slave)
+
+            if result.isError():
+                log.error(f"[API] MODBUS ERROR {result}")
+                return {"success": False, "error": str(result)}
+
             data = {"registers": result.registers}
 
         else:
-            log.warning(f"[API] INVALID TYPE {mode}")
             return {"success": False, "error": "invalid type"}
 
         cache_set(key, data)
 
-        log.info(f"[API] READ OK {ip}:{port} mode={mode}")
         return {"success": True, "cached": False, **data}
 
     except Exception as e:
@@ -164,21 +160,18 @@ def read_unified(payload: dict):
         return {"success": False, "error": str(e)}
 
 # =========================
-# WRITE QUEUE
+# WRITE
 # =========================
 
 write_queue = asyncio.Queue()
 
 @app.post("/write/register")
 async def write_register(payload: dict):
-    log.info(f"[API] WRITE QUEUED {payload}")
     await write_queue.put(payload)
     return {"queued": True}
 
 
 async def write_worker():
-    log.info("[WRITE] worker started")
-
     while True:
         job = await write_queue.get()
 
@@ -189,21 +182,17 @@ async def write_worker():
             value = job["value"]
             slave = job.get("slave", DEFAULT_SLAVE)
 
-            log.info(f"[WRITE] EXEC {ip}:{port} addr={address} value={value}")
-
             lock = get_lock(ip, port)
 
             with lock:
                 client = get_client(ip, port)
 
-                if client.connect():
+                if ensure_connected(client, ip, port):
                     client.write_register(address, value, slave=slave)
-                    client.close()
-
-                    log.info(f"[WRITE] SUCCESS {ip}:{port} addr={address}")
+                    log.info(f"[WRITE] {ip}:{port} {address}={value}")
 
         except Exception as e:
-            log.error(f"[WRITE] ERROR {job} -> {e}")
+            log.error(f"[WRITE ERROR] {e}")
 
         await asyncio.sleep(0.05)
 
@@ -213,11 +202,14 @@ async def write_worker():
 
 @app.on_event("startup")
 async def startup():
-    log.info("[HUB] STARTING")
     asyncio.create_task(write_worker())
-    log.info("[HUB] READY")
-
+    log.info("[HUB] started")
 
 @app.on_event("shutdown")
 def shutdown():
-    log.info("[HUB] STOPPED")
+    for c in clients.values():
+        try:
+            c.close()
+        except:
+            pass
+    log.info("[HUB] stopped")
