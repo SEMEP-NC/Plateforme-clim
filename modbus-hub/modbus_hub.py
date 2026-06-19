@@ -14,7 +14,7 @@ logging.basicConfig(
     format="%(asctime)s [HUB] %(levelname)s - %(message)s"
 )
 
-log = logging.getLogger("hub")
+log = logging.getLogger("modbus_hub")
 
 # =========================
 # APP
@@ -27,7 +27,7 @@ app = FastAPI(title="Modbus Hub V2")
 # =========================
 
 DEFAULT_SLAVE = 1
-CACHE_TTL = 2
+CACHE_TTL = 2  # seconds
 
 # =========================
 # CACHE
@@ -46,10 +46,9 @@ def cache_set(key, value):
     cache_time[key] = time.time()
 
 # =========================
-# CONNECTION POOL (IMPORTANT FIX)
+# LOCKS PAR DEVICE
 # =========================
 
-clients = {}
 locks = {}
 
 def get_lock(ip, port):
@@ -57,6 +56,12 @@ def get_lock(ip, port):
     if key not in locks:
         locks[key] = threading.Lock()
     return locks[key]
+
+# =========================
+# CLIENT POOL
+# =========================
+
+clients = {}
 
 def get_client(ip, port):
     key = f"{ip}:{port}"
@@ -86,9 +91,10 @@ def modbus_read_coils(ip, port, address, count, slave):
         if not ensure_connected(client, ip, port):
             raise Exception(f"Cannot connect to {ip}:{port}")
 
-        log.info(f"[MODBUS] READ COILS {ip}:{port} addr={address} count={count} slave={slave}")
+        log.info(f"[MODBUS] READ COILS {ip}:{port} addr={address} count={count} unit={slave}")
 
-        return client.read_coils(address, count, slave=slave)
+        # ✅ FIX pymodbus 3.x => unit=
+        return client.read_coils(address, count, unit=slave)
 
 
 def modbus_read_register(ip, port, address, slave):
@@ -100,12 +106,13 @@ def modbus_read_register(ip, port, address, slave):
         if not ensure_connected(client, ip, port):
             raise Exception(f"Cannot connect to {ip}:{port}")
 
-        log.info(f"[MODBUS] READ REG {ip}:{port} addr={address} slave={slave}")
+        log.info(f"[MODBUS] READ REG {ip}:{port} addr={address} unit={slave}")
 
-        return client.read_holding_registers(address, count=1, slave=slave)
+        # ✅ FIX pymodbus 3.x => unit=
+        return client.read_holding_registers(address, count=1, unit=slave)
 
 # =========================
-# API
+# API READ
 # =========================
 
 @app.post("/read")
@@ -134,7 +141,7 @@ def read_unified(payload: dict):
             result = modbus_read_coils(ip, port, address, count, slave)
 
             if result.isError():
-                log.error(f"[API] MODBUS ERROR {result}")
+                log.error(f"[MODBUS] ERROR {result}")
                 return {"success": False, "error": str(result)}
 
             data = {"bits": result.bits}
@@ -143,7 +150,7 @@ def read_unified(payload: dict):
             result = modbus_read_register(ip, port, address, slave)
 
             if result.isError():
-                log.error(f"[API] MODBUS ERROR {result}")
+                log.error(f"[MODBUS] ERROR {result}")
                 return {"success": False, "error": str(result)}
 
             data = {"registers": result.registers}
@@ -160,7 +167,7 @@ def read_unified(payload: dict):
         return {"success": False, "error": str(e)}
 
 # =========================
-# WRITE
+# WRITE QUEUE
 # =========================
 
 write_queue = asyncio.Queue()
@@ -188,7 +195,9 @@ async def write_worker():
                 client = get_client(ip, port)
 
                 if ensure_connected(client, ip, port):
-                    client.write_register(address, value, slave=slave)
+                    # ✅ FIX pymodbus 3.x => unit=
+                    client.write_register(address, value, unit=slave)
+
                     log.info(f"[WRITE] {ip}:{port} {address}={value}")
 
         except Exception as e:
