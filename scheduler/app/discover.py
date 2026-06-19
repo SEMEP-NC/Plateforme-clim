@@ -35,8 +35,9 @@ def load_discovery_config():
             for x in row["slave_ids"].split(',')
             if x.strip()
         ]
+
     }
-    print(f"[DISCOVERY] ✔ Config loaded: {config}")
+    
 
 
 
@@ -61,9 +62,9 @@ def scan_ip_range(config):
     return [
         str(ipaddress.IPv4Address(ip))
         for ip in range(start_ip, end_ip + 1)
+
     ]
-    print(f"[DISCOVERY] ✔ {len(ips)} IP(s) generated")
-    print(f"[DISCOVERY] IP list: {ips}")
+
 
 
 def check_ui_bits(ip, port, slave_id):
@@ -152,7 +153,7 @@ def read_ui_power(client, ui_number, slave_id):
             address=register,
             count=1,
             slave=slave_id
-        ),
+        )
         
 
         if not result or not result.registers:
