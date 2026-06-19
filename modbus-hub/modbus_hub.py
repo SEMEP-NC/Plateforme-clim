@@ -1,118 +1,150 @@
 import asyncio
-from fastapi import FastAPI
-from pymodbus.client import ModbusTcpClient
 import threading
 import time
-
-# =========================
-# CONFIG
-# =========================
-
-MODBUS_IP = "10.5.0.20"
-MODBUS_PORT = 502
-SLAVE_DEFAULT = 1
-
-CACHE_TTL = 2  # seconds
+from fastapi import FastAPI
+from pymodbus.client import ModbusTcpClient
 
 # =========================
 # APP
 # =========================
 
-app = FastAPI(title="Modbus Hub")
+app = FastAPI(title="Modbus Hub V2")
 
-client = ModbusTcpClient(MODBUS_IP, port=MODBUS_PORT, timeout=3)
+# =========================
+# CONFIG DEFAULTS
+# =========================
 
-lock = threading.Lock()
+DEFAULT_SLAVE = 1
+CACHE_TTL = 2  # seconds
+
+# =========================
+# CACHE
+# =========================
 
 cache = {}
 cache_time = {}
-
-write_queue = asyncio.Queue()
-
-# =========================
-# MODBUS CORE
-# =========================
-
-def modbus_connect():
-    if not client.connect():
-        raise Exception("Cannot connect to Modbus device")
-
-
-def modbus_read_coils(address, count, slave):
-    with lock:
-        if not client.connect():
-            raise Exception("Modbus connection failed")
-
-        return client.read_coils(address, count, slave=slave)
-
-
-def modbus_read_register(address, slave):
-    with lock:
-        if not client.connect():
-            raise Exception("Modbus connection failed")
-
-        return client.read_holding_registers(address, count=1, slave=slave)
-
-# =========================
-# CACHE SYSTEM
-# =========================
 
 def cache_get(key):
     if key in cache and (time.time() - cache_time[key]) < CACHE_TTL:
         return cache[key]
     return None
 
-
 def cache_set(key, value):
     cache[key] = value
     cache_time[key] = time.time()
 
 # =========================
-# API READ
+# LOCKS (PAR DEVICE)
 # =========================
 
-@app.get("/read/coils")
-def read_coils(address: int, count: int, slave: int = SLAVE_DEFAULT):
-    key = f"coils:{address}:{count}:{slave}"
+locks = {}
 
+def get_lock(ip, port):
+    key = f"{ip}:{port}"
+    if key not in locks:
+        locks[key] = threading.Lock()
+    return locks[key]
+
+# =========================
+# MODBUS CORE
+# =========================
+
+def get_client(ip, port):
+    return ModbusTcpClient(ip, port=port, timeout=3)
+
+
+def modbus_read_coils(ip, port, address, count, slave):
+    lock = get_lock(ip, port)
+
+    with lock:
+        client = get_client(ip, port)
+
+        if not client.connect():
+            raise Exception(f"Cannot connect to {ip}:{port}")
+
+        result = client.read_coils(address, count, slave=slave)
+        client.close()
+
+        return result
+
+
+def modbus_read_register(ip, port, address, slave):
+    lock = get_lock(ip, port)
+
+    with lock:
+        client = get_client(ip, port)
+
+        if not client.connect():
+            raise Exception(f"Cannot connect to {ip}:{port}")
+
+        result = client.read_holding_registers(address, count=1, slave=slave)
+        client.close()
+
+        return result
+
+# =========================
+# UNIFIED READ API
+# =========================
+
+@app.post("/read")
+def read_unified(payload: dict):
+    """
+    payload:
+    {
+        "ip": "10.x.x.x",
+        "port": 502,
+        "slave": 1,
+        "address": 88,
+        "count": 10,
+        "type": "coils" | "register"
+    }
+    """
+
+    ip = payload.get("ip")
+    port = payload.get("port")
+    slave = payload.get("slave", DEFAULT_SLAVE)
+    address = payload.get("address")
+    count = payload.get("count", 1)
+    mode = payload.get("type", "coils")
+
+    key = f"{mode}:{ip}:{port}:{slave}:{address}:{count}"
     cached = cache_get(key)
+
     if cached is not None:
-        return {"cached": True, "data": cached}
+        return {"success": True, "cached": True, **cached}
 
-    result = modbus_read_coils(address, count, slave)
+    try:
+        if mode == "coils":
+            result = modbus_read_coils(ip, port, address, count, slave)
 
-    if result.isError():
-        return {"error": str(result)}
+            if result.isError():
+                return {"success": False, "error": str(result)}
 
-    data = result.bits
+            data = {"bits": result.bits}
 
-    cache_set(key, data)
+        elif mode == "register":
+            result = modbus_read_register(ip, port, address, slave)
 
-    return {"cached": False, "data": data}
+            if result.isError():
+                return {"success": False, "error": str(result)}
 
+            data = {"registers": result.registers}
 
-@app.get("/read/register")
-def read_register(address: int, slave: int = SLAVE_DEFAULT):
-    key = f"reg:{address}:{slave}"
+        else:
+            return {"success": False, "error": "invalid type"}
 
-    cached = cache_get(key)
-    if cached is not None:
-        return {"cached": True, "data": cached}
+        cache_set(key, data)
 
-    result = modbus_read_register(address, slave)
+        return {"success": True, "cached": False, **data}
 
-    if result.isError():
-        return {"error": str(result)}
-
-    value = result.registers[0]
-
-    cache_set(key, value)
-
-    return {"cached": False, "data": value}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 # =========================
 # WRITE QUEUE
 # =========================
+
+write_queue = asyncio.Queue()
 
 @app.post("/write/register")
 async def write_register(payload: dict):
@@ -125,18 +157,22 @@ async def write_worker():
         job = await write_queue.get()
 
         try:
+            ip = job["ip"]
+            port = job["port"]
             address = job["address"]
             value = job["value"]
-            slave = job.get("slave", SLAVE_DEFAULT)
+            slave = job.get("slave", DEFAULT_SLAVE)
+
+            lock = get_lock(ip, port)
 
             with lock:
-                if not client.connect():
-                    print("[HUB] write connect failed")
-                    continue
+                client = get_client(ip, port)
 
-                client.write_register(address, value, slave=slave)
+                if client.connect():
+                    client.write_register(address, value, slave=slave)
+                    client.close()
 
-            print(f"[HUB] wrote {address}={value}")
+                    print(f"[HUB] wrote {ip}:{port} {address}={value}")
 
         except Exception as e:
             print("[HUB] write error:", e)
@@ -149,12 +185,10 @@ async def write_worker():
 
 @app.on_event("startup")
 async def startup():
-    modbus_connect()
     asyncio.create_task(write_worker())
-    print("[HUB] started")
+    print("[HUB] started on /read + /write")
 
 
 @app.on_event("shutdown")
 def shutdown():
-    client.close()
     print("[HUB] stopped")
