@@ -49,5 +49,12 @@ services:
       db:
         condition: service_healthy
 
+  modbus-hub:
+    build: ./modbus-hub
+    container_name: modbus_hub
+    ports:
+      - "8000:8000"
+    restart: always
+
 volumes:
   db_data:
