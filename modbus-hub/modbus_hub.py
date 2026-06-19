@@ -97,7 +97,7 @@ def modbus_read_coils(ip, port, address, count, device_id):
         )
 
         # ✅ pymodbus 3.x: positional ONLY
-        return client.read_coils(address, count, device_id)
+        return await client.read_coils(address, count, device_id)
 
 
 def modbus_read_register(ip, port, address, device_id):
@@ -114,7 +114,7 @@ def modbus_read_register(ip, port, address, device_id):
         )
 
         # ✅ positional ONLY
-        return client.read_holding_registers(address, 1, device_id)
+        return await client.read_holding_registers(address, 1, device_id)
 
 # =========================
 # API READ
