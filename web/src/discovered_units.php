@@ -175,7 +175,7 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
                 </div>
 
                 <div style="margin-bottom:10px;">
-                    <label>PORTS (comma separated)</label><br>
+                    <label>PORT</label><br>
                     <input
                         type="text"
                         name="ports"
@@ -185,7 +185,7 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
                 </div>
 
                 <div style="margin-bottom:10px;">
-                    <label>SLAVE IDS (comma separated)</label><br>
+                    <label>SLAVE ID</label><br>
                     <input
                         type="text"
                         name="slave_ids"

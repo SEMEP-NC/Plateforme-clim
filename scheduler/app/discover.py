@@ -139,7 +139,7 @@ def check_ui_bits(ip, port, slave_id):
         client.close()
         print(f"[DISCOVERY] ⛔ Closed connection {ip}:{port}")
 
-def read_ui_power(client, ui_number):
+def read_ui_power(client, ui_number, slave_id):
     register = 123 + (25 * (ui_number - 1))
 
     print(
