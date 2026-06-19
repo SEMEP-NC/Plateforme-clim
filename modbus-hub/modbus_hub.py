@@ -73,10 +73,14 @@ def get_client(ip, port):
     return clients[key]
 
 def ensure_connected(client, ip, port):
-    if not client.connect():
-        log.error(f"[MODBUS] CONNECT FAIL {ip}:{port}")
+    try:
+        if not client.connect():
+            log.error(f"[MODBUS] CONNECT FAIL {ip}:{port}")
+            return False
+        return True
+    except Exception as e:
+        log.error(f"[MODBUS] CONNECT ERROR {ip}:{port} -> {e}")
         return False
-    return True
 
 # =========================
 # MODBUS CORE
@@ -91,10 +95,15 @@ def modbus_read_coils(ip, port, address, count, slave):
         if not ensure_connected(client, ip, port):
             raise Exception(f"Cannot connect to {ip}:{port}")
 
-        log.info(f"[MODBUS] READ COILS {ip}:{port} addr={address} count={count} unit={slave}")
+        log.info(f"[MODBUS] READ COILS {ip}:{port} addr={address} count={count} slave={slave}")
 
-        # ✅ FIX pymodbus 3.x => unit=
-        return client.read_coils(address, count, unit=slave)
+        result = client.read_coils(address, count, slave=slave)
+
+        if result.isError():
+            log.error(f"[MODBUS] COILS ERROR {result}")
+            raise Exception(str(result))
+
+        return result
 
 
 def modbus_read_register(ip, port, address, slave):
@@ -106,10 +115,15 @@ def modbus_read_register(ip, port, address, slave):
         if not ensure_connected(client, ip, port):
             raise Exception(f"Cannot connect to {ip}:{port}")
 
-        log.info(f"[MODBUS] READ REG {ip}:{port} addr={address} unit={slave}")
+        log.info(f"[MODBUS] READ REG {ip}:{port} addr={address} slave={slave}")
 
-        # ✅ FIX pymodbus 3.x => unit=
-        return client.read_holding_registers(address, count=1, unit=slave)
+        result = client.read_holding_registers(address, count=1, slave=slave)
+
+        if result.isError():
+            log.error(f"[MODBUS] REG ERROR {result}")
+            raise Exception(str(result))
+
+        return result
 
 # =========================
 # API READ
@@ -139,20 +153,10 @@ def read_unified(payload: dict):
     try:
         if mode == "coils":
             result = modbus_read_coils(ip, port, address, count, slave)
-
-            if result.isError():
-                log.error(f"[MODBUS] ERROR {result}")
-                return {"success": False, "error": str(result)}
-
             data = {"bits": result.bits}
 
         elif mode == "register":
             result = modbus_read_register(ip, port, address, slave)
-
-            if result.isError():
-                log.error(f"[MODBUS] ERROR {result}")
-                return {"success": False, "error": str(result)}
-
             data = {"registers": result.registers}
 
         else:
@@ -195,10 +199,9 @@ async def write_worker():
                 client = get_client(ip, port)
 
                 if ensure_connected(client, ip, port):
-                    # ✅ FIX pymodbus 3.x => unit=
-                    client.write_register(address, value, unit=slave)
-
                     log.info(f"[WRITE] {ip}:{port} {address}={value}")
+
+                    client.write_register(address, value, slave=slave)
 
         except Exception as e:
             log.error(f"[WRITE ERROR] {e}")
@@ -219,6 +222,6 @@ def shutdown():
     for c in clients.values():
         try:
             c.close()
-        except:
+        except Exception:
             pass
     log.info("[HUB] stopped")
