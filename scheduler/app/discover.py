@@ -117,7 +117,7 @@ def check_ui_bits(ip, port, slave_id):
 
                 print(f"[DISCOVERY] 🎯 UI FOUND → UI{ui_number} @ {ip}:{port}")
 
-                power = read_ui_power(client, ui_number)
+                power = read_ui_power(client, ui_number, slave_id)
 
                 devices.append({
                     "ui": ui_number,
