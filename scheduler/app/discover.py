@@ -88,7 +88,8 @@ def check_ui_bits(ip, port, slave_id):
 
         result = client.read_coils(
             BIT_START,
-            (BIT_END - BIT_START + 1)
+            (BIT_END - BIT_START + 1),
+            slave=slave_id
         )
 
         if not result:
