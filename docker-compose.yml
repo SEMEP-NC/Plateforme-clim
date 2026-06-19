@@ -53,7 +53,7 @@ services:
     build: ./modbus-hub
     container_name: modbus_hub
     ports:
-      - "8000:8000"
+      - "8500:8500"
     restart: always
 
 volumes:
