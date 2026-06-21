@@ -148,9 +148,10 @@ $equipments = $pdo->query("
                 </td>
 
                 <td>
-                    <?= htmlspecialchars($dt = new DateTime($schedule['execution_time'], new DateTimeZone('UTC'));
+                    <?= 
+                    $dt = new DateTime($schedule['execution_time'], new DateTimeZone('UTC'));
                     $dt->setTimezone(new DateTimeZone('+11:00'));
-                    echo $dt->format('Y-m-d H:i')
+                    htmlspecialchars(echo $dt->format('Y-m-d H:i')
                     ) 
                     ?>
                 </td>
