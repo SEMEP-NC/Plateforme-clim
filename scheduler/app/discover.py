@@ -113,7 +113,7 @@ def check_ui_bits(ip, port, slave_id):
         slave=slave_id,
         address=BIT_START,
         count=(BIT_END - BIT_START + 1),
-        type="coil"
+        type="coils"
     )
 
     if not result:

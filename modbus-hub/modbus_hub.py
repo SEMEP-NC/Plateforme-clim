@@ -131,7 +131,7 @@ def read_unified(payload: dict):
 
     address = payload.get("address")
     count = payload.get("count", 1)
-    mode = payload.get("type", "coils")
+    mode = payload.get("type")
 
     key = f"{mode}:{ip}:{port}:{device_id}:{address}:{count}"
 
