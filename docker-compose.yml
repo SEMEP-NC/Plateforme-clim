@@ -22,7 +22,7 @@ services:
     container_name: clim_api
     restart: always
     ports:
-      - "8400:8400"
+      - "5001:5001"
     depends_on:
       - db
       - modbus-hub
