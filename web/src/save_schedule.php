@@ -11,6 +11,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $temperature = $_POST['temperature'];
     $execution_time = $_POST['execution_time'];
 
+    $dt = new DateTime($execution_time, new DateTimeZone('+11:00'));
+    $dt->setTimezone(new DateTimeZone('UTC'));
+    $execution_time_utc = $dt->format('Y-m-d H:i:s');
+
     $stmt = $pdo->prepare(
         "
         INSERT INTO schedules
@@ -37,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ':equipment_id' => $equipment_id,
         ':action' => $action,
         ':temperature' => $temperature,
-        ':execution_time' => $execution_time
+        ':execution_time' => $execution_time_utc
 
     ]);
 
