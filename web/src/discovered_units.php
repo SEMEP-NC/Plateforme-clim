@@ -126,7 +126,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $config = $db->query("SELECT * FROM discovery_config LIMIT 1")
              ->fetch(PDO::FETCH_ASSOC);
              
-$units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->fetchAll();
+$units = $db->query("
+    SELECT
+        d.*,
+        e.name AS equipment_name,
+        e.id AS equipment_id
+    FROM discovered_units d
+    LEFT JOIN equipments e
+        ON e.ip = d.ip
+       AND e.port = d.port
+       AND e.slave_id = d.slave_id
+       AND e.UI = CAST(
+            SUBSTRING_INDEX(
+                SUBSTRING_INDEX(d.device_id, '@', 1),
+                'UI-',
+                -1
+            ) AS UNSIGNED
+       )
+    ORDER BY d.last_seen DESC
+")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -222,6 +240,7 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
                         <th>Modèle</th>
                         <th>Dernière vue</th>
                         <th>Online</th>
+                        <th>Etat</th>
                     </tr>
                 </thead>
 
@@ -230,7 +249,13 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
                         <tr>
                             <!-- checkbox -->
                             <td>
-                                <input type="checkbox" name="selected[]" value="<?= htmlspecialchars($u['device_id']) ?>">
+                                <?php if ($u['equipment_id']): ?>
+                                    ✅
+                                <?php else: ?>
+                                    <input type="checkbox"
+                                        name="selected[]"
+                                        value="<?= htmlspecialchars($u['device_id']) ?>">
+                                <?php endif; ?>
                             </td>
 
                             <td><?= htmlspecialchars($u['device_id']) ?></td>
@@ -238,10 +263,22 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
 
                             <!-- NAME EDITABLE -->
                             <td>
-                                <input type="text"
-                                    name="name[<?= htmlspecialchars($u['device_id']) ?>]"
-                                    value="<?= htmlspecialchars($u['name']) ?>"
-                                    class="form-control form-control-sm">
+
+                                <?php if ($u['equipment_id']): ?>
+
+                                    <span class="badge bg-success">
+                                        <?= htmlspecialchars($u['equipment_name']) ?>
+                                    </span>
+
+                                <?php else: ?>
+
+                                    <input type="text"
+                                        name="name[<?= htmlspecialchars($u['device_id']) ?>]"
+                                        value="<?= htmlspecialchars($u['name']) ?>"
+                                        class="form-control form-control-sm">
+
+                                <?php endif; ?>
+
                             </td>
 
                             <td>
@@ -256,6 +293,13 @@ $units = $db->query("SELECT * FROM discovered_units ORDER BY last_seen DESC")->f
 
                             <td><?= $u['last_seen'] ?></td>
                             <td><?= $u['online'] ? '🟢' : '🔴' ?></td>
+                            <td>
+                                <?php if ($u['equipment_id']): ?>
+                                    <span class="badge bg-success">Ajouté</span>
+                                <?php else: ?>
+                                    <span class="badge bg-warning text-dark">Nouveau</span>
+                                <?php endif; ?>
+                            </td>
 
                         </tr>
                     <?php endforeach; ?>
