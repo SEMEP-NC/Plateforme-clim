@@ -151,8 +151,7 @@ $equipments = $pdo->query("
                     <?= 
                     $dt = new DateTime($schedule['execution_time'], new DateTimeZone('UTC'));
                     $dt->setTimezone(new DateTimeZone('+11:00'));
-                    htmlspecialchars(echo $dt->format('Y-m-d H:i')
-                    ) 
+                    echo $dt->format('Y-m-d H:i') 
                     ?>
                 </td>
 
