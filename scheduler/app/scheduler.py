@@ -9,7 +9,7 @@ from discover import discover, save
 # CONFIG
 # =========================
 
-INTERVAL = 900
+INTERVAL = 60
 DISCOVERY_INTERVAL = 30
 
 HUB_URL = "http://modbus-hub:8500/write"
