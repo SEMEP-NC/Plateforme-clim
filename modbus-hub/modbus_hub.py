@@ -27,7 +27,7 @@ app = FastAPI(title="Modbus Hub V2")
 # =========================
 
 DEFAULT_DEVICE_ID = 1
-CACHE_TTL = 2  # seconds
+CACHE_TTL = 2
 
 # =========================
 # CACHE
@@ -46,7 +46,7 @@ def cache_set(key, value):
     cache_time[key] = time.time()
 
 # =========================
-# LOCKS PAR DEVICE (IP:PORT)
+# LOCKS PAR DEVICE
 # =========================
 
 locks = {}
@@ -58,10 +58,12 @@ def get_lock(ip, port):
     return locks[key]
 
 # =========================
-# CLIENT POOL
+# CLIENT POOL (ROBUSTE)
 # =========================
 
 clients = {}
+clients_last_use = {}
+CLIENT_TTL = 60  # cleanup soft
 
 def get_client(ip, port):
     key = f"{ip}:{port}"
@@ -70,16 +72,42 @@ def get_client(ip, port):
         log.info(f"[POOL] Creating client {key}")
         clients[key] = ModbusTcpClient(ip, port=port, timeout=5)
 
+    clients_last_use[key] = time.time()
     return clients[key]
 
+
 def ensure_connected(client, ip, port):
-    if not client.connect():
+    try:
+        if client.connected:
+            return True
+    except:
+        pass
+
+    ok = client.connect()
+
+    if not ok:
         log.error(f"[MODBUS] CONNECT FAIL {ip}:{port}")
         return False
+
     return True
 
+
+def cleanup_clients():
+    """évite fuite mémoire sur devices dynamiques"""
+    now = time.time()
+
+    for key in list(clients.keys()):
+        if now - clients_last_use.get(key, now) > CLIENT_TTL:
+            try:
+                clients[key].close()
+            except:
+                pass
+            del clients[key]
+            clients_last_use.pop(key, None)
+            log.info(f"[POOL] cleaned {key}")
+
 # =========================
-# MODBUS CORE (FIXED PYMODBUS 3.x)
+# MODBUS READ (INCHANGÉ LOGIQUE)
 # =========================
 
 def modbus_read_coils(ip, port, address, count, device_id):
@@ -92,11 +120,10 @@ def modbus_read_coils(ip, port, address, count, device_id):
             raise Exception(f"Cannot connect to {ip}:{port}")
 
         log.info(
-            f"[MODBUS] READ COILS {ip}:{port} "
-            f"addr={address} count={count} device_id={device_id}"
+            f"[MODBUS] READ COILS {ip}:{port} addr={address} "
+            f"count={count} device_id={device_id}"
         )
 
-        # ✅ pymodbus 3.x: positional ONLY
         return client.read_coils(address, count=count, device_id=device_id)
 
 
@@ -113,11 +140,71 @@ def modbus_read_register(ip, port, address, device_id):
             f"[MODBUS] READ REG {ip}:{port} addr={address} device_id={device_id}"
         )
 
-        # ✅ positional ONLY
         return client.read_holding_registers(address, count=1, device_id=device_id)
 
 # =========================
-# API READ
+# WRITE QUEUE (ROBUSTE + ASYNC SAFE)
+# =========================
+
+write_queue = asyncio.Queue()
+
+@app.post("/write")
+async def write_unified(payload: dict):
+
+    await write_queue.put(payload)
+    return {"success": True, "queued": True}
+
+
+async def write_worker():
+
+    while True:
+        job = await write_queue.get()
+
+        try:
+            ip = job.get("ip")
+            port = job.get("port")
+            device_id = job.get("slave", DEFAULT_DEVICE_ID)
+            mode = job.get("type")
+            address = job.get("address")
+            value = job.get("value")
+
+            if not all([ip, port, mode, address is not None]):
+                log.error(f"[WRITE] invalid payload {job}")
+                continue
+
+            lock = get_lock(ip, port)
+
+            with lock:
+                client = get_client(ip, port)
+
+                if not ensure_connected(client, ip, port):
+                    continue
+
+                log.info(
+                    f"[MODBUS WRITE] {ip}:{port} "
+                    f"type={mode} addr={address} value={value} device_id={device_id}"
+                )
+
+                if mode == "coil":
+                    result = client.write_coil(address, value, device_id=device_id)
+
+                elif mode == "register":
+                    result = client.write_register(address, value, device_id=device_id)
+
+                else:
+                    log.error(f"[WRITE] invalid type {mode}")
+                    continue
+
+                if result.isError():
+                    log.error(f"[WRITE ERROR] {result}")
+
+        except Exception as e:
+            log.error(f"[WRITE WORKER ERROR] {e}")
+
+        await asyncio.sleep(0.02)
+
+# =========================
+# READ API (INCHANGÉ COMPORTEMENT)
 # =========================
 
 @app.post("/read")
@@ -173,46 +260,6 @@ def read_unified(payload: dict):
         return {"success": False, "error": str(e)}
 
 # =========================
-# WRITE QUEUE
-# =========================
-
-write_queue = asyncio.Queue()
-
-@app.post("/write/register")
-async def write_register(payload: dict):
-    await write_queue.put(payload)
-    return {"queued": True}
-
-
-async def write_worker():
-    while True:
-        job = await write_queue.get()
-
-        try:
-            ip = job["ip"]
-            port = job["port"]
-            device_id = job.get("device_id", DEFAULT_DEVICE_ID)
-
-            address = job["address"]
-            value = job["value"]
-
-            lock = get_lock(ip, port)
-
-            with lock:
-                client = get_client(ip, port)
-
-                if ensure_connected(client, ip, port):
-                    # ✅ positional ONLY
-                    client.write_register(address, value, device_id)
-
-                    log.info(f"[WRITE] {ip}:{port} {address}={value}")
-
-        except Exception as e:
-            log.error(f"[WRITE ERROR] {e}")
-
-        await asyncio.sleep(0.05)
-
-# =========================
 # LIFECYCLE
 # =========================
 
@@ -220,6 +267,7 @@ async def write_worker():
 async def startup():
     asyncio.create_task(write_worker())
     log.info("[HUB] started")
+
 
 @app.on_event("shutdown")
 def shutdown():
