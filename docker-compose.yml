@@ -16,16 +16,16 @@ services:
       DB_NAME: clim_manager
       DB_USER: climuser
       DB_PASSWORD: climpassword
-#   -- API Supprimé ---
-#  api:
-#    build: ./api
-#    container_name: clim_api
-#    restart: always
-#    ports:
-#      - "8000:8000"
-#    depends_on:
-#      - db
-#      - modbus-hub
+
+  api:
+    build: ./api
+    container_name: clim_api
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - modbus-hub
   db:
     image: mariadb:11
     restart: always
