@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $ch = curl_init();
 
         curl_setopt($ch, CURLOPT_URL,
-            "http://clim_scheduler:5001/run-discovery"
+            "http://clim_api:5001/run-discovery"
         );
 
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
