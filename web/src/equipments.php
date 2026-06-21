@@ -16,33 +16,25 @@ $equipments = $db->query("SELECT * FROM equipments")->fetchAll();
 
 <h1>Équipements</h1>
 
-<form method="POST" action="save_equipment.php" class="mb-5">
-
-    <input type="text" name="name" placeholder="Nom" class="form-control mb-2" required>
-
-    <input type="text" name="ip" placeholder="IP" class="form-control mb-2" required>
-
-    <input type="number" name="slave_id" placeholder="Slave ID" class="form-control mb-2" required>
-
-    <button class="btn btn-primary">Ajouter</button>
-
-</form>
+<a href="index.php" class="btn btn-secondary mb-3">Retour</a>
 
 <table class="table table-bordered">
     <thead>
         <tr>
-            <th>ID</th>
             <th>Nom</th>
-            <th>IP</th>
-            <th>Slave ID</th>
+            <th>UI</th>
+            <th>Puissance</th>
+            <th>IP Passerelle</th>
+            <th>Slave modbus ID</th>
         </tr>
     </thead>
 
     <tbody>
         <?php foreach($equipments as $equipment): ?>
             <tr>
-                <td><?= $equipment['id'] ?></td>
                 <td><?= $equipment['name'] ?></td>
+                <td><?= $equipment['UI'] ?></td>
+                <td><?= $equipment['power'] ?></td>
                 <td><?= $equipment['ip'] ?></td>
                 <td><?= $equipment['slave_id'] ?></td>
             </tr>
