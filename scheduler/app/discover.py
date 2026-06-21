@@ -68,7 +68,7 @@ def scan_ip_range(config):
 # HUB CALL
 # =========================
 
-def hub_read(ip, port, slave, address, count):
+def hub_read(ip, port, slave, address, count, type):
     """
     Appel HTTP vers modbus-hub
     """
@@ -78,7 +78,8 @@ def hub_read(ip, port, slave, address, count):
             "port": port,
             "slave": slave,
             "address": address,
-            "count": count
+            "count": count,
+            "type": type
         }
 
         r = requests.post(HUB_URL, json=payload, timeout=5)
@@ -111,7 +112,8 @@ def check_ui_bits(ip, port, slave_id):
         port=port,
         slave=slave_id,
         address=BIT_START,
-        count=(BIT_END - BIT_START + 1)
+        count=(BIT_END - BIT_START + 1),
+        type="coil"
     )
 
     if not result:
@@ -165,7 +167,9 @@ def read_ui_power(ip, port, slave_id, ui_number):
         port=port,
         slave=slave_id,
         address=register,
-        count=1
+        count=1,
+        type="register"
+
     )
 
     if not result or not result.get("success"):
