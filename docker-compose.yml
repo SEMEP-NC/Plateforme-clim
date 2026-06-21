@@ -20,6 +20,10 @@ services:
   api:
     build: ./api
     container_name: clim_api
+    environment:
+      - PYTHONPATH=/app/shared
+    volumes:
+      - ./shared:/app/shared
     restart: always
     ports:
       - "5001:5001"
@@ -51,6 +55,10 @@ services:
   scheduler:
     build: ./scheduler
     container_name: clim_scheduler
+    environment:
+      - PYTHONPATH=/app/shared
+    volumes:
+      - ./shared:/app/shared
     ports:
     - "5001:5001"
     restart: always
