@@ -59,8 +59,7 @@ services:
       - PYTHONPATH=/app/shared
     volumes:
       - ./shared:/app/shared
-    ports:
-    - "5001:5001"
+
     restart: always
     depends_on:
       db:
