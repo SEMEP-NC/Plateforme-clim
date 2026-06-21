@@ -24,7 +24,7 @@ if (
 
     $stmt->execute([$name, $id]);
 
-    header("Location: equipements.php");
+    header("Location: equipments.php");
     exit;
 }
 
@@ -47,7 +47,7 @@ if (
 
     $stmt->execute([$id]);
 
-    header("Location: equipements.php");
+    header("Location: equipments.php");
     exit;
 }
 
