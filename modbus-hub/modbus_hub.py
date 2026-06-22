@@ -241,7 +241,7 @@ async def write_worker():
 
                 elif mode == "register":
                     value = int(value)
-                    result = client.write_register(address, [value], device_id=device_id)
+                    result = client.write_registers(address, [value], device_id=device_id)
 
                 else:
                     log.error(f"[WRITE] invalid type {mode}")
