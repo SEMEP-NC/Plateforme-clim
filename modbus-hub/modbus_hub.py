@@ -240,7 +240,7 @@ async def write_worker():
                     result = client.write_coil(address, value, device_id=device_id)
 
                 elif mode == "register":
-                    result = client.write_register(address, value, device_id=device_id)
+                    result = client.write_register(address, [value], device_id=device_id)
 
                 else:
                     log.error(f"[WRITE] invalid type {mode}")
