@@ -143,7 +143,7 @@ def modbus_read_register(ip, port, address, device_id):
         return client.read_holding_registers(address, count=1, device_id=device_id)
 
 # =========================
-# WRITE QUEUE (ROBUSTE + ASYNC SAFE)
+# WRITE QUEUE (ROBUSTE + DEBUG)
 # =========================
 
 write_queue = asyncio.Queue()
@@ -151,7 +151,9 @@ write_queue = asyncio.Queue()
 @app.post("/write")
 async def write_unified(payload: dict):
 
+    log.info(f"[WRITE API] enqueue payload={payload}")
     await write_queue.put(payload)
+
     return {"success": True, "queued": True}
 
 
@@ -159,8 +161,15 @@ async def write_worker():
 
     while True:
         job = await write_queue.get()
+        result = None  # important pour éviter UnboundLocalError
 
         try:
+            log.info(f"[WRITE JOB] RAW {job}")
+
+            # =========================
+            # PARSING + SANITIZATION
+            # =========================
+
             ip = job.get("ip")
             port = job.get("port")
             device_id = job.get("slave", DEFAULT_DEVICE_ID)
@@ -168,21 +177,63 @@ async def write_worker():
             address = job.get("address")
             value = job.get("value")
 
-            if not all([ip, port, mode, address is not None]):
-                log.error(f"[WRITE] invalid payload {job}")
+            # 🔥 debug type coercion
+            log.info(
+                f"[WRITE PARSED] "
+                f"ip={ip} port={port} device_id={device_id} "
+                f"mode={mode} address={address} value={value} "
+                f"value_type={type(value)}"
+            )
+
+            # =========================
+            # VALIDATION STRICTE
+            # =========================
+
+            if ip is None or port is None or mode is None or address is None:
+                log.error(f"[WRITE] invalid payload (missing fields) {job}")
                 continue
+
+            # coercion sécurité Modbus
+            try:
+                port = int(port)
+                address = int(address)
+                device_id = int(device_id)
+            except Exception as e:
+                log.error(f"[WRITE] type conversion error: {e} job={job}")
+                continue
+
+            # value peut être None (cas OFF/NOOP)
+            if value is not None:
+                try:
+                    # important si MariaDB retourne VARCHAR
+                    if isinstance(value, str):
+                        value = value.strip()
+                        if value.isdigit():
+                            value = int(value)
+                except Exception as e:
+                    log.error(f"[WRITE] value conversion error: {e}")
+
+            # =========================
+            # MODBUS EXECUTION
+            # =========================
 
             lock = get_lock(ip, port)
 
             with lock:
+
                 client = get_client(ip, port)
 
+                log.info(f"[WRITE CONNECT] {ip}:{port} connecting...")
+
                 if not ensure_connected(client, ip, port):
+                    log.error(f"[WRITE CONNECT FAIL] {ip}:{port}")
                     continue
 
+                log.info(f"[WRITE CONNECT] OK {ip}:{port}")
+
                 log.info(
-                    f"[MODBUS WRITE] {ip}:{port} "
-                    f"type={mode} addr={address} value={value} device_id={device_id}"
+                    f"[MODBUS WRITE START] "
+                    f"{ip}:{port} type={mode} addr={address} value={value} device_id={device_id}"
                 )
 
                 if mode == "coil":
@@ -195,11 +246,23 @@ async def write_worker():
                     log.error(f"[WRITE] invalid type {mode}")
                     continue
 
+                # =========================
+                # RESPONSE DEBUG
+                # =========================
+
+                log.info(f"[WRITE RESPONSE RAW] {result}")
+
                 if result.isError():
-                    log.error(f"[WRITE ERROR] {result}")
+                    log.error(f"[WRITE ERROR] Modbus exception: {result}")
+
+                else:
+                    log.info("[WRITE SUCCESS] OK")
 
         except Exception as e:
-            log.error(f"[WRITE WORKER ERROR] {e}")
+            log.exception(f"[WRITE WORKER EXCEPTION] {e}")
+
+        finally:
+            write_queue.task_done()
 
         await asyncio.sleep(0.02)
 
