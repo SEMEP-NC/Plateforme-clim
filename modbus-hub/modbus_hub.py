@@ -176,7 +176,9 @@ async def write_worker():
 
             with lock:
                 client = get_client(ip, port)
-
+                client.close()
+                client.connect()
+                time.sleep(0.05)
                 if not ensure_connected(client, ip, port):
                     continue
 
