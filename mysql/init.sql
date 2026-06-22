@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS discovery_config (
 );
 
 INSERT INTO discovery_config(start_ip, end_ip, ports, slave_ids)
-SELECT '10.0.0.50', '10.0.0.50', '1502', '1'
+SELECT '10.5.0.20', '10.5.0.20', '502', '1'
 WHERE NOT EXISTS (
     SELECT 1 FROM discovery_config
 );
