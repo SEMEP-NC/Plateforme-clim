@@ -77,7 +77,6 @@ def hub_write(ip, port, slave, mode, address, value):
     except Exception as e:
         print(f"[HUB] WRITE ERROR {e}", flush=True)
         return False
-
 # =========================
 # PLANNING ENGINE
 # =========================
@@ -93,65 +92,140 @@ def process_planning():
         JOIN equipments
             ON equipments.id = schedules.equipment_id
         WHERE executed = 0
-        AND execution_time <= NOW()
+        AND execution_time <= UTC_TIMESTAMP()
     """)
 
     rows = cur.fetchall()
+
+    if not rows:
+        print("📅 Aucun planning à exécuter", flush=True)
+        conn.close()
+        return
+
+    print(f"📅 {len(rows)} planning(s) à exécuter", flush=True)
 
     for row in rows:
 
         try:
 
-            if row["type"] == "modbus":
+            ui = int(row["UI"])
 
-                print(
-                    f"📡 Commande {row['action']} -> {row['ip']}",
-                    flush=True
-                )
+            cmd_register = 102 + (25 * (ui - 1))
+            temp_register = 104 + (25 * (ui - 1))
 
-                # =========================
-                # ACTION MAPPING
-                # =========================
+            print(
+                f"📡 Planning ID={row['id']} "
+                f"UI={ui} "
+                f"IP={row['ip']} "
+                f"ACTION={row['action']} "
+                f"TEMP={row['temperature']}",
+                flush=True
+            )
 
-                if row["action"] == "ON":
-                    value = 1
-                    mode = "coil"
+            # =========================
+            # ON / OFF
+            # =========================
 
-                elif row["action"] == "OFF":
-                    value = 0
-                    mode = "coil"
+            action = row.get("action")
 
-                elif row["action"] == "SET_TEMP":
-                    value = row["temperature"]
-                    mode = "register"
-
-                else:
-                    print(f"⚠ Unknown action {row['action']}", flush=True)
-                    continue
+            if action == "ON":
 
                 ok = hub_write(
                     row["ip"],
                     row["port"],
                     row["slave_id"],
-                    mode,
-                    120,  # ⚠ à adapter si mapping réel différent
-                    value
+                    "register",
+                    cmd_register,
+                    0xAA
                 )
 
-                if ok:
-                    print(f"✅ WRITE OK ID={row['id']}", flush=True)
-                else:
-                    print(f"❌ WRITE FAILED ID={row['id']}", flush=True)
+                print(
+                    f"▶ ON reg={cmd_register} value=170 result={ok}",
+                    flush=True
+                )
 
-            # mark executed regardless (comme ton ancien comportement)
+            elif action == "OFF":
+
+                ok = hub_write(
+                    row["ip"],
+                    row["port"],
+                    row["slave_id"],
+                    "register",
+                    cmd_register,
+                    0x55
+                )
+
+                print(
+                    f"▶ OFF reg={cmd_register} value=85 result={ok}",
+                    flush=True
+                )
+
+            elif action is None or action == "":
+                print(
+                    f"▶ Pas de commande ON/OFF pour ID={row['id']}",
+                    flush=True
+                )
+
+            else:
+                print(
+                    f"⚠ Action inconnue : {action}",
+                    flush=True
+                )
+
+            # =========================
+            # TEMPERATURE
+            # =========================
+
+            temperature = row.get("temperature")
+
+            if temperature is not None:
+
+                temp_value = int(float(temperature) * 10)
+
+                ok = hub_write(
+                    row["ip"],
+                    row["port"],
+                    row["slave_id"],
+                    "register",
+                    temp_register,
+                    temp_value
+                )
+
+                print(
+                    f"🌡 TEMP reg={temp_register} "
+                    f"value={temp_value} "
+                    f"result={ok}",
+                    flush=True
+                )
+
+            else:
+
+                print(
+                    f"🌡 Pas de température pour ID={row['id']}",
+                    flush=True
+                )
+
+            # =========================
+            # MARK EXECUTED
+            # =========================
+
             cur.execute("""
                 UPDATE schedules
                 SET executed = 1
                 WHERE id = %s
             """, (row["id"],))
 
+            print(
+                f"✅ Planning exécuté ID={row['id']}",
+                flush=True
+            )
+
         except Exception as e:
-            print(f"❌ Erreur planning ID={row['id']}: {e}", flush=True)
+
+            print(
+                f"❌ Erreur planning ID={row['id']}: {e}",
+                flush=True
+            )
 
     conn.commit()
     conn.close()

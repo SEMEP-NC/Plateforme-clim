@@ -75,19 +75,28 @@ $equipments = $pdo->query("
     </select>
 
     <label class="form-label">Action</label>
-    <select name="action" class="form-control mb-3" required>
-        <option value="ON">ON</option>
-        <option value="OFF">OFF</option>
-    </select>
+        <select name="action" class="form-control mb-3" required>
+            <option value="">Aucun changement</option>
+            <option value="ON">ON</option>
+            <option value="OFF">OFF</option>
+        </select>
 
     <label class="form-label">Température (°C)</label>
-    <input
-        type="number"
-        name="temperature"
-        class="form-control mb-3"
-        placeholder="Ex: 22"
-        step="0.5"
-    >
+        <select name="temperature" class="form-control mb-3">
+
+            <option value="">
+                Aucun changement
+            </option>
+
+            <?php for ($t = 16; $t <= 30; $t++): ?>
+
+                <option value="<?= $t ?>">
+                    <?= $t ?> °C
+                </option>
+
+            <?php endfor; ?>
+
+        </select>
 
     <label class="form-label">Date d'exécution</label>
     <input
@@ -135,18 +144,44 @@ $equipments = $pdo->query("
                 </td>
 
                 <td>
+
                     <?php if ($schedule['action'] === 'ON'): ?>
-                        <span class="badge bg-success">ON</span>
+
+                        <span class="badge bg-success">
+                            ON
+                        </span>
+
+                    <?php elseif ($schedule['action'] === 'OFF'): ?>
+
+                        <span class="badge bg-danger">
+                            OFF
+                        </span>
+
                     <?php else: ?>
-                        <span class="badge bg-danger">OFF</span>
+
+                        <span class="badge bg-secondary">
+                            Aucun changement
+                        </span>
+
                     <?php endif; ?>
+
                 </td>
 
                 <td>
-                    <?= htmlspecialchars($schedule['temperature'] ?? '') ?>
-                    <?= $schedule['temperature'] !== null ? ' °C' : '' ?>
-                </td>
 
+                    <?php if ($schedule['temperature'] !== null): ?>
+
+                        <?= htmlspecialchars($schedule['temperature']) ?> °C
+
+                    <?php else: ?>
+
+                        <span class="text-muted">
+                            Aucun changement
+                        </span>
+
+                    <?php endif; ?>
+
+                </td>
                 <td>
                     <?= 
                     $dt = new DateTime($schedule['execution_time'], new DateTimeZone('UTC'));
