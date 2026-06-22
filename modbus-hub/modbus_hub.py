@@ -240,6 +240,7 @@ async def write_worker():
                     result = client.write_coil(address, value, device_id=device_id)
 
                 elif mode == "register":
+                    value = int(value)
                     result = client.write_register(address, [value], device_id=device_id)
 
                 else:
