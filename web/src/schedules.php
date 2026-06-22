@@ -75,7 +75,7 @@ $equipments = $pdo->query("
     </select>
 
     <label class="form-label">Action</label>
-        <select name="action" class="form-control mb-3" required>
+        <select name="action" class="form-control mb-3">
             <option value="">Aucun changement</option>
             <option value="ON">ON</option>
             <option value="OFF">OFF</option>
@@ -120,7 +120,6 @@ $equipments = $pdo->query("
 
     <thead class="table-dark">
         <tr>
-            <th>ID</th>
             <th>Équipement</th>
             <th>Action</th>
             <th>Température</th>
@@ -134,10 +133,6 @@ $equipments = $pdo->query("
         <?php foreach ($schedules as $schedule): ?>
 
             <tr>
-
-                <td>
-                    <?= (int)$schedule['id'] ?>
-                </td>
 
                 <td>
                     <?= htmlspecialchars($schedule['equipment_name'] ?? '—') ?>
