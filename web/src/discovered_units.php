@@ -2,137 +2,103 @@
 require 'config/db.php';
 
 $db = get_db();
+$discovery_result = null;
+$error_message = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $start_ip = trim($_POST['start_ip'] ?? '');
+    $end_ip = trim($_POST['end_ip'] ?? '');
+    $ports = trim($_POST['ports'] ?? '');
+    $slave_ids = trim($_POST['slave_ids'] ?? '');
 
-    $start_ip = $_POST['start_ip'];
-    $end_ip = $_POST['end_ip'];
-    $ports = $_POST['ports'];
-    $slave_ids = $_POST['slave_ids'];
+    if ($start_ip === '' || $end_ip === '' || $ports === '' || $slave_ids === '') {
+        $error_message = 'Configuration discovery incomplete.';
+    } else {
+        $stmt = $db->prepare("
+            UPDATE discovery_config
+            SET start_ip = ?, end_ip = ?, ports = ?, slave_ids = ?
+            WHERE id = 1
+        ");
 
-    $stmt = $db->prepare("
-        UPDATE discovery_config
-        SET
-            start_ip=?,
-            end_ip=?,
-            ports=?,
-            slave_ids=?
-        WHERE id=1
-    ");
+        $stmt->execute([$start_ip, $end_ip, $ports, $slave_ids]);
+    }
 
-    $stmt->execute([
-        $start_ip,
-        $end_ip,
-        $ports,
-        $slave_ids
-    ]);
-     // LANCEMENT DISCOVERY
-    if (isset($_POST['run_discovery'])) {
-
+    if ($error_message === null && isset($_POST['run_discovery'])) {
+        $apiBaseUrl = getenv('API_BASE_URL') ?: 'http://clim_api:5001';
         $ch = curl_init();
 
-        curl_setopt($ch, CURLOPT_URL,
-            "http://clim_api:5001/run-discovery"
-        );
-
+        curl_setopt($ch, CURLOPT_URL, rtrim($apiBaseUrl, '/') . '/run-discovery');
+        curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 300);
 
         $response = curl_exec($ch);
 
         if (curl_errno($ch)) {
-
-            $discovery_result =
-                "Scheduler error: " . curl_error($ch);
-
+            $error_message = 'Discovery error: ' . curl_error($ch);
         } else {
-
             $discovery_result = json_decode($response, true);
+            if (!is_array($discovery_result)) {
+                $error_message = 'Reponse discovery invalide.';
+            }
         }
 
         curl_close($ch);
     }
 
-  if (isset($_POST['save_equipments'])) {
-
+    if ($error_message === null && isset($_POST['save_equipments'])) {
         $selected = $_POST['selected'] ?? [];
         $names = $_POST['name'] ?? [];
 
-        error_log("[EQUIPMENTS] save_equipments START");
-        error_log("[EQUIPMENTS] selected count=" . count($selected));
-
         foreach ($selected as $device_id) {
+            $name = trim($names[$device_id] ?? $device_id);
 
-            error_log("[EQUIPMENTS] processing device_id=" . $device_id);
-
-            $name = $names[$device_id] ?? $device_id;
-
-            $stmt = $db->prepare("SELECT * FROM discovered_units WHERE device_id=?");
+            $stmt = $db->prepare("SELECT * FROM discovered_units WHERE device_id = ?");
             $stmt->execute([$device_id]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            $row = $stmt->fetch();
 
             if (!$row) {
-                error_log("[EQUIPMENTS] NOT FOUND device_id=" . $device_id);
                 continue;
             }
 
-            error_log("[EQUIPMENTS] FOUND row=" . json_encode($row));
-
-            $deviceId = $row['device_id'];
-
-            preg_match('/UI-(\d+)\s*@\s*([\d\.]+):(\d+)/', $deviceId, $m);
-
-            if (!$m) {
-                error_log("[EQUIPMENTS] regex FAILED device_id=" . $deviceId);
+            if (!preg_match('/UI-(\d+)/', $row['device_id'], $m)) {
                 continue;
             }
 
-            $UI = (int)$m[1];
-
-            $ip = $row['ip'];
-            $slave_id = $row['slave_id'];
-            $port = $row['port'];
-            $power = $row['model'];
-
-            error_log("[EQUIPMENTS] parsed UI=$UI ip=$ip port=$port slave=$slave_id power=$power");
+            $ui = (int)$m[1];
 
             $stmt = $db->prepare("
                 INSERT INTO equipments (name, ip, slave_id, port, UI, power, enabled)
                 VALUES (?, ?, ?, ?, ?, ?, 1)
                 ON DUPLICATE KEY UPDATE
+                    name = VALUES(name),
                     slave_id = VALUES(slave_id),
                     port = VALUES(port),
-                    UI = VALUES(UI),
                     power = VALUES(power),
                     enabled = 1
             ");
 
             $stmt->execute([
-                $name,
-                $ip,
-                $slave_id,
-                $port,
-                $UI,
-                $power
+                $name !== '' ? $name : $row['device_id'],
+                $row['ip'],
+                $row['slave_id'],
+                $row['port'],
+                $ui,
+                $row['model'],
             ]);
-
-            error_log("[EQUIPMENTS] UPSERT OK device_id=" . $deviceId);
         }
-
-        error_log("[EQUIPMENTS] save_equipments END");
     }
 }
 
-$config = $db->query("SELECT * FROM discovery_config LIMIT 1")
-             ->fetch(PDO::FETCH_ASSOC);
-             
+$config = $db->query("SELECT * FROM discovery_config LIMIT 1")->fetch();
+
 $units = $db->query("
     SELECT
         d.*,
         e.name AS equipment_name,
         e.id AS equipment_id
     FROM discovered_units d
-    LEFT JOIN equipments e
+       LEFT JOIN equipments e
         ON e.ip = d.ip
        AND e.port = d.port
        AND e.slave_id = d.slave_id
@@ -144,171 +110,120 @@ $units = $db->query("
             ) AS UNSIGNED
        )
     ORDER BY d.last_seen DESC
-")->fetchAll(PDO::FETCH_ASSOC);
+")->fetchAll();
 ?>
 
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Clims détectées (Gree)</title>
+    <title>Clims detectees</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 
 <body class="container mt-5">
 
-    <h1>Climatiseurs détectés automatiquement</h1>
+<h1>Climatiseurs detectes automatiquement</h1>
 
-    <a href="index.php" class="btn btn-secondary mb-3">Retour</a>
-        <form method="POST">
-            <div style="
-                border:1px solid #ccc;
-                padding:20px;
-                margin-bottom:20px;
-                border-radius:10px;
-            ">
+<a href="index.php" class="btn btn-secondary mb-3">Retour</a>
 
-            <h2>Configuration Discovery</h2>
+<?php if ($error_message): ?>
+    <div class="alert alert-danger"><?= htmlspecialchars($error_message) ?></div>
+<?php endif; ?>
 
-            
+<?php if ($discovery_result): ?>
+    <div class="alert alert-info">
+        Discovery: <?= htmlspecialchars($discovery_result['status'] ?? 'unknown') ?>,
+        <?= (int)($discovery_result['devices_found'] ?? 0) ?> equipement(s) detecte(s).
+    </div>
+<?php endif; ?>
 
-                <div style="margin-bottom:10px;">
-                    <label>START IP</label><br>
-                    <input
-                        type="text"
-                        name="start_ip"
-                        value="<?= htmlspecialchars($config['start_ip']) ?>"
-                        style="width:300px;"
-                    >
-                </div>
+<form method="POST">
+    <div class="border rounded p-3 mb-4">
+        <h2 class="h4">Configuration Discovery</h2>
 
-                <div style="margin-bottom:10px;">
-                    <label>END IP</label><br>
-                    <input
-                        type="text"
-                        name="end_ip"
-                        value="<?= htmlspecialchars($config['end_ip']) ?>"
-                        style="width:300px;"
-                    >
-                </div>
+        <label class="form-label">START IP</label>
+        <input type="text" name="start_ip" value="<?= htmlspecialchars($config['start_ip'] ?? '') ?>" class="form-control mb-2">
 
-                <div style="margin-bottom:10px;">
-                    <label>PORT</label><br>
-                    <input
-                        type="text"
-                        name="ports"
-                        value="<?= htmlspecialchars($config['ports']) ?>"
-                        style="width:300px;"
-                    >
-                </div>
+        <label class="form-label">END IP</label>
+        <input type="text" name="end_ip" value="<?= htmlspecialchars($config['end_ip'] ?? '') ?>" class="form-control mb-2">
 
-                <div style="margin-bottom:10px;">
-                    <label>SLAVE ID</label><br>
-                    <input
-                        type="text"
-                        name="slave_ids"
-                        value="<?= htmlspecialchars($config['slave_ids']) ?>"
-                        style="width:300px;"
-                    >
-                </div>
+        <label class="form-label">PORTS</label>
+        <input type="text" name="ports" value="<?= htmlspecialchars($config['ports'] ?? '') ?>" class="form-control mb-2">
 
-                <button type="submit" name="save_equipments" value="1" class="btn btn-primary">
-                    💾 Sauvegarder
-                </button>
+        <label class="form-label">SLAVE IDS</label>
+        <input type="text" name="slave_ids" value="<?= htmlspecialchars($config['slave_ids'] ?? '') ?>" class="form-control mb-3">
 
-                <button
-                    type="submit"
-                    name="run_discovery"
-                    value="1"
-                    class="btn btn-primary"
-                >
-                    🔎 Recherche
-                </button>
+        <button type="submit" name="save_config" value="1" class="btn btn-primary">Sauvegarder</button>
+        <button type="submit" name="run_discovery" value="1" class="btn btn-warning">Recherche</button>
+    </div>
 
-            
+    <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" id="select_all" onclick="document.querySelectorAll('input[name=\'selected[]\']').forEach(c => c.checked = this.checked)">
+        <label class="form-check-label" for="select_all">Tout selectionner</label>
+    </div>
 
-            </div>
+    <table class="table table-bordered align-middle">
+        <thead>
+            <tr>
+                <th></th>
+                <th>Equipement</th>
+                <th>Nom</th>
+                <th>Modele</th>
+                <th>IP</th>
+                <th>Port</th>
+                <th>Slave</th>
+                <th>Derniere vue</th>
+                <th>Online</th>
+                <th>Etat</th>
+            </tr>
+        </thead>
 
-            <input type="checkbox" onclick="document.querySelectorAll('input[name=\'selected[]\']').forEach(c => c.checked = this.checked)">
-            Select all
-            <table class="table table-bordered">
-                <thead>
-                    <tr>
-                        <th></th>
-                        <th>Equipement</th>
-                        <th>Nom</th>
-                        <th>Modèle</th>
-                        <th>Dernière vue</th>
-                        <th>Online</th>
-                        <th>Etat</th>
-                    </tr>
-                </thead>
+        <tbody>
+        <?php foreach ($units as $u): ?>
+            <tr>
+                <td>
+                    <?php if ($u['equipment_id']): ?>
+                        <span class="badge bg-success">OK</span>
+                    <?php else: ?>
+                        <input type="checkbox" name="selected[]" value="<?= htmlspecialchars($u['device_id']) ?>">
+                    <?php endif; ?>
+                </td>
 
-                <tbody>
-                    <?php foreach($units as $u): ?>
-                        <tr>
-                            <!-- checkbox -->
-                            <td>
-                                <?php if ($u['equipment_id']): ?>
-                                    ✅
-                                <?php else: ?>
-                                    <input type="checkbox"
-                                        name="selected[]"
-                                        value="<?= htmlspecialchars($u['device_id']) ?>">
-                                <?php endif; ?>
-                            </td>
+                <td><?= htmlspecialchars($u['device_id']) ?></td>
 
-                            <td><?= htmlspecialchars($u['device_id']) ?></td>
+                <td>
+                    <?php if ($u['equipment_id']): ?>
+                        <span class="badge bg-success"><?= htmlspecialchars($u['equipment_name']) ?></span>
+                    <?php else: ?>
+                        <input type="text" name="name[<?= htmlspecialchars($u['device_id']) ?>]" value="<?= htmlspecialchars($u['name']) ?>" class="form-control form-control-sm">
+                    <?php endif; ?>
+                </td>
 
+                <td>
+                    <?php
+                    $model = $u['model'];
+                    echo is_numeric($model) ? htmlspecialchars(number_format($model / 10, 1) . ' kW') : htmlspecialchars((string)$model);
+                    ?>
+                </td>
 
-                            <!-- NAME EDITABLE -->
-                            <td>
+                <td><?= htmlspecialchars($u['ip']) ?></td>
+                <td><?= htmlspecialchars($u['port']) ?></td>
+                <td><?= htmlspecialchars($u['slave_id']) ?></td>
+                <td><?= htmlspecialchars($u['last_seen']) ?></td>
+                <td><?= $u['online'] ? 'Online' : 'Offline' ?></td>
+                <td><?= $u['equipment_id'] ? 'Ajoute' : 'Nouveau' ?></td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
 
-                                <?php if ($u['equipment_id']): ?>
+    <button type="submit" name="save_equipments" value="1" class="btn btn-success">Ajouter les equipements selectionnes</button>
+</form>
 
-                                    <span class="badge bg-success">
-                                        <?= htmlspecialchars($u['equipment_name']) ?>
-                                    </span>
-
-                                <?php else: ?>
-
-                                    <input type="text"
-                                        name="name[<?= htmlspecialchars($u['device_id']) ?>]"
-                                        value="<?= htmlspecialchars($u['name']) ?>"
-                                        class="form-control form-control-sm">
-
-                                <?php endif; ?>
-
-                            </td>
-
-                            <td>
-                                <?php $model = $u['model'];
-                                    if (is_numeric($model)) {
-                                        echo number_format($model / 10, 1) . 'kW';
-                                    } else {
-                                        echo htmlspecialchars($model);
-                                    }
-                                ?>
-                            </td>
-
-                            <td><?= $u['last_seen'] ?></td>
-                            <td><?= $u['online'] ? '🟢' : '🔴' ?></td>
-                            <td>
-                                <?php if ($u['equipment_id']): ?>
-                                    <span class="badge bg-success">Ajouté</span>
-                                <?php else: ?>
-                                    <span class="badge bg-warning text-dark">Nouveau</span>
-                                <?php endif; ?>
-                            </td>
-
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </form>
-
-</body>
-</html>
 <script>
 setInterval(() => location.reload(), 30000);
 </script>
+
+</body>
+</html>

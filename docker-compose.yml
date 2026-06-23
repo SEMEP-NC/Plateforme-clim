@@ -8,28 +8,39 @@ services:
       - "8085:80"
     volumes:
       - ./web/src:/var/www/html
-      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      api:
+        condition: service_started
     environment:
       DB_HOST: db
       DB_NAME: clim_manager
       DB_USER: climuser
       DB_PASSWORD: climpassword
+      API_BASE_URL: http://clim_api:5001
 
   api:
     build: ./api
     container_name: clim_api
     environment:
-      - PYTHONPATH=/app/shared
+      PYTHONPATH: /app/shared
+      HUB_URL: http://modbus-hub:8500/read
+      DB_HOST: db
+      DB_NAME: clim_manager
+      DB_USER: climuser
+      DB_PASSWORD: climpassword
     volumes:
       - ./shared:/app/shared
     restart: always
     ports:
       - "5001:5001"
     depends_on:
-      - db
-      - modbus-hub
+      db:
+        condition: service_healthy
+      modbus-hub:
+        condition: service_started
+
   db:
     image: mariadb:11
     restart: always
@@ -39,31 +50,33 @@ services:
       MYSQL_DATABASE: clim_manager
       MYSQL_USER: climuser
       MYSQL_PASSWORD: climpassword
-
     volumes:
       - db_data:/var/lib/mysql
       - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
-
     healthcheck:
       test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -prootpassword"]
       interval: 5s
       timeout: 5s
       retries: 20
-#    ports:
-#      - "3306:3306"
 
   scheduler:
     build: ./scheduler
     container_name: clim_scheduler
     environment:
-      - PYTHONPATH=/app/shared
+      PYTHONPATH: /app/shared
+      HUB_WRITE_URL: http://modbus-hub:8500/write
+      DB_HOST: db
+      DB_NAME: clim_manager
+      DB_USER: climuser
+      DB_PASSWORD: climpassword
     volumes:
       - ./shared:/app/shared
-
     restart: always
     depends_on:
       db:
         condition: service_healthy
+      modbus-hub:
+        condition: service_started
 
   modbus-hub:
     build: ./modbus-hub

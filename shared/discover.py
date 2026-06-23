@@ -1,23 +1,20 @@
 import ipaddress
+import os
+
 import requests
+
 from db import get_connection
 
-# =========================
-# CONFIG
-# =========================
 
-HUB_URL = "http://modbus-hub:8500/read"
+HUB_URL = os.getenv("HUB_URL", "http://modbus-hub:8500/read")
 
 BIT_START = 120
 BIT_END = 247
+MAX_SCAN_IPS = int(os.getenv("MAX_SCAN_IPS", "256"))
 
-
-# =========================
-# CONFIG DB
-# =========================
 
 def load_discovery_config():
-    print("[DISCOVERY] Loading configuration from database")
+    print("[DISCOVERY] Loading configuration from database", flush=True)
 
     conn = get_connection()
     cur = conn.cursor()
@@ -41,71 +38,55 @@ def load_discovery_config():
         "slave_ids": [int(x.strip()) for x in row["slave_ids"].split(",") if x.strip()],
     }
 
-    print(f"[DISCOVERY] CONFIG loaded: {config}")
+    print(f"[DISCOVERY] CONFIG loaded: {config}", flush=True)
     return config
 
-
-# =========================
-# IP RANGE
-# =========================
 
 def scan_ip_range(config):
     start_ip = int(ipaddress.IPv4Address(config["start_ip"]))
     end_ip = int(ipaddress.IPv4Address(config["end_ip"]))
 
-    print(f"[DISCOVERY] Building IP range {config['start_ip']} -> {config['end_ip']}")
+    print(f"[DISCOVERY] Building IP range {config['start_ip']} -> {config['end_ip']}", flush=True)
 
     if start_ip > end_ip:
         raise ValueError("start_ip must be <= end_ip")
 
+    total = end_ip - start_ip + 1
+    if total > MAX_SCAN_IPS:
+        raise ValueError(f"IP range too large: {total} IPs, max {MAX_SCAN_IPS}")
+
     ips = [str(ipaddress.IPv4Address(ip)) for ip in range(start_ip, end_ip + 1)]
 
-    print(f"[DISCOVERY] IPs generated: {len(ips)}")
+    print(f"[DISCOVERY] IPs generated: {len(ips)}", flush=True)
     return ips
 
 
-# =========================
-# HUB CALL
-# =========================
-
-def hub_read(ip, port, slave, address, count, type):
-    """
-    Appel HTTP vers modbus-hub
-    """
+def hub_read(ip, port, slave, address, count, mode):
     try:
         payload = {
             "ip": ip,
             "port": port,
-            "slave": slave,
+            "device_id": slave,
             "address": address,
             "count": count,
-            "type": type
+            "type": mode,
         }
 
         r = requests.post(HUB_URL, json=payload, timeout=5)
 
         if r.status_code != 200:
-            print(f"[HUB] ❌ HTTP {r.status_code} {r.text}")
+            print(f"[HUB] HTTP {r.status_code} {r.text}", flush=True)
             return None
 
-        data = r.json()
-
-        # format attendu :
-        # { "success": true, "bits": [...] } ou { "registers": [...] }
-
-        return data
+        return r.json()
 
     except Exception as e:
-        print(f"[HUB] ❌ request error: {e}")
+        print(f"[HUB] request error: {e}", flush=True)
         return None
 
 
-# =========================
-# CHECK UI COILS
-# =========================
-
 def check_ui_bits(ip, port, slave_id):
-    print(f"[DISCOVERY] ▶ Checking {ip}:{port} slave={slave_id}")
+    print(f"[DISCOVERY] Checking {ip}:{port} slave={slave_id}", flush=True)
 
     result = hub_read(
         ip=ip,
@@ -113,23 +94,18 @@ def check_ui_bits(ip, port, slave_id):
         slave=slave_id,
         address=BIT_START,
         count=(BIT_END - BIT_START + 1),
-        type="coils"
+        mode="coils",
     )
 
-    if not result:
-        return []
-
-    if not result.get("success"):
-        print(f"[DISCOVERY] ❌ hub error {result}")
+    if not result or not result.get("success"):
+        print(f"[DISCOVERY] hub error {result}", flush=True)
         return []
 
     bits = result.get("bits", [])
 
     if not isinstance(bits, list):
-        print(f"[DISCOVERY] ❌ invalid bits format")
+        print("[DISCOVERY] invalid bits format", flush=True)
         return []
-
-    print(f"[DISCOVERY] ✔ Received {len(bits)} bits")
 
     devices = []
 
@@ -138,7 +114,7 @@ def check_ui_bits(ip, port, slave_id):
             coil_address = BIT_START + i
             ui_number = coil_address - 119
 
-            print(f"[DISCOVERY] 🎯 UI FOUND → UI{ui_number} @ {ip}:{port}")
+            print(f"[DISCOVERY] UI FOUND UI{ui_number} @ {ip}:{port}", flush=True)
 
             power = read_ui_power(ip, port, slave_id, ui_number)
 
@@ -147,20 +123,14 @@ def check_ui_bits(ip, port, slave_id):
                 "ip": ip,
                 "port": port,
                 "slave": slave_id,
-                "power": power
+                "power": power,
             })
 
     return devices
 
 
-# =========================
-# POWER READ
-# =========================
-
 def read_ui_power(ip, port, slave_id, ui_number):
     register = 123 + (25 * (ui_number - 1))
-
-    print(f"[DISCOVERY] ▶ Power UI{ui_number} reg={register}")
 
     result = hub_read(
         ip=ip,
@@ -168,30 +138,19 @@ def read_ui_power(ip, port, slave_id, ui_number):
         slave=slave_id,
         address=register,
         count=1,
-        type="register"
-
+        mode="register",
     )
 
     if not result or not result.get("success"):
-        print(f"[DISCOVERY] ⚠ no power UI{ui_number}")
+        print(f"[DISCOVERY] no power UI{ui_number}", flush=True)
         return None
 
     regs = result.get("registers", [])
+    return regs[0] if regs else None
 
-    if not regs:
-        return None
-
-    return regs[0]
-
-
-# =========================
-# DISCOVERY
-# =========================
 
 def discover():
-    print("\n[DISCOVERY] =======================")
-    print("[DISCOVERY] START")
-    print("[DISCOVERY] =======================\n")
+    print("\n[DISCOVERY] START\n", flush=True)
 
     config = load_discovery_config()
 
@@ -200,29 +159,19 @@ def discover():
     for ip in scan_ip_range(config):
         for port in config["ports"]:
             for slave in config["slave_ids"]:
+                print(f"[DISCOVERY] scanning {ip}:{port} slave={slave}", flush=True)
+                devices.extend(check_ui_bits(ip, port, slave))
 
-                print(f"[DISCOVERY] scanning {ip}:{port} slave={slave}")
-
-                found = check_ui_bits(ip, port, slave)
-
-                print(f"[DISCOVERY] result {len(found)} devices")
-
-                devices.extend(found)
-
-    print(f"[DISCOVERY] DONE → {len(devices)} devices")
+    print(f"[DISCOVERY] DONE -> {len(devices)} devices", flush=True)
     return devices
 
-
-# =========================
-# SAVE DB
-# =========================
 
 def save(devices):
     conn = get_connection()
     cur = conn.cursor()
 
     for d in devices:
-        device_id = f"UI-{d['ui']} @ {d['ip']}:{d['port']}"
+        device_id = f"UI-{d['ui']} @ {d['ip']}:{d['port']} slave={d['slave']}"
 
         cur.execute("""
             INSERT INTO discovered_units
@@ -230,6 +179,11 @@ def save(devices):
             VALUES
                 (%s,%s,%s,%s,%s,%s,NOW(),1)
             ON DUPLICATE KEY UPDATE
+                port = VALUES(port),
+                slave_id = VALUES(slave_id),
+                ip = VALUES(ip),
+                name = VALUES(name),
+                model = VALUES(model),
                 last_seen = NOW(),
                 online = 1
         """, (
@@ -237,17 +191,13 @@ def save(devices):
             d["port"],
             d["slave"],
             d["ip"],
-            d["ui"],
-            d["power"]
+            f"UI-{d['ui']}",
+            d["power"],
         ))
 
     conn.commit()
     conn.close()
 
-
-# =========================
-# CLEANUP
-# =========================
 
 def cleanup_offline_devices():
     conn = get_connection()

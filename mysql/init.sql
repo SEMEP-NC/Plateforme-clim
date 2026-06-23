@@ -1,4 +1,4 @@
-CREATE TABLE equipments (
+CREATE TABLE IF NOT EXISTS equipments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     ip VARCHAR(50) NOT NULL,
@@ -9,14 +9,14 @@ CREATE TABLE equipments (
     enabled TINYINT DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    UNIQUE KEY uniq_UI_ip (UI, ip)
+    UNIQUE KEY uniq_UI_ip_port_slave (UI, ip, port, slave_id)
 );
 
-CREATE TABLE schedules (
+CREATE TABLE IF NOT EXISTS schedules (
     id INT AUTO_INCREMENT PRIMARY KEY,
     equipment_id INT NOT NULL,
-    action VARCHAR(20) NOT NULL,
-    temperature INT,
+    action VARCHAR(20) NULL,
+    temperature INT NULL,
     execution_time DATETIME NOT NULL,
     executed TINYINT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -26,15 +26,17 @@ CREATE TABLE schedules (
     ON DELETE CASCADE
 );
 
-CREATE TABLE command_logs (
+CREATE TABLE IF NOT EXISTS command_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     equipment_id INT,
+    schedule_id INT,
     action VARCHAR(50),
     status VARCHAR(50),
     message TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE TABLE discovered_units (
+
+CREATE TABLE IF NOT EXISTS discovered_units (
     device_id VARCHAR(100) PRIMARY KEY,
     port INT,
     slave_id INT,
@@ -44,6 +46,7 @@ CREATE TABLE discovered_units (
     last_seen DATETIME,
     online TINYINT DEFAULT 1
 );
+
 CREATE TABLE IF NOT EXISTS discovery_config (
     id INT PRIMARY KEY AUTO_INCREMENT,
     start_ip VARCHAR(64) NOT NULL,

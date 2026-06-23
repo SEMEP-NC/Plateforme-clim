@@ -1,41 +1,38 @@
+import os
 import time
+
 import pymysql
 import requests
 
 from db import get_connection
-from discover import discover, save
+from discover import cleanup_offline_devices, discover, save
 
-# =========================
-# CONFIG
-# =========================
 
-INTERVAL = 60
-DISCOVERY_INTERVAL = 30
-
-HUB_URL = "http://modbus-hub:8500/write"
+INTERVAL = int(os.getenv("SCHEDULER_INTERVAL", "60"))
+DISCOVERY_INTERVAL = int(os.getenv("DISCOVERY_INTERVAL", "300"))
+HUB_WRITE_URL = os.getenv("HUB_WRITE_URL", "http://modbus-hub:8500/write")
 
 last_discovery = 0
 
-# =========================
-# DB READY CHECK
-# =========================
 
 def wait_for_db():
+    print("Waiting for DB...", flush=True)
 
-    print("⏳ Waiting for DB...", flush=True)
+    host = os.getenv("DB_HOST", "db")
+    user = os.getenv("DB_USER", "climuser")
+    password = os.getenv("DB_PASSWORD", "climpassword")
+    database = os.getenv("DB_NAME", "clim_manager")
 
     for i in range(30):
-
         try:
             conn = pymysql.connect(
-                host='db',
-                user='climuser',
-                password='climpassword',
-                database='clim_manager'
+                host=host,
+                user=user,
+                password=password,
+                database=database,
             )
             conn.close()
-
-            print("✅ DB ready", flush=True)
+            print("DB ready", flush=True)
             return
 
         except Exception as e:
@@ -44,23 +41,19 @@ def wait_for_db():
 
     raise Exception("DB unreachable")
 
-# =========================
-# HUB WRITE (NEW ARCHITECTURE)
-# =========================
 
 def hub_write(ip, port, slave, mode, address, value):
-
     try:
         payload = {
             "ip": ip,
             "port": port,
             "slave": slave,
-            "type": mode,          # "coil" ou "register"
+            "type": mode,
             "address": address,
-            "value": value
+            "value": value,
         }
 
-        r = requests.post(HUB_URL, json=payload, timeout=5)
+        r = requests.post(HUB_WRITE_URL, json=payload, timeout=5)
 
         if r.status_code != 200:
             print(f"[HUB] WRITE HTTP {r.status_code} {r.text}", flush=True)
@@ -77,206 +70,131 @@ def hub_write(ip, port, slave, mode, address, value):
     except Exception as e:
         print(f"[HUB] WRITE ERROR {e}", flush=True)
         return False
-# =========================
-# PLANNING ENGINE
-# =========================
+
+
+def log_command(cur, equipment_id, schedule_id, action, status, message):
+    cur.execute("""
+        INSERT INTO command_logs
+            (equipment_id, schedule_id, action, status, message)
+        VALUES
+            (%s, %s, %s, %s, %s)
+    """, (equipment_id, schedule_id, action, status, message))
+
 
 def process_planning():
-
     conn = get_connection()
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT schedules.*, equipments.*
+        SELECT
+            schedules.id AS schedule_id,
+            schedules.action,
+            schedules.temperature,
+            schedules.execution_time,
+            equipments.id AS equipment_id,
+            equipments.name,
+            equipments.ip,
+            equipments.port,
+            equipments.slave_id,
+            equipments.UI
         FROM schedules
         JOIN equipments
             ON equipments.id = schedules.equipment_id
-        WHERE executed = 0
-        AND execution_time <= UTC_TIMESTAMP()
+        WHERE schedules.executed = 0
+          AND schedules.execution_time <= UTC_TIMESTAMP()
+          AND equipments.enabled = 1
+        ORDER BY schedules.execution_time ASC
     """)
 
     rows = cur.fetchall()
 
     if not rows:
-        print("📅 Aucun planning à exécuter", flush=True)
+        print("Aucun planning à exécuter", flush=True)
         conn.close()
         return
 
-    print(f"📅 {len(rows)} planning(s) à exécuter", flush=True)
+    print(f"{len(rows)} planning(s) à exécuter", flush=True)
 
     for row in rows:
+        schedule_id = row["schedule_id"]
+        equipment_id = row["equipment_id"]
 
         try:
-
             ui = int(row["UI"])
-
             cmd_register = 102 + (25 * (ui - 1))
             temp_register = 104 + (25 * (ui - 1))
 
             print(
-                f"📡 Planning ID={row['id']} "
-                f"UI={ui} "
-                f"IP={row['ip']} "
-                f"ACTION={row['action']} "
-                f"TEMP={row['temperature']}",
-                flush=True
+                f"Planning ID={schedule_id} UI={ui} IP={row['ip']} "
+                f"ACTION={row['action']} TEMP={row['temperature']}",
+                flush=True,
             )
 
-            # =========================
-            # ON / OFF
-            # =========================
-
+            all_ok = True
             action = row.get("action")
 
             if action == "ON":
-
-                ok = hub_write(
-                    row["ip"],
-                    row["port"],
-                    row["slave_id"],
-                    "register",
-                    cmd_register,
-                    0xAA
-                )
-
-                print(
-                    f"▶ ON reg={cmd_register} value=170 result={ok}",
-                    flush=True
-                )
+                ok = hub_write(row["ip"], row["port"], row["slave_id"], "register", cmd_register, 0xAA)
+                all_ok = all_ok and ok
+                log_command(cur, equipment_id, schedule_id, "ON", "success" if ok else "error", f"reg={cmd_register} value=170")
 
             elif action == "OFF":
+                ok = hub_write(row["ip"], row["port"], row["slave_id"], "register", cmd_register, 0x55)
+                all_ok = all_ok and ok
+                log_command(cur, equipment_id, schedule_id, "OFF", "success" if ok else "error", f"reg={cmd_register} value=85")
 
-                ok = hub_write(
-                    row["ip"],
-                    row["port"],
-                    row["slave_id"],
-                    "register",
-                    cmd_register,
-                    0x55
-                )
-
-                print(
-                    f"▶ OFF reg={cmd_register} value=85 result={ok}",
-                    flush=True
-                )
-
-            elif action is None or action == "":
-                print(
-                    f"▶ Pas de commande ON/OFF pour ID={row['id']}",
-                    flush=True
-                )
-
-            else:
-                print(
-                    f"⚠ Action inconnue : {action}",
-                    flush=True
-                )
-
-            # =========================
-            # TEMPERATURE
-            # =========================
+            elif action:
+                all_ok = False
+                log_command(cur, equipment_id, schedule_id, action, "error", "Action inconnue")
 
             temperature = row.get("temperature")
 
             if temperature is not None:
-
                 temp_value = int(float(temperature) * 10)
+                ok = hub_write(row["ip"], row["port"], row["slave_id"], "register", temp_register, temp_value)
+                all_ok = all_ok and ok
+                log_command(cur, equipment_id, schedule_id, "TEMP", "success" if ok else "error", f"reg={temp_register} value={temp_value}")
 
-                ok = hub_write(
-                    row["ip"],
-                    row["port"],
-                    row["slave_id"],
-                    "register",
-                    temp_register,
-                    temp_value
-                )
-
-                print(
-                    f"🌡 TEMP reg={temp_register} "
-                    f"value={temp_value} "
-                    f"result={ok}",
-                    flush=True
-                )
-
+            if all_ok:
+                cur.execute("""
+                    UPDATE schedules
+                    SET executed = 1
+                    WHERE id = %s
+                """, (schedule_id,))
+                print(f"Planning exécuté ID={schedule_id}", flush=True)
             else:
-
-                print(
-                    f"🌡 Pas de température pour ID={row['id']}",
-                    flush=True
-                )
-
-            # =========================
-            # MARK EXECUTED
-            # =========================
-
-            cur.execute("""
-                UPDATE schedules
-                SET executed = 1
-                WHERE id = %s
-            """, (row["id"],))
-
-            print(
-                f"✅ Planning exécuté ID={row['id']}",
-                flush=True
-            )
+                print(f"Planning non marqué exécuté ID={schedule_id}", flush=True)
 
         except Exception as e:
-
-            print(
-                f"❌ Erreur planning ID={row['id']}: {e}",
-                flush=True
-            )
+            print(f"Erreur planning ID={schedule_id}: {e}", flush=True)
+            log_command(cur, equipment_id, schedule_id, "SCHEDULE", "error", str(e))
 
     conn.commit()
     conn.close()
 
-# =========================
-# DISCOVERY TRIGGER
-# =========================
 
 def run_discovery_if_needed():
-
     global last_discovery
     now = time.time()
 
     if now - last_discovery >= DISCOVERY_INTERVAL:
-
-        print("🔎 Discovery Modbus en cours...", flush=True)
+        print("Discovery Modbus en cours...", flush=True)
 
         try:
             devices = discover()
             save(devices)
-
-            print(
-                f"✔ Discovery terminé : {len(devices)} UI détectées",
-                flush=True
-            )
+            cleanup_offline_devices()
+            print(f"Discovery terminé : {len(devices)} UI détectées", flush=True)
 
         except Exception as e:
-            print(f"❌ Discovery error: {e}", flush=True)
+            print(f"Discovery error: {e}", flush=True)
 
         last_discovery = now
 
-# =========================
-# MAIN LOOP
-# =========================
 
 def main():
-
     wait_for_db()
-
-    print("🚀 Scheduler HVAC démarré", flush=True)
+    print("Scheduler HVAC démarré", flush=True)
 
     while True:
-
-        print("🔁 Loop tick", flush=True)
-
         run_discovery_if_needed()
-        process_planning()
-
-        print(f"😴 Sleep {INTERVAL}s", flush=True)
-        time.sleep(INTERVAL)
-
-
-if __name__ == "__main__":
-    main()
