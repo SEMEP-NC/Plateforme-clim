@@ -1,3 +1,4 @@
+from datetime import datetime, time as datetime_time, timedelta, timezone
 import os
 import time
 
@@ -11,6 +12,7 @@ from discover import cleanup_offline_devices, discover, save
 INTERVAL = int(os.getenv("SCHEDULER_INTERVAL", "60"))
 DISCOVERY_INTERVAL = int(os.getenv("DISCOVERY_INTERVAL", "300"))
 HUB_WRITE_URL = os.getenv("HUB_WRITE_URL", "http://modbus-hub:8500/write")
+LOCAL_TZ = timezone(timedelta(hours=11))
 
 last_discovery = 0
 
@@ -80,6 +82,63 @@ def log_command(cur, equipment_id, schedule_id, action, status, message):
             (%s, %s, %s, %s, %s)
     """, (equipment_id, schedule_id, action, status, message))
 
+def parse_repeat_days(value):
+    if not value:
+        return []
+
+    days = []
+
+    for part in str(value).split(","):
+        part = part.strip()
+        if not part:
+            continue
+
+        day = int(part)
+
+        if day < 1 or day > 7:
+            raise ValueError(f"Invalid repeat day: {day}")
+
+        days.append(day)
+
+    return sorted(set(days))
+
+
+def as_utc_datetime(value):
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        dt = datetime.strptime(str(value), "%Y-%m-%d %H:%M:%S")
+
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+
+    return dt.astimezone(timezone.utc)
+
+
+def next_weekly_execution_utc(current_execution_time, repeat_days):
+    current_utc = as_utc_datetime(current_execution_time)
+    current_local = current_utc.astimezone(LOCAL_TZ)
+    local_time = datetime_time(
+        current_local.hour,
+        current_local.minute,
+        current_local.second,
+    )
+
+    now_local = datetime.now(timezone.utc).astimezone(LOCAL_TZ)
+
+    for offset in range(1, 8):
+        candidate_date = now_local.date() + timedelta(days=offset)
+
+        if candidate_date.isoweekday() not in repeat_days:
+            continue
+
+        candidate_local = datetime.combine(candidate_date, local_time, tzinfo=LOCAL_TZ)
+
+        if candidate_local > now_local:
+            return candidate_local.astimezone(timezone.utc).replace(tzinfo=None)
+
+    raise ValueError("No next weekly execution found")
+
 
 def process_planning():
     conn = get_connection()
@@ -91,6 +150,7 @@ def process_planning():
             schedules.action,
             schedules.temperature,
             schedules.execution_time,
+            schedules.repeat_days,
             equipments.id AS equipment_id,
             equipments.name,
             equipments.ip,
@@ -125,8 +185,9 @@ def process_planning():
             temp_register = 104 + (25 * (ui - 1))
 
             print(
-                f"Planning ID={schedule_id} UI={ui} IP={row['ip']} "
-                f"ACTION={row['action']} TEMP={row['temperature']}",
+                f"Schedule ID={schedule_id} UI={ui} IP={row['ip']} "
+                f"ACTION={row['action']} TEMP={row['temperature']} "
+                f"REPEAT={row.get('repeat_days')}",
                 flush=True,
             )
 
@@ -156,12 +217,30 @@ def process_planning():
                 log_command(cur, equipment_id, schedule_id, "TEMP", "success" if ok else "error", f"reg={temp_register} value={temp_value}")
 
             if all_ok:
-                cur.execute("""
-                    UPDATE schedules
-                    SET executed = 1
-                    WHERE id = %s
-                """, (schedule_id,))
-                print(f"Planning exécuté ID={schedule_id}", flush=True)
+                repeat_days = parse_repeat_days(row.get("repeat_days"))
+
+                if repeat_days:
+                    next_execution = next_weekly_execution_utc(row["execution_time"], repeat_days)
+
+                    cur.execute("""
+                        UPDATE schedules
+                        SET execution_time = %s,
+                            executed = 0
+                        WHERE id = %s
+                    """, (next_execution.strftime("%Y-%m-%d %H:%M:%S"), schedule_id))
+
+                    print(
+                        f"Repeated schedule ID={schedule_id}, next UTC={next_execution}",
+                        flush=True,
+                    )
+                else:
+                    cur.execute("""
+                        UPDATE schedules
+                        SET executed = 1
+                        WHERE id = %s
+                    """, (schedule_id,))
+
+                    print(f"Executed one-shot schedule ID={schedule_id}", flush=True)
             else:
                 print(f"Planning non marqué exécuté ID={schedule_id}", flush=True)
 

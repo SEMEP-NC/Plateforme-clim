@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS schedules (
     action VARCHAR(20) NULL,
     temperature INT NULL,
     execution_time DATETIME NOT NULL,
+    repeat_days VARCHAR(32) NULL,
     executed TINYINT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
