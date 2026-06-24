@@ -152,15 +152,6 @@ $equipments = $db->query("
 <a href="index.php" class="btn btn-secondary mb-3">
     Retour
 </a>
-
-<form method="POST">
-    <button
-        type="submit"
-        name="save_all"
-        class="btn btn-success"
-    >
-        💾 Sauvegarder toutes les modifications
-    </button>
 <div class="card mb-4">
 
     <div class="card-header">
@@ -244,108 +235,124 @@ $equipments = $db->query("
     </div>
 
 </div>
-    <table class="table table-bordered table-striped align-middle">
+<div class="card-header">
+    <strong>Unités</strong>
+</div>
+<div class="card-body">
+    <form method="POST">
+        <button
+            type="submit"
+            name="save_all"
+            class="btn btn-success"
+        >
+            💾 Sauvegarder toutes les modifications
+        </button>
+        
+        </br>
 
-        <thead>
-            <tr>
-                <th>Nom</th>
-                <th>UI</th>
-                <th>Puissance</th>
-                <th>IP Passerelle</th>
-                <th>Slave Modbus ID</th>
-                <th>Groupes</th>
-                <th width="180">Actions</th>
-            </tr>
-        </thead>
+        <table class="table table-bordered table-striped align-middle">
 
-        <tbody>
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>UI</th>
+                    <th>Puissance</th>
+                    <th>IP Passerelle</th>
+                    <th>Slave Modbus ID</th>
+                    <th>Groupes</th>
+                    <th width="180">Actions</th>
+                </tr>
+            </thead>
 
-        <?php foreach ($equipments as $equipment): ?>
+            <tbody>
 
-            <tr>
+            <?php foreach ($equipments as $equipment): ?>
 
-            
+                <tr>
 
-                <input
-                    type="hidden"
-                    name="id"
-                    value="<?= (int)$equipment['id'] ?>"
-                >
+                
 
-                <td>
                     <input
-                        type="text"
-                        name="name"
-                        value="<?= htmlspecialchars($equipment['name']) ?>"
-                        class="form-control"
+                        type="hidden"
+                        name="id"
+                        value="<?= (int)$equipment['id'] ?>"
                     >
-                </td>
 
-                <td>
-                    <?= htmlspecialchars($equipment['UI']) ?>
-                </td>
+                    <td>
+                        <input
+                            type="text"
+                            name="name"
+                            value="<?= htmlspecialchars($equipment['name']) ?>"
+                            class="form-control"
+                        >
+                    </td>
 
-                <td>
-                    <?php
-                    if (is_numeric($equipment['power'])) {
-                        echo number_format(
-                            $equipment['power'] / 10,
-                            1
-                        ) . ' kW';
-                    } else {
-                        echo htmlspecialchars($equipment['power']);
-                    }
-                    ?>
-                </td>
+                    <td>
+                        <?= htmlspecialchars($equipment['UI']) ?>
+                    </td>
 
-                <td>
-                    <?= htmlspecialchars($equipment['ip']) ?>
-                </td>
+                    <td>
+                        <?php
+                        if (is_numeric($equipment['power'])) {
+                            echo number_format(
+                                $equipment['power'] / 10,
+                                1
+                            ) . ' kW';
+                        } else {
+                            echo htmlspecialchars($equipment['power']);
+                        }
+                        ?>
+                    </td>
 
-                <td>
-                    <?= htmlspecialchars($equipment['slave_id']) ?>
-                </td>
-                <td>
-                    <select
-                        name="groups[<?= (int)$equipment['id'] ?>][]"
-                        class="form-select"
-                        multiple
-                    >
-                        <?php foreach ($groups as $group): ?>
+                    <td>
+                        <?= htmlspecialchars($equipment['ip']) ?>
+                    </td>
 
-                            <option>
-                                <?= htmlspecialchars($group['name']) ?>
-                            </option>
+                    <td>
+                        <?= htmlspecialchars($equipment['slave_id']) ?>
+                    </td>
+                    <td>
+                        <select
+                            name="groups[<?= (int)$equipment['id'] ?>][]"
+                            class="form-select"
+                            multiple
+                        >
+                            <?php foreach ($groups as $group): ?>
 
-                        <?php endforeach; ?>
-                    </select>
-                </td>
-                <td class="text-center">
+                                <option>
+                                    <?= htmlspecialchars($group['name']) ?>
+                                </option>
+
+                            <?php endforeach; ?>
+                        </select>
+                    </td>
+                    <td class="text-center">
 
 
-                    <button
-                        type="submit"
-                        name="delete_equipment"
-                        value="1"
-                        class="btn btn-danger btn-sm"
-                        onclick="return confirm(
-                            'Supprimer cet équipement ?'
-                        );"
-                    >
-                        ❌
-                    </button>
+                        <button
+                            type="submit"
+                            name="delete_equipment"
+                            value="1"
+                            class="btn btn-danger btn-sm"
+                            onclick="return confirm(
+                                'Supprimer cet équipement ?'
+                            );"
+                        >
+                            ❌
+                        </button>
 
-                </td>
+                    </td>
 
-            
+                
 
-            </tr>
+                </tr>
 
-        <?php endforeach; ?>
+            <?php endforeach; ?>
 
-        </tbody>
+            </tbody>
 
-    </table>
-</form>
+        </table>
+    </form>
+</div>
 </body>
 </html>
