@@ -125,7 +125,7 @@
             <?php endfor; ?>
 
         </select>
-        
+
     <label class="form-label">Premiere execution (heure locale UTC+11)</label>
     <input type="datetime-local" name="execution_time" class="form-control mb-3" required>
 
@@ -212,15 +212,20 @@
                 </td>
 
                 <td>
-                    <?php if (!empty($schedule['repeat_days'])): ?>
-                        <span class="badge bg-info text-dark">Recurrence active</span>
-                    <?php elseif (!empty($schedule['executed'])): ?>
-                        <span class="badge bg-primary">Oui</span>
+                    <?= htmlspecialchars(
+                        format_repeat_days(
+                            $schedule['repeat_days'] ?? '',
+                            $dayLabels
+                        )
+                    ) ?>
+                </td>
+                <td>
+                    <?php if (!empty($schedule['executed'])): ?>
+                        <span class="badge bg-success">Oui</span>
                     <?php else: ?>
                         <span class="badge bg-warning text-dark">Non</span>
                     <?php endif; ?>
                 </td>
-
             </tr>
 
         <?php endforeach; ?>
