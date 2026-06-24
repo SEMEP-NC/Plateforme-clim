@@ -1,3 +1,11 @@
+from pymodbus.datastore import (
+    ModbusSequentialDataBlock,
+    ModbusSlaveContext,
+    ModbusServerContext,
+)
+
+from pymodbus.server import StartAsyncTcpServer
+
 import asyncio
 import logging
 import threading
@@ -27,6 +35,15 @@ locks = {}
 clients = {}
 clients_last_use = {}
 write_queue = asyncio.Queue()
+
+store = ModbusSlaveContext(
+    hr=ModbusSequentialDataBlock(0, [0] * 1000)
+)
+
+server_context = ModbusServerContext(
+    slaves=store,
+    single=True
+)
 
 
 class ReadPayload(BaseModel):
@@ -125,6 +142,20 @@ def modbus_read_register(ip, port, address, device_id):
 
         return client.read_holding_registers(address, count=1, device_id=device_id)
 
+async def start_modbus_server():
+
+    log.info("Starting Modbus TCP Server on 1502")
+
+    server_context[0].setValues(
+        3,
+        100,
+        [1234]
+    )
+
+    await StartAsyncTcpServer(
+        context=server_context,
+        address=("0.0.0.0", 1502),
+    )
 
 @app.get("/health")
 def health():
@@ -227,7 +258,13 @@ def read_unified(payload: ReadPayload):
 
 @app.on_event("startup")
 async def startup():
+
     asyncio.create_task(write_worker())
+
+    asyncio.create_task(
+        start_modbus_server()
+    )
+
     log.info("[HUB] started")
 
 
