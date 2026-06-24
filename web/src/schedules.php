@@ -125,6 +125,9 @@
             <?php endfor; ?>
 
         </select>
+        
+    <label class="form-label">Premiere execution (heure locale UTC+11)</label>
+    <input type="datetime-local" name="execution_time" class="form-control mb-3" required>
 
     <label class="form-label">Repeter chaque semaine</label>
     <div class="row mb-3">
