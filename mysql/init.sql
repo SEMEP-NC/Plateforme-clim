@@ -57,6 +57,25 @@ CREATE TABLE IF NOT EXISTS discovery_config (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+CREATE TABLE groups_hvac (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE equipment_groups (
+    equipment_id INT NOT NULL,
+    group_id INT NOT NULL,
+    PRIMARY KEY (equipment_id, group_id),
+
+    FOREIGN KEY (equipment_id)
+        REFERENCES equipments(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (group_id)
+        REFERENCES groups_hvac(id)
+        ON DELETE CASCADE
+);
+
 INSERT INTO discovery_config(start_ip, end_ip, ports, slave_ids)
 SELECT '10.5.0.20', '10.5.0.20', '502', '1'
 WHERE NOT EXISTS (
