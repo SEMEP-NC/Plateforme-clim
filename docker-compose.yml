@@ -81,7 +81,7 @@ services:
   modbus-hub:
     build: ./modbus-hub
     container_name: modbus_hub
-    environment:
+#    environment:
 #      MODBUS_PROXY_IP: 10.5.0.20
 #      MODBUS_PROXY_PORT: 502
 #      MODBUS_PROXY_SLAVE: 1
