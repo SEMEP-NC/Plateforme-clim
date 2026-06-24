@@ -255,6 +255,37 @@ def read_get(
             response["value"] = response["bits"][0]
 
     return response
+    
+@app.get("/write")
+async def write_get(
+    ip: str = Query(..., description="Adresse IP de la passerelle Modbus TCP"),
+    port: int = Query(502, description="Port Modbus TCP"),
+    address: int = Query(..., description="Adresse coil/register"),
+    value: str = Query(..., description="Valeur à écrire"),
+    type: str = Query("register", description="register ou coil"),
+    device_id: int = Query(DEFAULT_DEVICE_ID, description="Slave ID Modbus"),
+):
+    if type == "coil":
+        normalized = value.strip().lower()
+        parsed_value = normalized in ("1", "true", "on", "yes")
+    elif type == "register":
+        parsed_value = int(value)
+    else:
+        return {"success": False, "queued": False, "error": "invalid type"}
+
+    job = {
+        "ip": ip,
+        "port": port,
+        "slave": device_id,
+        "type": type,
+        "address": address,
+        "value": parsed_value,
+    }
+
+    log.info("[WRITE GET] enqueue payload=%s", job)
+    await write_queue.put(job)
+
+    return {"success": True, "queued": True, "job": job}
 
 
 @app.on_event("startup")
