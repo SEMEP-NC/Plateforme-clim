@@ -84,7 +84,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_group'])) {
 | SAVE EQUIPMENT <-> GROUPS (MODAL EQUIPMENT)
 |--------------------------------------------------------------------------
 */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_groups'])) {
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST'
+    && isset($_POST['save_groups'])
+) {
+
+    if (!isset($_POST['groups']) || !is_array($_POST['groups'])) {
+        header("Location: equipments.php");
+        exit;
+    }
 
     foreach ($_POST['groups'] as $equipmentId => $groupIds) {
 
@@ -95,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_groups'])) {
             WHERE equipment_id = ?
         ")->execute([$equipmentId]);
 
-        foreach ($groupIds as $groupId) {
+        foreach ((array)$groupIds as $groupId) {
 
             $db->prepare("
                 INSERT INTO equipment_groups (equipment_id, group_id)
