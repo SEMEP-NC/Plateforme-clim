@@ -81,8 +81,15 @@ services:
   modbus-hub:
     build: ./modbus-hub
     container_name: modbus_hub
+    environment:
+      MODBUS_PROXY_IP: 10.5.0.20
+      MODBUS_PROXY_PORT: 502
+      MODBUS_PROXY_SLAVE: 1
+      MODBUS_PROXY_LISTEN_PORT: 1502
+      MODBUS_PROXY_STORE_SIZE: 10000
     ports:
       - "8500:8500"
+      - "1502:1502"
     restart: always
 
 volumes:
