@@ -1,4 +1,4 @@
-from discover import discover, save
+from discover import cleanup_offline_devices, discover, save
 
 print("🚀 Manual discovery started")
 

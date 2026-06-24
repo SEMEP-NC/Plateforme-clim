@@ -198,3 +198,9 @@ def main():
 
     while True:
         run_discovery_if_needed()
+        process_planning()
+        time.sleep(INTERVAL)
+
+
+if __name__ == "__main__":
+    main()
