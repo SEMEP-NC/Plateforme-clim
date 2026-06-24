@@ -79,27 +79,36 @@ $equipments = $db->query("
 <a href="index.php" class="btn btn-secondary mb-3">
     Retour
 </a>
+<form method="POST">
+    <button
+        type="submit"
+        name="save_all"
+        class="btn btn-success"
+    >
+        💾 Sauvegarder toutes les modifications
+    </button>
 
-<table class="table table-bordered table-striped align-middle">
+    <table class="table table-bordered table-striped align-middle">
 
-    <thead>
-        <tr>
-            <th>Nom</th>
-            <th>UI</th>
-            <th>Puissance</th>
-            <th>IP Passerelle</th>
-            <th>Slave Modbus ID</th>
-            <th width="180">Actions</th>
-        </tr>
-    </thead>
+        <thead>
+            <tr>
+                <th>Nom</th>
+                <th>UI</th>
+                <th>Puissance</th>
+                <th>IP Passerelle</th>
+                <th>Slave Modbus ID</th>
+                <th>Groupes</th>
+                <th width="180">Actions</th>
+            </tr>
+        </thead>
 
-    <tbody>
+        <tbody>
 
-    <?php foreach ($equipments as $equipment): ?>
+        <?php foreach ($equipments as $equipment): ?>
 
-        <tr>
+            <tr>
 
-            <form method="POST">
+            
 
                 <input
                     type="hidden"
@@ -140,7 +149,27 @@ $equipments = $db->query("
                 <td>
                     <?= htmlspecialchars($equipment['slave_id']) ?>
                 </td>
+                <td>
+                    <select
+                        name="groups[<?= (int)$equipment['id'] ?>][]"
+                        class="form-select"
+                        multiple
+                    >
+                        <?php foreach ($groups as $group): ?>
 
+                            <option
+                                value="<?= $group['id'] ?>"
+                                <?= in_array(
+                                    $group['id'],
+                                    $equipment['group_ids']
+                                ) ? 'selected' : '' ?>
+                            >
+                                <?= htmlspecialchars($group['name']) ?>
+                            </option>
+
+                        <?php endforeach; ?>
+                    </select>
+                </td>
                 <td class="text-center">
 
                     <button
@@ -166,15 +195,15 @@ $equipments = $db->query("
 
                 </td>
 
-            </form>
+            
 
-        </tr>
+            </tr>
 
-    <?php endforeach; ?>
+        <?php endforeach; ?>
 
-    </tbody>
+        </tbody>
 
-</table>
-
+    </table>
+</form>
 </body>
 </html>
