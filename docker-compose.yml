@@ -89,7 +89,7 @@ services:
       MODBUS_PROXY_STORE_SIZE: 10000
     ports:
       - "8500:8500"
-      - "1502:1502"
+#     - "1502:1502"
     restart: always
 
 volumes:
