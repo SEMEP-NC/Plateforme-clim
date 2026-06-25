@@ -249,17 +249,19 @@ $equipments = $db->query("
 <a href="index.php" class="btn btn-secondary mb-3">
     Retour
 </a>
-<form method="POST" class="d-inline">
+
+<form method="POST" style="display:inline;">
     <button
         type="submit"
         name="export_json"
-        class="btn btn-primary mb-3"
+        value="1"
+        class="btn btn-primary mb-3 ms-2"
     >
         📥 Export JSON
     </button>
 </form>
 
-            <table class="table table-bordered table-striped align-middle">
+<table class="table table-bordered table-striped align-middle">
 
             <thead>
                 <tr>
