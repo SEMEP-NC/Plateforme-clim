@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS schedules (
     action VARCHAR(20) NULL,
     temperature INT NULL,
     execution_time DATETIME NOT NULL,
+    repeat_days VARCHAR(32) NULL,
     executed TINYINT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -54,6 +55,25 @@ CREATE TABLE IF NOT EXISTS discovery_config (
     ports VARCHAR(255) NOT NULL,
     slave_ids VARCHAR(255) NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE groups_hvac (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE equipment_groups (
+    equipment_id INT NOT NULL,
+    group_id INT NOT NULL,
+    PRIMARY KEY (equipment_id, group_id),
+
+    FOREIGN KEY (equipment_id)
+        REFERENCES equipments(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (group_id)
+        REFERENCES groups_hvac(id)
+        ON DELETE CASCADE
 );
 
 INSERT INTO discovery_config(start_ip, end_ip, ports, slave_ids)

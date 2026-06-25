@@ -1,36 +1,64 @@
 <?php
 
-require 'config/db.php';
+    require 'config/db.php';
 
-$pdo = get_db();
+    $pdo = get_db();
 
-/*
-|--------------------------------------------------------------------------
-| SCHEDULE LIST
-|--------------------------------------------------------------------------
-*/
+    $dayLabels = [
+        1 => 'Lundi',
+        2 => 'Mardi',
+        3 => 'Mercredi',
+        4 => 'Jeudi',
+        5 => 'Vendredi',
+        6 => 'Samedi',
+        7 => 'Dimanche',
+    ];
 
-$schedules = $pdo->query("
-    SELECT
-        schedules.*,
-        equipments.name AS equipment_name
-    FROM schedules
-    LEFT JOIN equipments
-        ON equipments.id = schedules.equipment_id
-    ORDER BY execution_time ASC
-")->fetchAll(PDO::FETCH_ASSOC);
+    /*
+    |--------------------------------------------------------------------------
+    | SCHEDULE LIST
+    |--------------------------------------------------------------------------
+    */
 
-/*
-|--------------------------------------------------------------------------
-| EQUIPMENTS LIST
-|--------------------------------------------------------------------------
-*/
+    $schedules = $pdo->query("
+        SELECT
+            schedules.*,
+            equipments.name AS equipment_name
+        FROM schedules
+        LEFT JOIN equipments
+            ON equipments.id = schedules.equipment_id
+        ORDER BY schedules.execution_time ASC
+    ")->fetchAll(PDO::FETCH_ASSOC);
 
-$equipments = $pdo->query("
-    SELECT id, name
-    FROM equipments
-    ORDER BY name
-")->fetchAll(PDO::FETCH_ASSOC);
+    /*
+    |--------------------------------------------------------------------------
+    | EQUIPMENTS LIST
+    |--------------------------------------------------------------------------
+    */
+
+    $equipments = $pdo->query("
+        SELECT id, name
+        FROM equipments
+        WHERE enabled = 1
+        ORDER BY name
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    function format_repeat_days($value, $dayLabels) {
+        if (!$value) {
+            return 'Non';
+        }
+
+        $labels = [];
+
+        foreach (explode(',', $value) as $day) {
+            $day = (int)trim($day);
+            if (isset($dayLabels[$day])) {
+                $labels[] = $dayLabels[$day];
+            }
+        }
+
+        return $labels ? implode(', ', $labels) : 'Non';
+    }
 
 ?>
 
@@ -98,13 +126,28 @@ $equipments = $pdo->query("
 
         </select>
 
-    <label class="form-label">Date d'exécution</label>
-    <input
-        type="datetime-local"
-        name="execution_time"
-        class="form-control mb-3"
-        required
-    >
+    <label class="form-label">Premiere execution (heure locale UTC+11)</label>
+    <input type="datetime-local" name="execution_time" class="form-control mb-3" required>
+
+    <label class="form-label">Repeter chaque semaine</label>
+    <div class="row mb-3">
+        <?php foreach ($dayLabels as $day => $label): ?>
+            <div class="col-md-3 col-sm-6">
+                <div class="form-check">
+                    <input
+                        class="form-check-input"
+                        type="checkbox"
+                        name="repeat_days[]"
+                        value="<?= $day ?>"
+                        id="repeat_day_<?= $day ?>"
+                    >
+                    <label class="form-check-label" for="repeat_day_<?= $day ?>">
+                        <?= htmlspecialchars($label) ?>
+                    </label>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </div>
 
     <button class="btn btn-success">
         Ajouter Planning
@@ -123,7 +166,8 @@ $equipments = $pdo->query("
             <th>Équipement</th>
             <th>Action</th>
             <th>Température</th>
-            <th>Exécution</th>
+            <th>Prochaine execution</th>
+            <th>Repetition</th>
             <th>Exécuté</th>
         </tr>
     </thead>
@@ -131,51 +175,33 @@ $equipments = $pdo->query("
     <tbody>
 
         <?php foreach ($schedules as $schedule): ?>
-
             <tr>
-
                 <td>
                     <?= htmlspecialchars($schedule['equipment_name'] ?? '—') ?>
                 </td>
-
                 <td>
-
                     <?php if ($schedule['action'] === 'ON'): ?>
-
                         <span class="badge bg-success">
                             ON
                         </span>
-
                     <?php elseif ($schedule['action'] === 'OFF'): ?>
-
                         <span class="badge bg-danger">
                             OFF
                         </span>
-
                     <?php else: ?>
-
                         <span class="badge bg-secondary">
                             Aucun changement
                         </span>
-
                     <?php endif; ?>
-
                 </td>
-
                 <td>
-
                     <?php if ($schedule['temperature'] !== null): ?>
-
                         <?= htmlspecialchars($schedule['temperature']) ?> °C
-
                     <?php else: ?>
-
                         <span class="text-muted">
                             Aucun changement
                         </span>
-
                     <?php endif; ?>
-
                 </td>
                 <td>
                     <?php
@@ -186,13 +212,20 @@ $equipments = $pdo->query("
                 </td>
 
                 <td>
+                    <?= htmlspecialchars(
+                        format_repeat_days(
+                            $schedule['repeat_days'] ?? '',
+                            $dayLabels
+                        )
+                    ) ?>
+                </td>
+                <td>
                     <?php if (!empty($schedule['executed'])): ?>
-                        <span class="badge bg-primary">Oui</span>
+                        <span class="badge bg-success">Oui</span>
                     <?php else: ?>
                         <span class="badge bg-warning text-dark">Non</span>
                     <?php endif; ?>
                 </td>
-
             </tr>
 
         <?php endforeach; ?>

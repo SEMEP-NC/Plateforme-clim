@@ -1,18 +1,9 @@
-from pymodbus.datastore import (
-    ModbusSequentialDataBlock,
-    ModbusSlaveContext,
-    ModbusServerContext,
-)
-
-from pymodbus.server import StartAsyncTcpServer
-
 import asyncio
 import logging
-import os
 import threading
 import time
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from pydantic import BaseModel, Field
 from pymodbus.client import ModbusTcpClient
 
@@ -29,11 +20,6 @@ app = FastAPI(title="Modbus Hub")
 DEFAULT_DEVICE_ID = 1
 CACHE_TTL = 2
 CLIENT_TTL = 60
-PROXY_LISTEN_PORT = int(os.getenv("MODBUS_PROXY_LISTEN_PORT", "1502"))
-PROXY_TARGET_IP = os.getenv("MODBUS_PROXY_IP", "10.5.0.20")
-PROXY_TARGET_PORT = int(os.getenv("MODBUS_PROXY_PORT", "502"))
-PROXY_TARGET_SLAVE = int(os.getenv("MODBUS_PROXY_SLAVE", str(DEFAULT_DEVICE_ID)))
-PROXY_STORE_SIZE = int(os.getenv("MODBUS_PROXY_STORE_SIZE", "10000"))
 
 cache = {}
 cache_time = {}
@@ -66,17 +52,10 @@ def cache_get(key):
         return cache[key]
     return None
 
-    
+
 def cache_set(key, value):
     cache[key] = value
     cache_time[key] = time.time()
-
-
-def cache_delete_prefix(prefix):
-    for key in list(cache.keys()):
-        if key.startswith(prefix):
-            cache.pop(key, None)
-            cache_time.pop(key, None)
 
 
 def get_lock(ip, port):
@@ -137,11 +116,6 @@ def modbus_read_coils(ip, port, address, count, device_id):
         return client.read_coils(address, count=count, device_id=device_id)
 
 
-def modbus_read_register(ip, port, address, device_id):
-    result = modbus_read_registers(ip, port, address, 1, device_id)
-    return result
-
-
 def modbus_read_registers(ip, port, address, count, device_id):
     with get_lock(ip, port):
         client = get_client(ip, port)
@@ -151,144 +125,6 @@ def modbus_read_registers(ip, port, address, count, device_id):
 
         return client.read_holding_registers(address, count=count, device_id=device_id)
 
-
-def modbus_write_coils(ip, port, address, values, device_id):
-    bool_values = [bool(value) for value in values]
-
-    with get_lock(ip, port):
-        client = get_client(ip, port)
-
-        if not ensure_connected(client, ip, port):
-            raise Exception(f"Cannot connect to {ip}:{port}")
-
-        if len(bool_values) == 1:
-            return client.write_coil(address, bool_values[0], device_id=device_id)
-
-        return client.write_coils(address, bool_values, device_id=device_id)
-
-
-def modbus_write_registers(ip, port, address, values, device_id):
-    int_values = [int(value) for value in values]
-
-    with get_lock(ip, port):
-        client = get_client(ip, port)
-
-        if not ensure_connected(client, ip, port):
-            raise Exception(f"Cannot connect to {ip}:{port}")
-
-        return client.write_registers(address, int_values, device_id=device_id)
-
-
-class ProxyDataBlock(ModbusSequentialDataBlock):
-    def __init__(self, data_type, size=PROXY_STORE_SIZE):
-        super().__init__(0, [0] * size)
-        self.data_type = data_type
-
-    def getValues(self, address, count=1):
-        key = (
-            f"proxy:{self.data_type}:{PROXY_TARGET_IP}:{PROXY_TARGET_PORT}:"
-            f"{PROXY_TARGET_SLAVE}:{address}:{count}"
-        )
-
-        cached = cache_get(key)
-        if cached is not None:
-            return cached
-
-        if self.data_type == "coils":
-            result = modbus_read_coils(
-                PROXY_TARGET_IP,
-                PROXY_TARGET_PORT,
-                address,
-                count,
-                PROXY_TARGET_SLAVE,
-            )
-
-            if result.isError():
-                raise Exception(f"Proxy coil read failed: {result}")
-
-            values = result.bits[:count]
-
-        elif self.data_type == "holding_registers":
-            result = modbus_read_registers(
-                PROXY_TARGET_IP,
-                PROXY_TARGET_PORT,
-                address,
-                count,
-                PROXY_TARGET_SLAVE,
-            )
-
-            if result.isError():
-                raise Exception(f"Proxy register read failed: {result}")
-
-            values = result.registers[:count]
-
-        else:
-            return super().getValues(address, count)
-
-        cache_set(key, values)
-        super().setValues(address, values)
-        return values
-
-    def setValues(self, address, values):
-        if isinstance(values, tuple):
-            values = list(values)
-        elif not isinstance(values, list):
-            values = [values]
-
-        if self.data_type == "coils":
-            result = modbus_write_coils(
-                PROXY_TARGET_IP,
-                PROXY_TARGET_PORT,
-                address,
-                values,
-                PROXY_TARGET_SLAVE,
-            )
-            cache_delete_prefix("proxy:coils:")
-
-        elif self.data_type == "holding_registers":
-            result = modbus_write_registers(
-                PROXY_TARGET_IP,
-                PROXY_TARGET_PORT,
-                address,
-                values,
-                PROXY_TARGET_SLAVE,
-            )
-            cache_delete_prefix("proxy:holding_registers:")
-
-        else:
-            super().setValues(address, values)
-            return
-
-        if result.isError():
-            raise Exception(f"Proxy write failed: {result}")
-
-        super().setValues(address, values)
-
-
-store = ModbusSlaveContext(
-    co=ProxyDataBlock("coils"),
-    hr=ProxyDataBlock("holding_registers"),
-)
-
-server_context = ModbusServerContext(
-    slaves=store,
-    single=True
-)
-
-async def start_modbus_server():
-
-    log.info(
-        "Starting Modbus TCP proxy server on %s -> %s:%s slave=%s",
-        PROXY_LISTEN_PORT,
-        PROXY_TARGET_IP,
-        PROXY_TARGET_PORT,
-        PROXY_TARGET_SLAVE,
-    )
-
-    await StartAsyncTcpServer(
-        context=server_context,
-        address=("0.0.0.0", PROXY_LISTEN_PORT),
-    )
 
 @app.get("/health")
 def health():
@@ -343,16 +179,7 @@ async def write_worker():
         await asyncio.sleep(0.02)
 
 
-@app.post("/read")
-def read_unified(payload: ReadPayload):
-    data = payload.dict()
-    ip = data["ip"]
-    port = data["port"]
-    device_id = data["device_id"]
-    address = data["address"]
-    count = data["count"]
-    mode = data["type"]
-
+def read_modbus(ip, port, device_id, address, count, mode):
     key = f"{mode}:{ip}:{port}:{device_id}:{address}:{count}"
 
     cached = cache_get(key)
@@ -389,15 +216,81 @@ def read_unified(payload: ReadPayload):
         return {"success": False, "error": str(e)}
 
 
-@app.on_event("startup")
-async def startup():
+@app.post("/read")
+def read_unified(payload: ReadPayload):
+    data = payload.dict()
 
-    asyncio.create_task(write_worker())
-
-    asyncio.create_task(
-        start_modbus_server()
+    return read_modbus(
+        ip=data["ip"],
+        port=data["port"],
+        device_id=data["device_id"],
+        address=data["address"],
+        count=data["count"],
+        mode=data["type"],
     )
 
+
+@app.get("/read")
+def read_get(
+    ip: str = Query(..., description="Adresse IP de la passerelle Modbus TCP"),
+    port: int = Query(502, description="Port Modbus TCP"),
+    address: int = Query(..., description="Adresse coil/register"),
+    type: str = Query("register", description="register ou coils"),
+    count: int = Query(1, ge=1, le=128, description="Nombre de valeurs à lire"),
+    device_id: int = Query(DEFAULT_DEVICE_ID, description="Slave ID Modbus"),
+):
+    response = read_modbus(
+        ip=ip,
+        port=port,
+        device_id=device_id,
+        address=address,
+        count=count,
+        mode=type,
+    )
+
+    if response.get("success") and count == 1:
+        if "registers" in response and response["registers"]:
+            response["value"] = response["registers"][0]
+        elif "bits" in response and response["bits"]:
+            response["value"] = response["bits"][0]
+
+    return response
+    
+@app.get("/write")
+async def write_get(
+    ip: str = Query(..., description="Adresse IP de la passerelle Modbus TCP"),
+    port: int = Query(502, description="Port Modbus TCP"),
+    address: int = Query(..., description="Adresse coil/register"),
+    value: str = Query(..., description="Valeur à écrire"),
+    type: str = Query("register", description="register ou coil"),
+    device_id: int = Query(DEFAULT_DEVICE_ID, description="Slave ID Modbus"),
+):
+    if type == "coil":
+        normalized = value.strip().lower()
+        parsed_value = normalized in ("1", "true", "on", "yes")
+    elif type == "register":
+        parsed_value = int(value)
+    else:
+        return {"success": False, "queued": False, "error": "invalid type"}
+
+    job = {
+        "ip": ip,
+        "port": port,
+        "slave": device_id,
+        "type": type,
+        "address": address,
+        "value": parsed_value,
+    }
+
+    log.info("[WRITE GET] enqueue payload=%s", job)
+    await write_queue.put(job)
+
+    return {"success": True, "queued": True, "job": job}
+
+
+@app.on_event("startup")
+async def startup():
+    asyncio.create_task(write_worker())
     log.info("[HUB] started")
 
 

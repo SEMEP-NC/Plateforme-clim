@@ -41,11 +41,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $dt->setTimezone(new DateTimeZone('UTC'));
     $execution_time_utc = $dt->format('Y-m-d H:i:s');
 
+    $repeat_days_raw = $_POST['repeat_days'] ?? [];
+    $repeat_days = [];
+
+    if (is_array($repeat_days_raw)) {
+        foreach ($repeat_days_raw as $day) {
+            $day = (int)$day;
+            if ($day >= 1 && $day <= 7) {
+                $repeat_days[] = $day;
+            }
+        }
+    }
+
+    $repeat_days = array_values(array_unique($repeat_days));
+    sort($repeat_days);
+    $repeat_days_value = count($repeat_days) > 0 ? implode(',', $repeat_days) : null;
+
     $stmt = $pdo->prepare("
         INSERT INTO schedules
-            (equipment_id, action, temperature, execution_time, executed)
+            (equipment_id, action, temperature, execution_time, repeat_days, executed)
         VALUES
-            (:equipment_id, :action, :temperature, :execution_time, 0)
+            (:equipment_id, :action, :temperature, :execution_time, :repeat_days, 0)
     ");
 
     $stmt->bindValue(':equipment_id', $equipment_id, PDO::PARAM_INT);
@@ -63,6 +79,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $stmt->bindValue(':execution_time', $execution_time_utc, PDO::PARAM_STR);
+    
+    if ($repeat_days_value === null) {
+        $stmt->bindValue(':repeat_days', null, PDO::PARAM_NULL);
+    } else {
+        $stmt->bindValue(':repeat_days', $repeat_days_value, PDO::PARAM_STR);
+    }
+
     $stmt->execute();
 
     header('Location: schedules.php');
