@@ -19,6 +19,8 @@ services:
       DB_USER: climuser
       DB_PASSWORD: climpassword
       API_BASE_URL: http://clim_api:5001
+      HUB_URL_EXTERNAL: "http://10.0.0.50:8500/read"
+      HUB_WRITE_URL_EXTERNAL: "http://10.0.0.50:8500/write"
 
   api:
     build: ./api
