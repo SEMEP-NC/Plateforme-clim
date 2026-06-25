@@ -5,24 +5,45 @@ $db = get_db();
 
 /*
 |--------------------------------------------------------------------------
-| UPDATE NAME
+| DATA
 |--------------------------------------------------------------------------
 */
 
-if (
-    $_SERVER['REQUEST_METHOD'] === 'POST'
-    && isset($_POST['update_name'])
-) {
-    $id = (int)$_POST['id'];
-    $name = trim($_POST['name']);
+$groups = $db->query("
+    SELECT * FROM groups_hvac ORDER BY name
+")->fetchAll(PDO::FETCH_ASSOC);
 
-    $stmt = $db->prepare("
-        UPDATE equipments
-        SET name = ?
-        WHERE id = ?
-    ");
+$equipments = $db->query("
+    SELECT * FROM equipments ORDER BY name
+")->fetchAll(PDO::FETCH_ASSOC);
 
-    $stmt->execute([$name, $id]);
+/* relations */
+$equipmentGroups = [];
+$groupEquipments = [];
+
+$stmt = $db->query("
+    SELECT equipment_id, group_id FROM equipment_groups
+");
+
+foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+    $equipmentGroups[$row['equipment_id']][] = $row['group_id'];
+    $groupEquipments[$row['group_id']][] = $row['equipment_id'];
+}
+
+/*
+|--------------------------------------------------------------------------
+| CREATE GROUP
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_group'])) {
+
+    $name = trim($_POST['group_name']);
+
+    if ($name !== '') {
+        $db->prepare("
+            INSERT INTO groups_hvac(name) VALUES (?)
+        ")->execute([$name]);
+    }
 
     header("Location: equipments.php");
     exit;
@@ -30,151 +51,442 @@ if (
 
 /*
 |--------------------------------------------------------------------------
-| DELETE
+| DELETE GROUP
 |--------------------------------------------------------------------------
 */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_group'])) {
 
+    $id = (int)$_POST['group_id'];
+
+    $db->prepare("DELETE FROM equipment_groups WHERE group_id=?")->execute([$id]);
+    $db->prepare("DELETE FROM groups_hvac WHERE id=?")->execute([$id]);
+
+    header("Location: equipments.php");
+    exit;
+}
+/*
+|--------------------------------------------------------------------------
+| SAVE GROUPS EQUIPMENT (MODAL GROUPS)
+|--------------------------------------------------------------------------
+*/
 if (
     $_SERVER['REQUEST_METHOD'] === 'POST'
-    && isset($_POST['delete_equipment'])
+    && isset($_POST['save_groups'])
+    && isset($_POST['equipments'])
 ) {
-    $id = (int)$_POST['id'];
 
-    $stmt = $db->prepare("
-        DELETE FROM equipments
-        WHERE id = ?
-    ");
+    foreach ($_POST['equipments'] as $groupId => $equipmentIds) {
 
-    $stmt->execute([$id]);
+        $groupId = (int)$groupId;
+
+        // reset liens du groupe
+        $db->prepare("
+            DELETE FROM equipment_groups
+            WHERE group_id = ?
+        ")->execute([$groupId]);
+
+        foreach ((array)$equipmentIds as $equipmentId) {
+
+            $db->prepare("
+                INSERT INTO equipment_groups (equipment_id, group_id)
+                VALUES (?, ?)
+            ")->execute([
+                (int)$equipmentId,
+                $groupId
+            ]);
+        }
+    }
+
+    header("Location: equipments.php");
+    exit;
+}
+/*
+|--------------------------------------------------------------------------
+| SAVE EQUIPMENT GROUPS (MODAL EQUIP)
+|--------------------------------------------------------------------------
+*/
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST'
+    && isset($_POST['save_equipment_groups'])
+    && isset($_POST['groups'])
+) {
+
+    foreach ($_POST['groups'] as $equipmentId => $groupIds) {
+
+        $equipmentId = (int)$equipmentId;
+
+        // reset liens de l'équipement
+        $db->prepare("
+            DELETE FROM equipment_groups
+            WHERE equipment_id = ?
+        ")->execute([$equipmentId]);
+
+        foreach ((array)$groupIds as $groupId) {
+
+            $db->prepare("
+                INSERT INTO equipment_groups (equipment_id, group_id)
+                VALUES (?, ?)
+            ")->execute([
+                $equipmentId,
+                (int)$groupId
+            ]);
+        }
+    }
 
     header("Location: equipments.php");
     exit;
 }
 
-$equipments = $db->query("
-    SELECT *
-    FROM equipments
-    ORDER BY name
-")->fetchAll(PDO::FETCH_ASSOC);
+/*
+|--------------------------------------------------------------------------
+| SAVE ALL EQUIPMENTS
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
 
+    foreach ($_POST['name'] as $id => $name) {
+
+        $db->prepare("
+            UPDATE equipments SET name=? WHERE id=?
+        ")->execute([
+            trim($name),
+            (int)$id
+        ]);
+    }
+
+    header("Location: equipments.php");
+    exit;
+}
+
+/*
+|--------------------------------------------------------------------------
+| DELETE EQUIPMENT
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) {
+
+    $id = (int)$_POST['id'];
+
+    $db->prepare("DELETE FROM equipments WHERE id=?")->execute([$id]);
+
+    header("Location: equipments.php");
+    exit;
+}
+/*
+|--------------------------------------------------------------------------
+| EXPORT JSON
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export_json'])) {
+
+    $export = [
+        'exported_at' => date('Y-m-d H:i:s'),
+        'equipments' => []
+    ];
+
+    foreach ($equipments as $equipment) {
+
+        $groupNames = [];
+
+        foreach (($equipmentGroups[$equipment['id']] ?? []) as $groupId) {
+
+            foreach ($groups as $group) {
+
+                if ((int)$group['id'] === (int)$groupId) {
+                    $groupNames[] = $group['name'];
+                }
+            }
+        }
+
+        $export['equipments'][] = [
+            'id'       => (int)$equipment['id'],
+            'name'     => $equipment['name'],
+            'UI'       => (int)$equipment['UI'],
+            'power'    => is_numeric($equipment['power'])
+                ? (float)($equipment['power'] / 10)
+                : $equipment['power'],
+            'ip'       => $equipment['ip'],
+            'slave_id' => (int)$equipment['slave_id'],
+            'groups'   => $groupNames
+        ];
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+    header('Content-Disposition: attachment; filename=equipements_' . date('Ymd_His') . '.json');
+
+    echo json_encode(
+        $export,
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
+    );
+
+    exit;
+}
 ?>
 
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-
     <title>Équipements</title>
 
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 
 <body class="container mt-5">
 
-<h1>Équipements</h1>
+    <h1>Équipements</h1>
 
-<a href="index.php" class="btn btn-secondary mb-3">
-    Retour
-</a>
+    <a href="index.php" class="btn btn-secondary mb-3">Retour</a>
 
-<table class="table table-bordered table-striped align-middle">
+    <!-- ========================= GROUPES ========================= -->
+    <div class="card mb-4">
+        <div class="card-header"><strong>Groupes</strong></div>
 
-    <thead>
-        <tr>
-            <th>Nom</th>
-            <th>UI</th>
-            <th>Puissance</th>
-            <th>IP Passerelle</th>
-            <th>Slave Modbus ID</th>
-            <th width="180">Actions</th>
-        </tr>
-    </thead>
+        <div class="card-body">
 
-    <tbody>
+            <form method="POST" class="row g-2 mb-3">
+                <div class="col-md-8">
+                    <input type="text" name="group_name" class="form-control" placeholder="Nouveau groupe">
+                </div>
 
-    <?php foreach ($equipments as $equipment): ?>
-
-        <tr>
-
-            <form method="POST">
-
-                <input
-                    type="hidden"
-                    name="id"
-                    value="<?= (int)$equipment['id'] ?>"
-                >
-
-                <td>
-                    <input
-                        type="text"
-                        name="name"
-                        value="<?= htmlspecialchars($equipment['name']) ?>"
-                        class="form-control"
-                    >
-                </td>
-
-                <td>
-                    <?= htmlspecialchars($equipment['UI']) ?>
-                </td>
-
-                <td>
-                    <?php
-                    if (is_numeric($equipment['power'])) {
-                        echo number_format(
-                            $equipment['power'] / 10,
-                            1
-                        ) . ' kW';
-                    } else {
-                        echo htmlspecialchars($equipment['power']);
-                    }
-                    ?>
-                </td>
-
-                <td>
-                    <?= htmlspecialchars($equipment['ip']) ?>
-                </td>
-
-                <td>
-                    <?= htmlspecialchars($equipment['slave_id']) ?>
-                </td>
-
-                <td class="text-center">
-
-                    <button
-                        type="submit"
-                        name="update_name"
-                        value="1"
-                        class="btn btn-success btn-sm"
-                    >
-                        💾
+                <div class="col-md-4">
+                    <button class="btn btn-primary w-100" name="create_group">
+                        Ajouter
                     </button>
-
-                    <button
-                        type="submit"
-                        name="delete_equipment"
-                        value="1"
-                        class="btn btn-danger btn-sm"
-                        onclick="return confirm(
-                            'Supprimer cet équipement ?'
-                        );"
-                    >
-                        ❌
-                    </button>
-
-                </td>
-
+                </div>
             </form>
 
-        </tr>
+            <table class="table table-bordered">
+                <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Unités</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
 
-    <?php endforeach; ?>
+                <tbody>
+                <?php foreach ($groups as $group): ?>
+                <tr>
+                    <td><?= htmlspecialchars($group['name']) ?></td>
 
-    </tbody>
+                    <td>
+                        <button type="button"
+                            class="btn btn-primary btn-sm"
+                            data-bs-toggle="modal"
+                            data-bs-target="#groupModal<?= $group['id'] ?>">
+                            Voir unités
+                        </button>
+                    </td>
 
-</table>
+                    <td>
+                        <form method="POST">
+                            <input type="hidden" name="group_id" value="<?= $group['id'] ?>">
+
+                            <button class="btn btn-danger btn-sm"
+                                name="delete_group"
+                                onclick="return confirm('Supprimer ?')">
+                                ❌
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+            </table>
+
+</div>
+</div>
+
+<!-- ========================= MODALS GROUP → EQUIP ========================= -->
+<?php foreach ($groups as $group): ?>
+    <div class="modal fade" id="groupModal<?= $group['id'] ?>" tabindex="-1">
+        <div class="modal-dialog">
+            <form method="POST" class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Unités - <?= htmlspecialchars($group['name']) ?></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <?php foreach ($equipments as $equipment): ?>
+
+                    <?php
+                    $checked = in_array(
+                        $equipment['id'],
+                        $groupEquipments[$group['id']] ?? []
+                    );
+                    ?>
+
+                    <div class="form-check">
+                        <input class="form-check-input"
+                            type="checkbox"
+                            name="equipments[<?= $group['id'] ?>][]"
+                            value="<?= $equipment['id'] ?>"
+                            <?= $checked ? 'checked' : '' ?>>
+
+                        <label class="form-check-label">
+                            <?= htmlspecialchars($equipment['name']) ?>
+                        </label>
+                    </div>
+
+                    <?php endforeach; ?>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" name="save_groups" class="btn btn-success">Valider</button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+<?php endforeach; ?>
+
+<!-- ========================= EQUIPMENTS ========================= -->
+<div class="card mb-4">
+    <div class="card-header">
+        <strong>Unités</strong>
+    </div>
+
+    <div class="card-body">
+
+        <form method="POST">
+
+    <button type="submit" name="save_all" class="btn btn-success mb-3">
+        💾 Sauvegarder
+        <button type="submit" name="export_json" class="btn btn-primary mb-3">
+    📥 Export JSON
+</button>
+    </button>
+
+    <button type="submit" name="export_json" class="btn btn-primary mb-3">
+        📥 Export JSON
+    </button>
+
+            <table class="table table-bordered table-striped align-middle">
+
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>UI</th>
+                    <th>Puissance</th>
+                    <th>IP</th>
+                    <th>Slave</th>
+                    <th>Groupes</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                <?php foreach ($equipments as $equipment): ?>
+                    <tr>
+
+                        <td>
+                            <input type="text"
+                                name="name[<?= $equipment['id'] ?>]"
+                                value="<?= htmlspecialchars($equipment['name']) ?>"
+                                class="form-control">
+                        </td>
+
+                        <td><?= htmlspecialchars($equipment['UI']) ?></td>
+
+                        <td>
+                            <?= is_numeric($equipment['power'])
+                                ? number_format($equipment['power']/10,1).' kW'
+                                : htmlspecialchars($equipment['power']) ?>
+                        </td>
+
+                        <td><?= htmlspecialchars($equipment['ip']) ?></td>
+                        <td><?= htmlspecialchars($equipment['slave_id']) ?></td>
+
+                        <td>
+                            <button type="button"
+                                class="btn btn-primary btn-sm"
+                                data-bs-toggle="modal"
+                                data-bs-target="#equipModal<?= $equipment['id'] ?>">
+                                Groupes
+                            </button>
+                        </td>
+
+                        <td>
+                            <form method="POST">
+                                <input type="hidden" name="id" value="<?= $equipment['id'] ?>">
+
+                                <button class="btn btn-danger btn-sm"
+                                    name="delete_equipment"
+                                    onclick="return confirm('Supprimer ?')">
+                                    ❌
+                                </button>
+                            </form>
+                        </td>
+
+                    </tr>
+                <?php endforeach; ?>
+
+            </tbody>
+
+            </table>
+
+        </form>
+
+    </div>
+</div>
+
+<!-- ========================= MODALS EQUIP → GROUP ========================= -->
+<?php foreach ($equipments as $equipment): ?>
+    <div class="modal fade" id="equipModal<?= $equipment['id'] ?>" tabindex="-1">
+        <div class="modal-dialog">
+            <form method="POST" class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        Groupes - <?= htmlspecialchars($equipment['name']) ?>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <?php foreach ($groups as $group): ?>
+
+                    <?php
+                    $checked = in_array(
+                        $group['id'],
+                        $equipmentGroups[$equipment['id']] ?? []
+                    );
+                    ?>
+
+                    <div class="form-check">
+                        <input class="form-check-input"
+                            type="checkbox"
+                            name="groups[<?= $equipment['id'] ?>][]"
+                            value="<?= $group['id'] ?>"
+                            <?= $checked ? 'checked' : '' ?>>
+                        <label class="form-check-label">
+                            <?= htmlspecialchars($group['name']) ?>
+                        </label>
+                    </div>
+
+                    <?php endforeach; ?>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" name="save_equipment_groups" class="btn btn-success">Valider</button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+<?php endforeach; ?>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>
