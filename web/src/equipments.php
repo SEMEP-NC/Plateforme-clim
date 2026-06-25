@@ -48,7 +48,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_group'])) {
     header("Location: equipments.php");
     exit;
 }
+/*
+|--------------------------------------------------------------------------
+| EXPORT JSON
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['export_json'])) {
 
+    $export = [
+        'exported_at' => date('Y-m-d H:i:s'),
+        'equipments'  => []
+    ];
+
+    foreach ($equipments as $equipment) {
+
+        $groupNames = [];
+
+        foreach (($equipmentGroups[$equipment['id']] ?? []) as $groupId) {
+
+            foreach ($groups as $group) {
+
+                if ((int)$group['id'] === (int)$groupId) {
+                    $groupNames[] = $group['name'];
+                }
+            }
+        }
+
+        $export['equipments'][] = [
+            'id'       => (int)$equipment['id'],
+            'name'     => $equipment['name'],
+            'UI'       => (int)$equipment['UI'],
+            'power'    => is_numeric($equipment['power'])
+                            ? (float)($equipment['power'] / 10)
+                            : $equipment['power'],
+            'ip'       => $equipment['ip'],
+            'slave_id' => (int)$equipment['slave_id'],
+            'groups'   => $groupNames
+        ];
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+    header(
+        'Content-Disposition: attachment; filename=equipements_' .
+        date('Ymd_His') .
+        '.json'
+    );
+
+    echo json_encode(
+        $export,
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
+    );
+
+    exit;
+}
 /*
 |--------------------------------------------------------------------------
 | DELETE GROUP
@@ -197,6 +249,15 @@ $equipments = $db->query("
 <a href="index.php" class="btn btn-secondary mb-3">
     Retour
 </a>
+<form method="POST" class="d-inline">
+    <button
+        type="submit"
+        name="export_json"
+        class="btn btn-primary mb-3"
+    >
+        📥 Export JSON
+    </button>
+</form>
 
             <table class="table table-bordered table-striped align-middle">
 
