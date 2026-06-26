@@ -5,7 +5,36 @@ $db = get_db();
 
 function h($value): string
 {
-   groupId > 0 && $hasGroupsTable) {    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+    return| Ajouter un groupe    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_group'])) {
+    $groupName = trim($_POST['group_name'] ?? '');
+
+    if (!$hasGroupsTable) {
+        $error = "La table groups_hvac n'existe pas.";
+    } elseif ($groupName === '') {
+        $error = "Le nom du groupe est obligatoire.";
+    } else {
+        try {
+            $stmt = $db->prepare("INSERT INTO groups_hvac (name) VALUES (?)");
+            $stmt->execute([$groupName]);
+            $message = "Groupe ajouté.";
+        } catch (Exception $e) {
+            $error = "Erreur ajout groupe : " . $e->getMessage();
+        }
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Supprimer un groupe
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_group'])) {
+    $groupId = (int)($_POST['group_id'] ?? 0);
+
+    if ($groupId > 0 && $hasGroupsTable) {
         try {
             if ($hasEquipmentGroupsTable) {
                 $stmt = $db->prepare("DELETE FROM equipment_groups WHERE group_id = ?");
@@ -29,7 +58,7 @@ function h($value): string
 
 /*
 |--------------------------------------------------------------------------
-| Supprimer équipement
+| Supprimer un équipement
 |--------------------------------------------------------------------------
 */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) {
@@ -45,16 +74,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             $stmt = $db->prepare("DELETE FROM equipments WHERE id = ?");
             $stmt->execute([$equipmentId]);
 
-            $message = "Équipement supprimé.";
+            $message = "Equipement supprimé.";
         } catch (Exception $e) {
-            $error = "Erreur suppression équipement : " . $e->getMessage();
+            $error = "Erreur suppression equipement : " . $e->getMessage();
         }
     }
 }
 
 /*
 |--------------------------------------------------------------------------
-| Sauvegarder équipements
+| Sauvegarder les équipements
 |--------------------------------------------------------------------------
 */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
@@ -84,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
             }
         }
 
-        $message = "Équipements sauvegardés.";
+        $message = "Equipements sauvegardes.";
     } catch (Exception $e) {
         $error = "Erreur sauvegarde : " . $e->getMessage();
     }
@@ -92,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
 
 /*
 |--------------------------------------------------------------------------
-| Sauvegarder groupes d'un équipement
+| Sauvegarder les groupes d'un équipement
 |--------------------------------------------------------------------------
 */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_equipment_groups'])) {
@@ -112,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_equipment_groups
                 $stmt->execute([$equipmentId, (int)$groupId]);
             }
 
-            $message = "Groupes sauvegardés.";
+            $message = "Groupes sauvegardes.";
         } elseif ($equipmentId > 0 && $hasGroupIdColumn) {
             $groupId = isset($selectedGroups[0]) ? (int)$selectedGroups[0] : null;
 
@@ -123,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_equipment_groups
             ");
             $stmt->execute([$groupId, $equipmentId]);
 
-            $message = "Groupe sauvegardé.";
+            $message = "Groupe sauvegarde.";
         }
     } catch (Exception $e) {
         $error = "Erreur sauvegarde groupes : " . $e->getMessage();
@@ -132,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_equipment_groups
 
 /*
 |--------------------------------------------------------------------------
-| Charger groupes
+| Charger les groupes
 |--------------------------------------------------------------------------
 */
 if ($hasGroupsTable) {
@@ -149,7 +178,7 @@ if ($hasGroupsTable) {
 
 /*
 |--------------------------------------------------------------------------
-| Charger équipements
+| Charger les équipements
 |--------------------------------------------------------------------------
 */
 try {
@@ -160,12 +189,12 @@ try {
     ")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     $equipments = [];
-    $error = "Erreur chargement équipements : " . $e->getMessage();
+    $error = "Erreur chargement equipements : " . $e->getMessage();
 }
 
 /*
 |--------------------------------------------------------------------------
-| Charger associations groupes / équipements
+| Charger les associations groupes / équipements
 |--------------------------------------------------------------------------
 */
 try {
@@ -205,11 +234,7 @@ try {
     <title>Équipements</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <style>
-        body {
-            background-color: #f5f6f8;
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet            background-color: #f5f6f8;
         }
 
         .page-container {
@@ -252,11 +277,7 @@ try {
 
     <h1>Équipements</h1>
 
-    <a href="index.php" class="btn btn-secondary mb-3">
-        Retour
-    </a>
-
-    <?php if ($message !== ''): ?>
+    <a href="index.php" class="btn btn-secondary mb-3$message !== ''): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <?= h($message) ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -343,8 +364,7 @@ try {
                         💾 Sauvegarder
                     </button>
 
-                    <a href="export_equipments_json.php" class="btn btn-info">
-                        📥 Exporter en JSON
+                    <a href="export_equipments_json.php" class="btn btn-infoporter en JSON
                     </a>
                 </div>
 
@@ -434,8 +454,6 @@ try {
                                             name="delete_equipment"
                                             value="1"
                                             class="btn btn-danger btn-sm btn-delete"
-                                            formaction="equipments.php"
-                                            formmethod="POST"
                                             onclick="document.getElementById('delete-equipment-id').value='<?= $equipmentId ?>'; return confirm('Supprimer cet équipement ?');"
                                         >
                                             ❌
@@ -523,11 +541,8 @@ try {
     </div>
 <?php endforeach; ?>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-</body>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.jsbody>
 </html>
-``
 }
 
 function table_exists(PDO $db, string $table): bool
@@ -581,32 +596,3 @@ $equipmentGroups = [];
 
 /*
 |--------------------------------------------------------------------------
-| Ajouter groupe
-|--------------------------------------------------------------------------
-*/
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_group'])) {
-    $groupName = trim($_POST['group_name'] ?? '');
-
-    if (!$hasGroupsTable) {
-        $error = "La table groups_hvac n'existe pas.";
-    } elseif ($groupName === '') {
-        $error = "Le nom du groupe est obligatoire.";
-    } else {
-        try {
-            $stmt = $db->prepare("INSERT INTO groups_hvac (name) VALUES (?)");
-            $stmt->execute([$groupName]);
-            $message = "Groupe ajouté.";
-        } catch (Exception $e) {
-            $error = "Erreur ajout groupe : " . $e->getMessage();
-        }
-    }
-}
-
-/*
-|--------------------------------------------------------------------------
-| Supprimer groupe
-|--------------------------------------------------------------------------
-*/
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_group'])) {
-    $groupId = (int)($_POST['group_id'] ?? 0);
-
