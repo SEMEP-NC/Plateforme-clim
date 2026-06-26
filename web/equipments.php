@@ -3,11 +3,502 @@ require 'config/db.php';
 
 $db = get_db();
 
+function h($value): string
+{
+    return htmlspecialcharsquipement supprimé.";    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+        } catch (Exception $e) {
+            $error = "Erreur suppression équipement : " . $e->getMessage();
+        }
+    }
+}
+
 /*
 |--------------------------------------------------------------------------
-| Helpers
+| Sauvegarder les noms / activation
 |--------------------------------------------------------------------------
 */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
+    try {
+        $names = $_POST['name'] ?? [];
+        $enableds = $_POST['enabled'] ?? [];
+
+        foreach ($names as $id => $name) {
+            $id = (int)$id;
+            $name = trim($name);
+            $enabled = isset($enableds[$id]) ? 1 : 0;
+
+            if (column_exists($db, 'equipments', 'enabled')) {
+                $stmt = $db->prepare("
+                    UPDATE equipments
+                    SET name = ?, enabled = ?
+                    WHERE id = ?
+                ");
+                $stmt->execute([$name, $enabled, $id]);
+            } else {
+                $stmt = $db->prepare("
+                    UPDATE equipments
+                    SET name = ?
+                    WHERE id = ?
+                ");
+                $stmt->execute([$name, $id]);
+            }
+        }
+
+        $message = "Équipements sauvegardés.";
+    } catch (Exception $e) {
+        $error = "Erreur sauvegarde : " . $e->getMessage();
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Sauvegarder les groupes d'un équipement
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_equipment_groups'])) {
+    $equipmentId = (int)($_POST['equipment_id'] ?? 0);
+    $selectedGroups = $_POST['selected_groups'] ?? [];
+
+    try {
+        if ($equipmentId > 0 && $hasEquipmentGroupsTable) {
+            $stmt = $db->prepare("DELETE FROM equipment_groups WHERE equipment_id = ?");
+            $stmt->execute([$equipmentId]);
+
+            foreach ($selectedGroups as $groupId) {
+                $stmt = $db->prepare("
+                    INSERT INTO equipment_groups (equipment_id, group_id)
+                    VALUES (?, ?)
+                ");
+                $stmt->execute([$equipmentId, (int)$groupId]);
+            }
+
+            $message = "Groupes de l'équipement sauvegardés.";
+        } elseif ($equipmentId > 0 && $hasEquipmentGroupId) {
+            $groupId = isset($selectedGroups[0]) ? (int)$selectedGroups[0] : null;
+
+            $stmt = $db->prepare("
+                UPDATE equipments
+                SET group_id = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([$groupId, $equipmentId]);
+
+            $message = "Groupe de l'équipement sauvegardé.";
+        }
+    } catch (Exception $e) {
+        $error = "Erreur sauvegarde groupes : " . $e->getMessage();
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Charger les groupes
+|--------------------------------------------------------------------------
+*/
+if ($hasGroupsTable) {
+    try {
+        $groups = $db->query("
+            SELECT *
+            FROM groups_hvac
+            ORDER BY name
+        ")->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        $groups = [];
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Charger les équipements
+|--------------------------------------------------------------------------
+*/
+try {
+    $equipments = $db->query("
+        SELECT *
+        FROM equipments
+        ORDER BY UI ASC, name ASC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $equipments = [];
+    $error = "Erreur chargement équipements : " . $e->getMessage();
+}
+
+/*
+|--------------------------------------------------------------------------
+| Charger les associations groupes / équipements
+|--------------------------------------------------------------------------
+*/
+$equipmentGroups = [];
+
+try {
+    if ($hasEquipmentGroupsTable) {
+        $rows = $db->query("
+            SELECT eg.equipment_id, g.id, g.name
+            FROM equipment_groups eg
+            INNER JOIN groups_hvac g ON g.id = eg.group_id
+            ORDER BY g.name
+        ")->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($rows as $row) {
+            $equipmentGroups[(int)$row['equipment_id']][] = $row;
+        }
+    } elseif ($hasEquipmentGroupId && $hasGroupsTable) {
+        foreach ($equipments as $eq) {
+            if (!empty($eq['group_id'])) {
+                foreach ($groups as $group) {
+                    if ((int)$group['id'] === (int)$eq['group_id']) {
+                        $equipmentGroups[(int)$eq['id']][] = $group;
+                    }
+                }
+            }
+        }
+    }
+} catch (Exception $e) {
+    $equipmentGroups = [];
+}
+
+function format_power($power): string
+{
+    if ($power === null || $power === '') {
+        return '';
+    }
+
+    $power = (float)$power;
+
+    if ($power >= 10) {
+        return number_format($power / 10, 1, ',', ' ') . ' kW';
+    }
+
+    return number_format($power, 1, ',', ' ') . ' kW';
+}
+?>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Équipements</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <style>
+        body {
+            background-color: #f5f6f8;
+        }
+
+        .page-container {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 35px 20px;
+        }
+
+        h1 {
+            font-size: 2.3rem;
+            margin-bottom: 10px;
+        }
+
+        .card {
+            margin-bottom: 25px;
+        }
+
+        .table td,
+        .table th {
+            vertical-align: middle;
+        }
+
+        .name-input {
+            min-width: 260px;
+        }
+
+        .btn-delete {
+            min-width: 42px;
+        }
+
+        .group-badge {
+            margin-right: 4px;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+
+<body>
+<div class="page-container">
+
+    <h1>Équipements</h1>
+
+    <a href="index.php" class="btn btn-secondary mb-3">
+        Retour
+    </a>
+
+    <?php if ($message !== ''): ?>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <?= h($message) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($error !== ''): ?>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <?= h($error) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    <?php endif; ?>
+
+    <!-- Groupes -->
+    <div class="card">
+        <div class="card-header">
+            <strong>Groupes</strong>
+        </div>
+
+        <div class="card-body">
+            <form method="POST" class="row g-2 mb-3">
+                <div class="col-md-9">
+                    <input
+                        type="text"
+                        name="group_name"
+                        class="form-control"
+                        placeholder="Nouveau groupe"
+                    >
+                </div>
+
+                <div class="col-md-3">
+                    <button type="submit" name="add_group" class="btn btn-primary w-100">
+                        Ajouter
+                    </button>
+                </div>
+            </form>
+
+            <table class="table table-bordered mb-0">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th style="width: 160px;">Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                <?php if (empty($groups)): ?>
+                    <tr>
+                        <td colspan="2" class="text-muted">
+                            Aucun groupe créé.
+                        </td>
+                    </tr>
+                <?php else: ?>
+                    <?php foreach ($groups as $group): ?>
+                        <tr>
+                            <td><?= h($group['name'] ?? '') ?></td>
+                            <td>
+                                <form method="POST" onsubmit="return confirm('Supprimer ce groupe ?');">
+                                    <input type="hidden" name="group_id" value="<?= h($group['id'] ?? '') ?>">
+                                    <button type="submit" name="delete_group" class="btn btn-danger btn-sm btn-delete">
+                                        ❌
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Unités -->
+    <form method="POST">
+        <div class="card">
+            <div class="card-header">
+                <strong>Unités</strong>
+            </div>
+
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <button type="submit" name="save_all" class="btn btn-success">
+                        💾 Sauvegarder
+                    </button>
+
+                    <a href="export_equipments_json.php" class="btn btn-info">
+                        📥 Exporter en JSON
+                    </a>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead>
+                        <tr>
+                            <th>Actif</th>
+                            <th>ID</th>
+                            <th>Nom</th>
+                            <th>UI</th>
+                            <th>Puissance</th>
+                            <th>IP</th>
+                            <th>Slave</th>
+                            <th>Groupes</th>
+                            <th style="width: 160px;">Actions</th>
+                        </tr>
+                        </thead>
+
+                        <tbody>
+                        <?php if (empty($equipments)): ?>
+                            <tr>
+                                <td colspan="9" class="text-muted">
+                                    Aucun équipement sauvegardé.
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($equipments as $eq): ?>
+                                <?php
+                                $equipmentId = (int)($eq['id'] ?? 0);
+                                $enabled = isset($eq['enabled']) ? (int)$eq['enabled'] : 1;
+                                $eqGroups = $equipmentGroups[$equipmentId] ?? [];
+                                ?>
+
+                                <tr>
+                                    <td class="text-center">
+                                        <input
+                                            type="checkbox"
+                                            name="enabled[<?= $equipmentId ?>]"
+                                            value="1"
+                                            class="form-check-input"
+                                            <?= $enabled ? 'checked' : '' ?>
+                                        >
+                                    </td>
+
+                                    <td><?= h($equipmentId) ?></td>
+
+                                    <td>
+                                        <input
+                                            type="text"
+                                            name="name[<?= $equipmentId ?>]"
+                                            class="form-control name-input"
+                                            value="<?= h($eq['name'] ?? '') ?>"
+                                        >
+                                    </td>
+
+                                    <td><?= h($eq['UI'] ?? '') ?></td>
+
+                                    <td><?= h(format_power($eq['power'] ?? '')) ?></td>
+
+                                    <td><?= h($eq['ip'] ?? '') ?></td>
+
+                                    <td><?= h($eq['slave_id'] ?? '') ?></td>
+
+                                    <td>
+                                        <?php if (!empty($eqGroups)): ?>
+                                            <?php foreach ($eqGroups as $group): ?>
+                                                <span class="badge text-bg-secondary group-badge">
+                                                    <?= h($group['name'] ?? '') ?>
+                                                </span>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+
+                                        <button
+                                            type="button"
+                                            class="btn btn-primary btn-sm"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#groupsModal<?= $equipmentId ?>"
+                                        >
+                                            Groupes
+                                        </button>
+                                    </td>
+
+                                    <td>
+                                        <form method="POST" onsubmit="return confirm('Supprimer cet équipement ?');">
+                                            <input type="hidden" name="equipment_id" value="<?= $equipmentId ?>">
+                                            <button type="submit" name="delete_equipment" class="btn btn-danger btn-sm btn-delete">
+                                                ❌
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </form>
+
+</div>
+
+<?php foreach ($equipments as $eq): ?>
+    <?php
+    $equipmentId = (int)($eq['id'] ?? 0);
+    $eqGroups = $equipmentGroups[$equipmentId] ?? [];
+    $selectedGroupIds = array_map(fn($g) => (int)$g['id'], $eqGroups);
+    ?>
+
+    <div class="modal fade" id="groupsModal<?= $equipmentId ?>" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+
+                <form method="POST">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            Groupes — <?= h($eq['name'] ?? '') ?>
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <input type="hidden" name="equipment_id" value="<?= $equipmentId ?>">
+
+                        <?php if (empty($groups)): ?>
+                            <div class="text-muted">
+                                Aucun groupe disponible.
+                            </div>
+                        <?php else: ?>
+                            <?php foreach ($groups as $group): ?>
+                                <?php $groupId = (int)($group['id'] ?? 0); ?>
+
+                                <div class="form-check">
+                                    <input
+                                        class="form-check-input"
+                                        type="<?= $hasEquipmentGroupsTable ? 'checkbox' : 'radio' ?>"
+                                        name="selected_groups[]"
+                                        value="<?= $groupId ?>"
+                                        id="eq<?= $equipmentId ?>group<?= $groupId ?>"
+                                        <?= in_array($groupId, $selectedGroupIds, true) ? 'checked' : '' ?>
+                                    >
+
+                                    <label
+                                        class="form-check-label"
+                                        for="eq<?= $equipmentId ?>group<?= $groupId ?>"
+                                    >
+                                        <?= h($group['name'] ?? '') ?>
+                                    </label>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            Annuler
+                        </button>
+
+                        <button type="submit" name="save_equipment_groups" class="btn btn-primary">
+                            Sauvegarder
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+<?php endforeach; ?>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
+}
+
 function table_exists(PDO $db, string $table): bool
 {
     try {
@@ -30,499 +521,84 @@ function column_exists(PDO $db, string $table, string $column): bool
     }
 }
 
-function h($value): string
-{
-    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-}
-
-/*
-|--------------------------------------------------------------------------
-| Détection des tables / colonnes
-|--------------------------------------------------------------------------
-*/
-$hasGroupsTable = table_exists($db, 'groups_hvac');
-$hasGroupId     = column_exists($db, 'equipments', 'group_id');
-
-/*
-|--------------------------------------------------------------------------
-| Messages
-|--------------------------------------------------------------------------
-*/
 $message = '';
 $error = '';
 
+$hasGroupsTable = table_exists($db, 'groups_hvac');
+$hasEquipmentGroupId = column_exists($db, 'equipments', 'group_id');
+$hasEquipmentGroupsTable = table_exists($db, 'equipment_groups');
+
+$groups = [];
+$equipments = [];
+
 /*
 |--------------------------------------------------------------------------
-| Traitement formulaire - ajout groupe
+| Ajouter un groupe
 |--------------------------------------------------------------------------
 */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_group'])) {
-    if ($hasGroupsTable) {
-        $groupName = trim($_POST['group_name'] ?? '');
+    $groupName = trim($_POST['group_name'] ?? '');
 
-        if ($groupName !== '') {
-            try {
-                $stmt = $db->prepare("INSERT INTO groups_hvac (name) VALUES (?)");
-                $stmt->execute([$groupName]);
-                $message = "Groupe ajouté avec succès.";
-            } catch (Exception $e) {
-                $error = "Erreur lors de l'ajout du groupe : " . $e->getMessage();
-            }
-        } else {
-            $error = "Le nom du groupe ne peut pas être vide.";
-        }
-    }
-}
-
-/*
-|--------------------------------------------------------------------------
-| Traitement formulaire - sauvegarde équipements
-|--------------------------------------------------------------------------
-*/
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
-    try {
-        $names     = $_POST['name'] ?? [];
-        $ips       = $_POST['ip'] ?? [];
-        $ports     = $_POST['port'] ?? [];
-        $slaves    = $_POST['slave_id'] ?? [];
-        $powers    = $_POST['power'] ?? [];
-        $uis       = $_POST['UI'] ?? [];
-        $enableds  = $_POST['enabled'] ?? [];
-        $groupIds  = $_POST['group_id'] ?? [];
-
-        foreach ($names as $id => $name) {
-            $id = (int)$id;
-
-            $name     = trim($name);
-            $ip       = trim($ips[$id] ?? '');
-            $port     = (int)($ports[$id] ?? 502);
-            $slave_id = (int)($slaves[$id] ?? 1);
-            $power    = ($powers[$id] ?? '') !== '' ? (int)$powers[$id] : null;
-            $ui       = (int)($uis[$id] ?? 1);
-            $enabled  = isset($enableds[$id]) ? 1 : 0;
-
-            if ($hasGroupId) {
-                $group_id = ($groupIds[$id] ?? '') !== '' ? (int)$groupIds[$id] : null;
-
-                $stmt = $db->prepare("
-                    UPDATE equipments
-                    SET 
-                        name = ?,
-                        ip = ?,
-                        port = ?,
-                        slave_id = ?,
-                        power = ?,
-                        UI = ?,
-                        enabled = ?,
-                        group_id = ?
-                    WHERE id = ?
-                ");
-
-                $stmt->execute([
-                    $name,
-                    $ip,
-                    $port,
-                    $slave_id,
-                    $power,
-                    $ui,
-                    $enabled,
-                    $group_id,
-                    $id
-                ]);
-            } else {
-                $stmt = $db->prepare("
-                    UPDATE equipments
-                    SET 
-                        name = ?,
-                        ip = ?,
-                        port = ?,
-                        slave_id = ?,
-                        power = ?,
-                        UI = ?,
-                        enabled = ?
-                    WHERE id = ?
-                ");
-
-                $stmt->execute([
-                    $name,
-                    $ip,
-                    $port,
-                    $slave_id,
-                    $power,
-                    $ui,
-                    $enabled,
-                    $id
-                ]);
-            }
-        }
-
-        $message = "Équipements sauvegardés avec succès.";
-    } catch (Exception $e) {
-        $error = "Erreur lors de la sauvegarde : " . $e->getMessage();
-    }
-}
-
-/*
-|--------------------------------------------------------------------------
-| Chargement des groupes
-|--------------------------------------------------------------------------
-*/
-$groups = [];
-
-if ($hasGroupsTable) {
-    try {
-        $groups = $db->query("
-            SELECT *
-            FROM groups_hvac
-            ORDER BY name
-        ")->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
-        $groups = [];
-    }
-}
-
-/*
-|--------------------------------------------------------------------------
-| Chargement des équipements
-|--------------------------------------------------------------------------
-*/
-try {
-    if ($hasGroupsTable && $hasGroupId) {
-        $equipments = $db->query("
-            SELECT 
-                e.*,
-                g.name AS group_name
-            FROM equipments e
-            LEFT JOIN groups_hvac g ON g.id = e.group_id
-            ORDER BY 
-                COALESCE(g.name, 'Sans groupe'),
-                e.UI,
-                e.name
-        ")->fetchAll(PDO::FETCH_ASSOC);
+    if (!$hasGroupsTable) {
+        $error = "La table groups_hvac n'existe pas.";
+    } elseif ($groupName === '') {
+        $error = "Le nom du groupe est obligatoire.";
     } else {
-        $equipments = $db->query("
-            SELECT *
-            FROM equipments
-            ORDER BY UI, name
-        ")->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $db->prepare("INSERT INTO groups_hvac (name) VALUES (?)");
+            $stmt->execute([$groupName]);
+            $message = "Groupe ajouté.";
+        } catch (Exception $e) {
+            $error = "Erreur ajout groupe : " . $e->getMessage();
+        }
     }
-} catch (Exception $e) {
-    $equipments = [];
-    $error = "Erreur lors du chargement des équipements : " . $e->getMessage();
 }
 
-?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>Équipements climatisation</title>
+/*
+|--------------------------------------------------------------------------
+| Supprimer un groupe
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_group'])) {
+    $groupId = (int)($_POST['group_id'] ?? 0);
 
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    if ($groupId > 0 && $hasGroupsTable) {
+        try {
+            if ($hasEquipmentGroupsTable) {
+                $stmt = $db->prepare("DELETE FROM equipment_groups WHERE group_id = ?");
+                $stmt->execute([$groupId]);
+            }
 
-    <link 
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" 
-        rel="stylesheet"
-    >
+            if ($hasEquipmentGroupId) {
+                $stmt = $db->prepare("UPDATE equipments SET group_id = NULL WHERE group_id = ?");
+                $stmt->execute([$groupId]);
+            }
 
-    <style>
-        body {
-            background: #f5f7fa;
+            $stmt = $db->prepare("DELETE FROM groups_hvac WHERE id = ?");
+            $stmt->execute([$groupId]);
+
+            $message = "Groupe supprimé.";
+        } catch (Exception $e) {
+            $error = "Erreur suppression groupe : " . $e->getMessage();
         }
+    }
+}
 
-        .page-title {
-            font-weight: 700;
-        }
+/*
+|--------------------------------------------------------------------------
+| Supprimer un équipement
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) {
+    $equipmentId = (int)($_POST['equipment_id'] ?? 0);
 
-        .card {
-            border-radius: 14px;
-        }
+    if ($equipmentId > 0) {
+        try {
+            if ($hasEquipmentGroupsTable) {
+                $stmt = $db->prepare("DELETE FROM equipment_groups WHERE equipment_id = ?");
+                $stmt->execute([$equipmentId]);
+            }
 
-        .table thead th {
-            white-space: nowrap;
-            vertical-align: middle;
-        }
+            $stmt = $db->prepare("DELETE FROM equipments WHERE id = ?");
+            $stmt->execute([$equipmentId]);
 
-        .table td {
-            vertical-align: middle;
-        }
-
-        .form-control,
-        .form-select {
-            min-width: 90px;
-        }
-
-        .small-input {
-            max-width: 90px;
-        }
-
-        .ip-input {
-            min-width: 140px;
-        }
-
-        .name-input {
-            min-width: 180px;
-        }
-
-        .group-badge {
-            font-size: 0.85rem;
-        }
-    </style>
-</head>
-
-<body>
-<div class="container-fluid py-4">
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="page-title mb-1">❄️ Équipements climatisation</h1>
-            <p class="text-muted mb-0">
-                Gestion des unités sauvegardées, groupes, adresses Modbus et export JSON.
-            </p>
-        </div>
-
-        <div>
-            <a href="index.php" class="btn btn-outline-secondary">
-                ⬅️ Retour
-            </a>
-        </div>
-    </div>
-
-    <?php if ($message): ?>
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <?= h($message) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($error): ?>
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <?= h($error) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($hasGroupsTable): ?>
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-white">
-                <strong>📁 Groupes</strong>
-            </div>
-
-            <div class="card-body">
-                <form method="POST" class="row g-2 align-items-end">
-                    <div class="col-md-4">
-                        <label class="form-label">Nouveau groupe</label>
-                        <input 
-                            type="text" 
-                            name="group_name" 
-                            class="form-control" 
-                            placeholder="Ex : Bureaux, Atelier, Salle serveur"
-                        >
-                    </div>
-
-                    <div class="col-md-auto">
-                        <button type="submit" name="add_group" class="btn btn-primary">
-                            ➕ Ajouter le groupe
-                        </button>
-                    </div>
-                </form>
-
-                <?php if (!empty($groups)): ?>
-                    <div class="mt-3">
-                        <?php foreach ($groups as $group): ?>
-                            <span class="badge text-bg-secondary me-1 group-badge">
-                                <?= h($group['name']) ?>
-                            </span>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <div class="text-muted mt-3">
-                        Aucun groupe créé pour le moment.
-                    </div>
-                <?php endif; ?>
-            </div>
-        </div>
-    <?php endif; ?>
-
-    <form method="POST">
-        <div class="card shadow-sm">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <strong>📋 Liste des équipements</strong>
-
-                <span class="badge text-bg-info">
-                    <?= count($equipments) ?> équipement(s)
-                </span>
-            </div>
-
-            <div class="card-body">
-
-                <div class="d-flex justify-content-between mb-3">
-                    <button type="submit" name="save_all" class="btn btn-success">
-                        💾 Sauvegarder
-                    </button>
-
-                    <a href="export_equipments_json.php" class="btn btn-info">
-                        📥 Exporter en JSON
-                    </a>
-                </div>
-
-                <?php if (empty($equipments)): ?>
-                    <div class="alert alert-warning mb-0">
-                        Aucun équipement sauvegardé.
-                    </div>
-                <?php else: ?>
-
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-hover align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Actif</th>
-                                    <th>ID</th>
-                                    <th>Nom</th>
-                                    <th>UI</th>
-                                    <th>IP</th>
-                                    <th>Port</th>
-                                    <th>Slave ID</th>
-                                    <th>Puissance</th>
-
-                                    <?php if ($hasGroupsTable && $hasGroupId): ?>
-                                        <th>Groupe</th>
-                                    <?php endif; ?>
-
-                                    <th>Créé le</th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                            <?php foreach ($equipments as $eq): ?>
-                                <?php
-                                    $id = (int)$eq['id'];
-                                    $enabled = isset($eq['enabled']) ? (int)$eq['enabled'] : 1;
-                                ?>
-
-                                <tr>
-                                    <td class="text-center">
-                                        <input 
-                                            type="checkbox" 
-                                            name="enabled[<?= $id ?>]" 
-                                            value="1" 
-                                            class="form-check-input"
-                                            <?= $enabled ? 'checked' : '' ?>
-                                        >
-                                    </td>
-
-                                    <td>
-                                        <?= $id ?>
-                                    </td>
-
-                                    <td>
-                                        <input 
-                                            type="text" 
-                                            name="name[<?= $id ?>]" 
-                                            class="form-control name-input"
-                                            value="<?= h($eq['name'] ?? '') ?>"
-                                        >
-                                    </td>
-
-                                    <td>
-                                        <input 
-                                            type="number" 
-                                            name="UI[<?= $id ?>]" 
-                                            class="form-control small-input"
-                                            value="<?= h($eq['UI'] ?? '') ?>"
-                                            min="1"
-                                        >
-                                    </td>
-
-                                    <td>
-                                        <input 
-                                            type="text" 
-                                            name="ip[<?= $id ?>]" 
-                                            class="form-control ip-input"
-                                            value="<?= h($eq['ip'] ?? '') ?>"
-                                        >
-                                    </td>
-
-                                    <td>
-                                        <input 
-                                            type="number" 
-                                            name="port[<?= $id ?>]" 
-                                            class="form-control small-input"
-                                            value="<?= h($eq['port'] ?? 502) ?>"
-                                            min="1"
-                                        >
-                                    </td>
-
-                                    <td>
-                                        <input 
-                                            type="number" 
-                                            name="slave_id[<?= $id ?>]" 
-                                            class="form-control small-input"
-                                            value="<?= h($eq['slave_id'] ?? 1) ?>"
-                                            min="1"
-                                        >
-                                    </td>
-
-                                    <td>
-                                        <input 
-                                            type="number" 
-                                            name="power[<?= $id ?>]" 
-                                            class="form-control small-input"
-                                            value="<?= h($eq['power'] ?? '') ?>"
-                                            min="0"
-                                        >
-                                    </td>
-
-                                    <?php if ($hasGroupsTable && $hasGroupId): ?>
-                                        <td>
-                                            <select 
-                                                name="group_id[<?= $id ?>]" 
-                                                class="form-select"
-                                            >
-                                                <option value="">Sans groupe</option>
-
-                                                <?php foreach ($groups as $group): ?>
-                                                    <option 
-                                                        value="<?= h($group['id']) ?>"
-                                                        <?= isset($eq['group_id']) && (int)$eq['group_id'] === (int)$group['id'] ? 'selected' : '' ?>
-                                                    >
-                                                        <?= h($group['name']) ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                        </td>
-                                    <?php endif; ?>
-
-                                    <td>
-                                        <?= h($eq['created_at'] ?? '') ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-
-                <?php endif; ?>
-
-                <div class="d-flex justify-content-between mt-3">
-                    <button type="submit" name="save_all" class="btn btn-success">
-                        💾 Sauvegarder
-                    </button>
-
-                    <a href="export_equipments_json.php" class="btn btn-info">
-                        📥 Exporter en JSON
-                    </a>
-                </div>
-
-            </div>
-        </div>
-    </form>
-
-</div>
-
-<script 
-    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
-</script>
-
-</body>
-</html>
