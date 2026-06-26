@@ -5,16 +5,85 @@ $db = get_db();
 
 function h($value): string
 {
-    return htmlspecialcharsquipement supprimé.";    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+    return| Ajouter un groupe    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_group'])) {
+    $groupName = trim($_POST['group_name'] ?? '');
+
+    if (!$hasGroupsTable) {
+        $error = "La table groups_hvac n'existe pas.";
+    } elseif ($groupName === '') {
+        $error = "Le nom du groupe est obligatoire.";
+    } else {
+        try {
+            $stmt = $db->prepare("INSERT INTO groups_hvac (name) VALUES (?)");
+            $stmt->execute([$groupName]);
+            $message = "Groupe ajouté.";
         } catch (Exception $e) {
-            $error = "Erreur suppression équipement : " . $e->getMessage();
+            $error = "Erreur ajout groupe : " . $e->getMessage();
         }
     }
 }
 
 /*
 |--------------------------------------------------------------------------
-| Sauvegarder les noms / activation
+| Supprimer un groupe
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_group'])) {
+    $groupId = (int)($_POST['group_id'] ?? 0);
+
+    if ($groupId > 0 && $hasGroupsTable) {
+        try {
+            if ($hasEquipmentGroupsTable) {
+                $stmt = $db->prepare("DELETE FROM equipment_groups WHERE group_id = ?");
+                $stmt->execute([$groupId]);
+            }
+
+            if ($hasGroupIdColumn) {
+                $stmt = $db->prepare("UPDATE equipments SET group_id = NULL WHERE group_id = ?");
+                $stmt->execute([$groupId]);
+            }
+
+            $stmt = $db->prepare("DELETE FROM groups_hvac WHERE id = ?");
+            $stmt->execute([$groupId]);
+
+            $message = "Groupe supprimé.";
+        } catch (Exception $e) {
+            $error = "Erreur suppression groupe : " . $e->getMessage();
+        }
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Supprimer un équipement
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) {
+    $equipmentId = (int)($_POST['equipment_id'] ?? 0);
+
+    if ($equipmentId > 0) {
+        try {
+            if ($hasEquipmentGroupsTable) {
+                $stmt = $db->prepare("DELETE FROM equipment_groups WHERE equipment_id = ?");
+                $stmt->execute([$equipmentId]);
+            }
+
+            $stmt = $db->prepare("DELETE FROM equipments WHERE id = ?");
+            $stmt->execute([$equipmentId]);
+
+            $message = "Equipement supprimé.";
+        } catch (Exception $e) {
+            $error = "Erreur suppression equipement : " . $e->getMessage();
+        }
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Sauvegarder les équipements
 |--------------------------------------------------------------------------
 */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
@@ -27,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
             $name = trim($name);
             $enabled = isset($enableds[$id]) ? 1 : 0;
 
-            if (column_exists($db, 'equipments', 'enabled')) {
+            if ($hasEnabledColumn) {
                 $stmt = $db->prepare("
                     UPDATE equipments
                     SET name = ?, enabled = ?
@@ -44,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
             }
         }
 
-        $message = "Équipements sauvegardés.";
+        $message = "Equipements sauvegardes.";
     } catch (Exception $e) {
         $error = "Erreur sauvegarde : " . $e->getMessage();
     }
@@ -72,8 +141,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_equipment_groups
                 $stmt->execute([$equipmentId, (int)$groupId]);
             }
 
-            $message = "Groupes de l'équipement sauvegardés.";
-        } elseif ($equipmentId > 0 && $hasEquipmentGroupId) {
+            $message = "Groupes sauvegardes.";
+        } elseif ($equipmentId > 0 && $hasGroupIdColumn) {
             $groupId = isset($selectedGroups[0]) ? (int)$selectedGroups[0] : null;
 
             $stmt = $db->prepare("
@@ -83,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_equipment_groups
             ");
             $stmt->execute([$groupId, $equipmentId]);
 
-            $message = "Groupe de l'équipement sauvegardé.";
+            $message = "Groupe sauvegarde.";
         }
     } catch (Exception $e) {
         $error = "Erreur sauvegarde groupes : " . $e->getMessage();
@@ -120,7 +189,7 @@ try {
     ")->fetchAll(PDO::FETCH_ASSOC);
 } catch (Exception $e) {
     $equipments = [];
-    $error = "Erreur chargement équipements : " . $e->getMessage();
+    $error = "Erreur chargement equipements : " . $e->getMessage();
 }
 
 /*
@@ -128,12 +197,13 @@ try {
 | Charger les associations groupes / équipements
 |--------------------------------------------------------------------------
 */
-$equipmentGroups = [];
-
 try {
     if ($hasEquipmentGroupsTable) {
         $rows = $db->query("
-            SELECT eg.equipment_id, g.id, g.name
+            SELECT 
+                eg.equipment_id,
+                g.id,
+                g.name
             FROM equipment_groups eg
             INNER JOIN groups_hvac g ON g.id = eg.group_id
             ORDER BY g.name
@@ -142,7 +212,7 @@ try {
         foreach ($rows as $row) {
             $equipmentGroups[(int)$row['equipment_id']][] = $row;
         }
-    } elseif ($hasEquipmentGroupId && $hasGroupsTable) {
+    } elseif ($hasGroupIdColumn && $hasGroupsTable) {
         foreach ($equipments as $eq) {
             if (!empty($eq['group_id'])) {
                 foreach ($groups as $group) {
@@ -156,21 +226,6 @@ try {
 } catch (Exception $e) {
     $equipmentGroups = [];
 }
-
-function format_power($power): string
-{
-    if ($power === null || $power === '') {
-        return '';
-    }
-
-    $power = (float)$power;
-
-    if ($power >= 10) {
-        return number_format($power / 10, 1, ',', ' ') . ' kW';
-    }
-
-    return number_format($power, 1, ',', ' ') . ' kW';
-}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -179,14 +234,7 @@ function format_power($power): string
     <title>Équipements</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <link
-        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-    >
-
-    <style>
-        body {
-            background-color: #f5f6f8;
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet            background-color: #f5f6f8;
         }
 
         .page-container {
@@ -229,11 +277,7 @@ function format_power($power): string
 
     <h1>Équipements</h1>
 
-    <a href="index.php" class="btn btn-secondary mb-3">
-        Retour
-    </a>
-
-    <?php if ($message !== ''): ?>
+    <a href="index.php" class="btn btn-secondary mb-3$message !== ''): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             <?= h($message) ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -273,10 +317,10 @@ function format_power($power): string
 
             <table class="table table-bordered mb-0">
                 <thead>
-                    <tr>
-                        <th>Nom</th>
-                        <th style="width: 160px;">Actions</th>
-                    </tr>
+                <tr>
+                    <th>Nom</th>
+                    <th style="width: 160px;">Actions</th>
+                </tr>
                 </thead>
 
                 <tbody>
@@ -307,21 +351,20 @@ function format_power($power): string
     </div>
 
     <!-- Unités -->
-    <form method="POST">
-        <div class="card">
-            <div class="card-header">
-                <strong>Unités</strong>
-            </div>
+    <div class="card">
+        <div class="card-header">
+            <strong>Unités</strong>
+        </div>
 
-            <div class="card-body">
+        <div class="card-body">
 
+            <form method="POST">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <button type="submit" name="save_all" class="btn btn-success">
                         💾 Sauvegarder
                     </button>
 
-                    <a href="export_equipments_json.php" class="btn btn-info">
-                        📥 Exporter en JSON
+                    <a href="export_equipments_json.php" class="btn btn-infoporter en JSON
                     </a>
                 </div>
 
@@ -406,12 +449,15 @@ function format_power($power): string
                                     </td>
 
                                     <td>
-                                        <form method="POST" onsubmit="return confirm('Supprimer cet équipement ?');">
-                                            <input type="hidden" name="equipment_id" value="<?= $equipmentId ?>">
-                                            <button type="submit" name="delete_equipment" class="btn btn-danger btn-sm btn-delete">
-                                                ❌
-                                            </button>
-                                        </form>
+                                        <button
+                                            type="submit"
+                                            name="delete_equipment"
+                                            value="1"
+                                            class="btn btn-danger btn-sm btn-delete"
+                                            onclick="document.getElementById('delete-equipment-id').value='<?= $equipmentId ?>'; return confirm('Supprimer cet équipement ?');"
+                                        >
+                                            ❌
+                                        </button>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -420,9 +466,11 @@ function format_power($power): string
                     </table>
                 </div>
 
-            </div>
+                <input type="hidden" id="delete-equipment-id" name="equipment_id" value="">
+            </form>
+
         </div>
-    </form>
+    </div>
 
 </div>
 
@@ -493,9 +541,7 @@ function format_power($power): string
     </div>
 <?php endforeach; ?>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-</body>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.jsbody>
 </html>
 }
 
@@ -521,84 +567,32 @@ function column_exists(PDO $db, string $table, string $column): bool
     }
 }
 
+function format_power($power): string
+{
+    if ($power === null || $power === '') {
+        return '';
+    }
+
+    $power = (float)$power;
+
+    if ($power >= 10) {
+        return number_format($power / 10, 1, '.', '') . ' kW';
+    }
+
+    return number_format($power, 1, '.', '') . ' kW';
+}
+
 $message = '';
 $error = '';
 
 $hasGroupsTable = table_exists($db, 'groups_hvac');
-$hasEquipmentGroupId = column_exists($db, 'equipments', 'group_id');
 $hasEquipmentGroupsTable = table_exists($db, 'equipment_groups');
+$hasGroupIdColumn = column_exists($db, 'equipments', 'group_id');
+$hasEnabledColumn = column_exists($db, 'equipments', 'enabled');
 
 $groups = [];
 $equipments = [];
+$equipmentGroups = [];
 
 /*
 |--------------------------------------------------------------------------
-| Ajouter un groupe
-|--------------------------------------------------------------------------
-*/
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_group'])) {
-    $groupName = trim($_POST['group_name'] ?? '');
-
-    if (!$hasGroupsTable) {
-        $error = "La table groups_hvac n'existe pas.";
-    } elseif ($groupName === '') {
-        $error = "Le nom du groupe est obligatoire.";
-    } else {
-        try {
-            $stmt = $db->prepare("INSERT INTO groups_hvac (name) VALUES (?)");
-            $stmt->execute([$groupName]);
-            $message = "Groupe ajouté.";
-        } catch (Exception $e) {
-            $error = "Erreur ajout groupe : " . $e->getMessage();
-        }
-    }
-}
-
-/*
-|--------------------------------------------------------------------------
-| Supprimer un groupe
-|--------------------------------------------------------------------------
-*/
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_group'])) {
-    $groupId = (int)($_POST['group_id'] ?? 0);
-
-    if ($groupId > 0 && $hasGroupsTable) {
-        try {
-            if ($hasEquipmentGroupsTable) {
-                $stmt = $db->prepare("DELETE FROM equipment_groups WHERE group_id = ?");
-                $stmt->execute([$groupId]);
-            }
-
-            if ($hasEquipmentGroupId) {
-                $stmt = $db->prepare("UPDATE equipments SET group_id = NULL WHERE group_id = ?");
-                $stmt->execute([$groupId]);
-            }
-
-            $stmt = $db->prepare("DELETE FROM groups_hvac WHERE id = ?");
-            $stmt->execute([$groupId]);
-
-            $message = "Groupe supprimé.";
-        } catch (Exception $e) {
-            $error = "Erreur suppression groupe : " . $e->getMessage();
-        }
-    }
-}
-
-/*
-|--------------------------------------------------------------------------
-| Supprimer un équipement
-|--------------------------------------------------------------------------
-*/
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) {
-    $equipmentId = (int)($_POST['equipment_id'] ?? 0);
-
-    if ($equipmentId > 0) {
-        try {
-            if ($hasEquipmentGroupsTable) {
-                $stmt = $db->prepare("DELETE FROM equipment_groups WHERE equipment_id = ?");
-                $stmt->execute([$equipmentId]);
-            }
-
-            $stmt = $db->prepare("DELETE FROM equipments WHERE id = ?");
-            $stmt->execute([$equipmentId]);
-
