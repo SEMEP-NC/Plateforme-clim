@@ -5,104 +5,18 @@ $db = get_db();
 
 /*
 |--------------------------------------------------------------------------
-| Helpers
-|--------------------------------------------------------------------------
-*/
-function table_exists(PDO $db, string $table): bool
-{
-    try {
-        $stmt = $db->prepare("SHOW TABLES LIKE ?");
-        $stmt->execute([$table]);
-        return $stmt->rowCount() > 0;
-    } catch (Exception $e) {
-        return false;
-    }
-}
+id;| Helpers
 
-function column_exists(PDO $db, string $table, string $column): bool
-{
-    try {
-        $stmt = $db->prepare("SHOW COLUMNS FROM `$table` LIKE ?");
-        $stmt->execute([$column]);
-        return $stmt->rowCount() > 0;
-    } catch (Exception $e) {
-        return false;
-    }
-}
-
-function h($value): string
-{
-    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-}
-
-/*
-|--------------------------------------------------------------------------
-| Détection des tables / colonnes
-|--------------------------------------------------------------------------
-*/
-$hasGroupsTable = table_exists($db, 'groups_hvac');
-$hasGroupId     = column_exists($db, 'equipments', 'group_id');
-
-/*
-|--------------------------------------------------------------------------
-| Messages
-|--------------------------------------------------------------------------
-*/
-$message = '';
-$error = '';
-
-/*
-|--------------------------------------------------------------------------
-| Traitement formulaire - ajout groupe
-|--------------------------------------------------------------------------
-*/
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_group'])) {
-    if ($hasGroupsTable) {
-        $groupName = trim($_POST['group_name'] ?? '');
-
-        if ($groupName !== '') {
-            try {
-                $stmt = $db->prepare("INSERT INTO groups_hvac (name) VALUES (?)");
-                $stmt->execute([$groupName]);
-                $message = "Groupe ajouté avec succès.";
-            } catch (Exception $e) {
-                $error = "Erreur lors de l'ajout du groupe : " . $e->getMessage();
-            }
-        } else {
-            $error = "Le nom du groupe ne peut pas être vide.";
-        }
-    }
-}
-
-/*
-|--------------------------------------------------------------------------
-| Traitement formulaire - sauvegarde équipements
-|--------------------------------------------------------------------------
-*/
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
-    try {
-        $names     = $_POST['name'] ?? [];
-        $ips       = $_POST['ip'] ?? [];
-        $ports     = $_POST['port'] ?? [];
-        $slaves    = $_POST['slave_id'] ?? [];
-        $powers    = $_POST['power'] ?? [];
-        $uis       = $_POST['UI'] ?? [];
-        $enableds  = $_POST['enabled'] ?? [];
-        $groupIds  = $_POST['group_id'] ?? [];
-
-        foreach ($names as $id => $name) {
-            $id = (int)$id;
-
-            $name     = trim($name);
-            $ip       = trim($ips[$id] ?? '');
-            $port     = (int)($ports[$id] ?? 502);
-            $slave_id = (int)($slaves[$id] ?? 1);
-            $power    = ($powers[$id] ?? '') !== '' ? (int)$powers[$id] : null;
-            $ui       = (int)($uis[$id] ?? 1);
-            $enabled  = isset($enableds[$id]) ? 1 : 0;
+            $name = trim($name);
+            $ip = trim($ips[$id] ?? '');
+            $port = (int)($ports[$id] ?? 502);
+            $slaveId = (int)($slaveIds[$id] ?? 1);
+            $power = ($powers[$id] ?? '') !== '' ? (int)$powers[$id] : null;
+            $ui = (int)($uis[$id] ?? 1);
+            $enabled = isset($enableds[$id]) ? 1 : 0;
 
             if ($hasGroupId) {
-                $group_id = ($groupIds[$id] ?? '') !== '' ? (int)$groupIds[$id] : null;
+                $groupId = ($groupIds[$id] ?? '') !== '' ? (int)$groupIds[$id] : null;
 
                 $stmt = $db->prepare("
                     UPDATE equipments
@@ -122,11 +36,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
                     $name,
                     $ip,
                     $port,
-                    $slave_id,
+                    $slaveId,
                     $power,
                     $ui,
                     $enabled,
-                    $group_id,
+                    $groupId,
                     $id
                 ]);
             } else {
@@ -147,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
                     $name,
                     $ip,
                     $port,
-                    $slave_id,
+                    $slaveId,
                     $power,
                     $ui,
                     $enabled,
@@ -158,13 +72,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
 
         $message = "Équipements sauvegardés avec succès.";
     } catch (Exception $e) {
-        $error = "Erreur lors de la sauvegarde : " . $e->getMessage();
+        $error = "Erreur sauvegarde : " . $e->getMessage();
     }
 }
 
 /*
 |--------------------------------------------------------------------------
-| Chargement des groupes
+| Chargement groupes
 |--------------------------------------------------------------------------
 */
 $groups = [];
@@ -183,9 +97,11 @@ if ($hasGroupsTable) {
 
 /*
 |--------------------------------------------------------------------------
-| Chargement des équipements
+| Chargement équipements
 |--------------------------------------------------------------------------
 */
+$equipments = [];
+
 try {
     if ($hasGroupsTable && $hasGroupId) {
         $equipments = $db->query("
@@ -207,17 +123,14 @@ try {
         ")->fetchAll(PDO::FETCH_ASSOC);
     }
 } catch (Exception $e) {
-    $equipments = [];
-    $error = "Erreur lors du chargement des équipements : " . $e->getMessage();
+    $error = "Erreur chargement équipements : " . $e->getMessage();
 }
-
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <title>Équipements climatisation</title>
-
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <link 
@@ -253,7 +166,7 @@ try {
         }
 
         .small-input {
-            max-width: 90px;
+            max-width: 95px;
         }
 
         .ip-input {
@@ -277,7 +190,7 @@ try {
         <div>
             <h1 class="page-title mb-1">❄️ Équipements climatisation</h1>
             <p class="text-muted mb-0">
-                Gestion des unités sauvegardées, groupes, adresses Modbus et export JSON.
+                Gestion des équipements sauvegardés, groupes et export JSON FUXA.
             </p>
         </div>
 
@@ -520,9 +433,89 @@ try {
 
 </div>
 
-<script 
-    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
-</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>
+|--------------------------------------------------------------------------
+*/
+function h($value): string
+{
+    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
+
+function table_exists(PDO $db, string $table): bool
+{
+    try {
+        $stmt = $db->prepare("SHOW TABLES LIKE ?");
+        $stmt->execute([$table]);
+        return $stmt->rowCount() > 0;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+function column_exists(PDO $db, string $table, string $column): bool
+{
+    try {
+        $stmt = $db->prepare("SHOW COLUMNS FROM `$table` LIKE ?");
+        $stmt->execute([$column]);
+        return $stmt->rowCount() > 0;
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Structure DB
+|--------------------------------------------------------------------------
+*/
+$hasGroupsTable = table_exists($db, 'groups_hvac');
+$hasGroupId = column_exists($db, 'equipments', 'group_id');
+
+$message = '';
+$error = '';
+
+/*
+|--------------------------------------------------------------------------
+| Ajouter un groupe
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_group'])) {
+    if ($hasGroupsTable) {
+        $groupName = trim($_POST['group_name'] ?? '');
+
+        if ($groupName === '') {
+            $error = "Le nom du groupe ne peut pas être vide.";
+        } else {
+            try {
+                $stmt = $db->prepare("INSERT INTO groups_hvac (name) VALUES (?)");
+                $stmt->execute([$groupName]);
+                $message = "Groupe ajouté avec succès.";
+            } catch (Exception $e) {
+                $error = "Erreur ajout groupe : " . $e->getMessage();
+            }
+        }
+    } else {
+        $error = "La table groups_hvac n'existe pas.";
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Sauvegarder les équipements
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
+    try {
+        $names = $_POST['name'] ?? [];
+        $ips = $_POST['ip'] ?? [];
+        $ports = $_POST['port'] ?? [];
+        $slaveIds = $_POST['slave_id'] ?? [];
+        $powers = $_POST['power'] ?? [];
+        $uis = $_POST['UI'] ?? [];
+        $enableds = $_POST['enabled'] ?? [];
+        $groupIds = $_POST['group_id'] ?? [];
+
+        foreach ($names as $id => $name) {
