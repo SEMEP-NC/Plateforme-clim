@@ -5,82 +5,6 @@ $db = get_db();
 
 /*
 |--------------------------------------------------------------------------
-| ACTIONS POST
-|--------------------------------------------------------------------------
-*/
-
-/* CREATE GROUP */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_group'])) {
-    $name = trim($_POST['group_name'] ?? '');
-    if ($name !== '') {
-        $db->prepare("INSERT INTO groups_hvac(name) VALUES (?)")->execute([$name]);
-    }
-    header("Location: equipments.php");
-    exit;
-}
-
-/* DELETE GROUP */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_group'])) {
-    $id = (int)($_POST['group_id'] ?? 0);
-    $db->prepare("DELETE FROM equipment_groups WHERE group_id=?")->execute([$id]);
-    $db->prepare("DELETE FROM groups_hvac WHERE id=?")->execute([$id]);
-    header("Location: equipments.php");
-    exit;
-}
-
-/* SAVE GROUPS EQUIPMENT (MODAL GROUPS) */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_groups'])) {
-    $groupId = (int)($_POST['group_id'] ?? 0);
-    $equipmentIds = $_POST['equipments'][$groupId] ?? [];
-
-    $db->prepare("DELETE FROM equipment_groups WHERE group_id = ?")->execute([$groupId]);
-
-    foreach ((array)$equipmentIds as $equipmentId) {
-        $db->prepare("INSERT INTO equipment_groups (equipment_id, group_id) VALUES (?, ?)")
-            ->execute([(int)$equipmentId, $groupId]);
-    }
-
-    header("Location: equipments.php");
-    exit;
-}
-
-/* SAVE EQUIPMENT GROUPS (MODAL EQUIP) */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_equipment_groups'])) {
-    $equipmentId = (int)($_POST['equipment_id'] ?? 0);
-    $groupIds = $_POST['groups'][$equipmentId] ?? [];
-
-    $db->prepare("DELETE FROM equipment_groups WHERE equipment_id = ?")->execute([$equipmentId]);
-
-    foreach ((array)$groupIds as $groupId) {
-        $db->prepare("INSERT INTO equipment_groups (equipment_id, group_id) VALUES (?, ?)")
-            ->execute([$equipmentId, (int)$groupId]);
-    }
-
-    header("Location: equipments.php");
-    exit;
-}
-
-/* SAVE ALL EQUIPMENTS */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
-    foreach (($_POST['name'] ?? []) as $id => $name) {
-        $db->prepare("UPDATE equipments SET name=? WHERE id=?")
-            ->execute([trim($name), (int)$id]);
-    }
-    header("Location: equipments.php");
-    exit;
-}
-
-/* DELETE EQUIPMENT */
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) {
-    $id = (int)($_POST['id'] ?? 0);
-    $db->prepare("DELETE FROM equipment_groups WHERE equipment_id=?")->execute([$id]);
-    $db->prepare("DELETE FROM equipments WHERE id=?")->execute([$id]);
-    header("Location: equipments.php");
-    exit;
-}
-
-/*
-|--------------------------------------------------------------------------
 | DATA
 |--------------------------------------------------------------------------
 */
@@ -102,8 +26,96 @@ $stmt = $db->query("
 ");
 
 foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-    $equipmentGroups[(int)$row['equipment_id']][] = (int)$row['group_id'];
-    $groupEquipments[(int)$row['group_id']][] = (int)$row['equipment_id'];
+    $equipmentGroups[$row['equipment_id']][] = $row['group_id'];
+    $groupEquipments[$row['group_id']][] = $row['equipment_id'];
+}
+
+/*
+|--------------------------------------------------------------------------
+| CREATE GROUP
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_group'])) {
+    $name = trim($_POST['group_name']);
+    if ($name !== '') {
+        $db->prepare("INSERT INTO groups_hvac(name) VALUES (?)")->execute([$name]);
+    }
+    header("Location: equipments.php");
+    exit;
+}
+
+/*
+|--------------------------------------------------------------------------
+| DELETE GROUP
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_group'])) {
+    $id = (int)$_POST['group_id'];
+    $db->prepare("DELETE FROM equipment_groups WHERE group_id=?")->execute([$id]);
+    $db->prepare("DELETE FROM groups_hvac WHERE id=?")->execute([$id]);
+    header("Location: equipments.php");
+    exit;
+}
+
+/*
+|--------------------------------------------------------------------------
+| SAVE GROUPS EQUIPMENT (MODAL GROUPS)
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_groups']) && isset($_POST['equipments'])) {
+    foreach ($_POST['equipments'] as $groupId => $equipmentIds) {
+        $groupId = (int)$groupId;
+        $db->prepare("DELETE FROM equipment_groups WHERE group_id = ?")->execute([$groupId]);
+        foreach ((array)$equipmentIds as $equipmentId) {
+            $db->prepare("INSERT INTO equipment_groups (equipment_id, group_id) VALUES (?, ?)")
+                ->execute([(int)$equipmentId, $groupId]);
+        }
+    }
+    header("Location: equipments.php");
+    exit;
+}
+
+/*
+|--------------------------------------------------------------------------
+| SAVE EQUIPMENT GROUPS (MODAL EQUIP)
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_equipment_groups']) && isset($_POST['groups'])) {
+    foreach ($_POST['groups'] as $equipmentId => $groupIds) {
+        $equipmentId = (int)$equipmentId;
+        $db->prepare("DELETE FROM equipment_groups WHERE equipment_id = ?")->execute([$equipmentId]);
+        foreach ((array)$groupIds as $groupId) {
+            $db->prepare("INSERT INTO equipment_groups (equipment_id, group_id) VALUES (?, ?)")
+                ->execute([$equipmentId, (int)$groupId]);
+        }
+    }
+    header("Location: equipments.php");
+    exit;
+}
+
+/*
+|--------------------------------------------------------------------------
+| SAVE ALL EQUIPMENTS
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
+    foreach ($_POST['name'] as $id => $name) {
+        $db->prepare("UPDATE equipments SET name=? WHERE id=?")->execute([trim($name), (int)$id]);
+    }
+    header("Location: equipments.php");
+    exit;
+}
+
+/*
+|--------------------------------------------------------------------------
+| DELETE EQUIPMENT
+|--------------------------------------------------------------------------
+*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) {
+    $id = (int)$_POST['id'];
+    $db->prepare("DELETE FROM equipments WHERE id=?")->execute([$id]);
+    header("Location: equipments.php");
+    exit;
 }
 ?>
 
@@ -167,14 +179,13 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     <div class="modal fade" id="groupModal<?= $group['id'] ?>" tabindex="-1">
         <div class="modal-dialog">
             <form method="POST" class="modal-content">
-                <input type="hidden" name="group_id" value="<?= $group['id'] ?>">
                 <div class="modal-header">
                     <h5 class="modal-title">Unités - <?= htmlspecialchars($group['name']) ?></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <?php foreach ($equipments as $equipment): ?>
-                    <?php $checked = in_array((int)$equipment['id'], $groupEquipments[(int)$group['id']] ?? [], true); ?>
+                    <?php $checked = in_array($equipment['id'], $groupEquipments[$group['id']] ?? []); ?>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="equipments[<?= $group['id'] ?>][]" value="<?= $equipment['id'] ?>" <?= $checked ? 'checked' : '' ?>>
                         <label class="form-check-label"><?= htmlspecialchars($equipment['name']) ?></label>
@@ -201,10 +212,18 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                     <button type="submit" name="save_all" class="btn btn-success">
                         💾 Sauvegarder
                     </button>
-
-                    <a href="export_equipments_json.php" class="btn btn-info">
-                        📥 Exporter en JSON
-                    </a>
+                    <div class="d-flex gap-2">
+                        <a href="export_equipments_json.php" class="btn btn-info">
+                            📥 Exporter en JSON
+                        </a>
+                        <!-- ★ NOUVEAU BOUTON FUXA ★ -->
+                        <button type="button"
+                                class="btn btn-outline-secondary"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalExportFuxa">
+                            🏷️ Exporter vers FUXA
+                        </button>
+                    </div>
                 </div>
 
                 <div class="table-responsive">
@@ -229,7 +248,7 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                                 <td><?= htmlspecialchars($equipment['UI']) ?></td>
                                 <td>
                                     <?= is_numeric($equipment['power'])
-                                        ? number_format($equipment['power'] / 10, 1) . ' kW'
+                                        ? number_format($equipment['power']/10, 1) . ' kW'
                                         : htmlspecialchars($equipment['power']) ?>
                                 </td>
                                 <td><?= htmlspecialchars($equipment['ip']) ?></td>
@@ -259,14 +278,13 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     <div class="modal fade" id="equipModal<?= $equipment['id'] ?>" tabindex="-1">
         <div class="modal-dialog">
             <form method="POST" class="modal-content">
-                <input type="hidden" name="equipment_id" value="<?= $equipment['id'] ?>">
                 <div class="modal-header">
                     <h5 class="modal-title">Groupes - <?= htmlspecialchars($equipment['name']) ?></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <?php foreach ($groups as $group): ?>
-                    <?php $checked = in_array((int)$group['id'], $equipmentGroups[(int)$equipment['id']] ?? [], true); ?>
+                    <?php $checked = in_array($group['id'], $equipmentGroups[$equipment['id']] ?? []); ?>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="groups[<?= $equipment['id'] ?>][]" value="<?= $group['id'] ?>" <?= $checked ? 'checked' : '' ?>>
                         <label class="form-check-label"><?= htmlspecialchars($group['name']) ?></label>
@@ -281,6 +299,46 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
         </div>
     </div>
     <?php endforeach; ?>
+
+    <!-- ========================= MODAL EXPORT FUXA ========================= -->
+    <div class="modal fade" id="modalExportFuxa" tabindex="-1" aria-labelledby="modalExportFuxaLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalExportFuxaLabel">🏷️ Exporter les TAGs vers FUXA</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <p>
+                        Le fichier <code>fuxa_tags_clim.json</code> contiendra
+                        <strong id="fuxaEquipCount"><?= count($equipments) ?> équipement<?= count($equipments) > 1 ? 's' : '' ?></strong>,
+                        avec <strong>3 TAGs chacun</strong> :
+                    </p>
+                    <ul>
+                        <li><strong>ON/OFF</strong> — coil commande Modbus (<code>0xAA</code> / <code>0x55</code>)</li>
+                        <li><strong>Temp consigne</strong> — registre holding, valeur ÷ 10 = °C</li>
+                        <li><strong>Puissance</strong> — registre holding, lecture seule (W)</li>
+                    </ul>
+                    <hr>
+                    <p class="text-muted small mb-1">
+                        <strong>Import dans FUXA :</strong><br>
+                        Paramètres → Appareils → menu ⋮ → <em>Import devices</em> → sélectionner ce fichier.
+                    </p>
+                    <div class="alert alert-warning small py-2 mb-0" role="alert">
+                        ⚠️ Vérifiez que <code>HUB_URL_EXTERNAL</code> est défini dans
+                        <code>docker-compose.yml</code> avec l'IP accessible depuis FUXA
+                        (par défaut : <code>localhost:8500</code>).
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <a href="export_fuxa.php" class="btn btn-primary" data-bs-dismiss="modal">
+                        ⬇️ Télécharger le JSON
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
