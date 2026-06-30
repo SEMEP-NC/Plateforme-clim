@@ -216,13 +216,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                         <a href="export_equipments_json.php" class="btn btn-info">
                             📥 Exporter en JSON
                         </a>
-                        <!-- ★ NOUVEAU BOUTON FUXA ★ -->
-                        <button type="button"
-                                class="btn btn-outline-secondary"
-                                data-bs-toggle="modal"
-                                data-bs-target="#modalExportFuxa">
-                            🏷️ Exporter vers FUXA
-                        </button>
                     </div>
                 </div>
 
@@ -299,45 +292,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
         </div>
     </div>
     <?php endforeach; ?>
-
-    <!-- ========================= MODAL EXPORT FUXA ========================= -->
-    <div class="modal fade" id="modalExportFuxa" tabindex="-1" aria-labelledby="modalExportFuxaLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalExportFuxaLabel">🏷️ Exporter les TAGs vers FUXA</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-                </div>
-                <div class="modal-body">
-                    <p>
-                        Le fichier <code>fuxa_tags_clim.json</code> contiendra
-                        <strong id="fuxaEquipCount"><?= count($equipments) ?> équipement<?= count($equipments) > 1 ? 's' : '' ?></strong>,
-                        avec <strong>3 TAGs chacun</strong> :
-                    </p>
-                    <ul>
-                        <li><strong>ON/OFF</strong> — coil commande Modbus (<code>0xAA</code> / <code>0x55</code>)</li>
-                        <li><strong>Temp consigne</strong> — registre holding, valeur ÷ 10 = °C</li>
-                        <li><strong>Puissance</strong> — registre holding, lecture seule (W)</li>
-                    </ul>
-                    <hr>
-                    <p class="text-muted small mb-1">
-                        <strong>Import dans FUXA :</strong><br>
-                        Paramètres → Appareils → menu ⋮ → <em>Import devices</em> → sélectionner ce fichier.
-                    </p>
-                    <div class="alert alert-warning small py-2 mb-0" role="alert">
-                        ⚠️ Vérifiez que <code>HUB_URL_EXTERNAL</code> est défini dans
-                        <code>docker-compose.yml</code> avec l'IP accessible depuis FUXA
-                        (par défaut : <code>localhost:8500</code>).
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <a href="export_fuxa.php" class="btn btn-primary" data-bs-dismiss="modal">
-                        ⬇️ Télécharger le JSON
-                    </a>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
