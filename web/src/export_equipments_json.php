@@ -10,8 +10,8 @@ $db = get_db();
 | FUXA doit pouvoir joindre le Modbus Hub sur cette adresse.
 | Si besoin, la variable d'environnement HUB_URL_EXTERNAL peut surcharger.
 */
-$hubReadUrl = getenv('HUB_URL_EXTERNAL') ?: 'http://10.0.0.39:8500/read';
-$hubWriteUrl = getenv('HUB_WRITE_URL_EXTERNAL') ?: 'http://10.0.0.39:8500/write';
+$hubReadUrl = getenv('HUB_URL_EXTERNAL') ?: 'http://localhost:8500/read';
+$hubWriteUrl = getenv('HUB_WRITE_URL_EXTERNAL') ?: 'http://localhost:8500/write';
 
 /*
 |--------------------------------------------------------------------------
