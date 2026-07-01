@@ -35,12 +35,25 @@ function clean_id($value) {
     return $value !== '' ? $value : 'equipement';
 }
 
-function add_tag(&$tags, $tagId, $name, $type, $address, $rw, $description, $extra = []) {
+/*
+| Le hub renvoie : { "success": true, "cached": false, "registers": [ ... ] }
+| ou registers[N] correspond directement au registre Modbus N.
+| Pour que FUXA (device WebAPI) sache extraire la bonne valeur de la
+| reponse JSON, le champ "address" du tag doit etre une expression
+| JSONata pointant vers l'index du tableau : registers[102]
+*/
+function jsonata_register_address($register) {
+    return 'registers[' . (int)$register . ']';
+}
+
+function add_tag(&$tags, $tagId, $name, $type, $register, $rw, $description, $extra = []) {
     $tag = array_merge([
         'name' => $name,
         'type' => $type,
-        'address' => $address,
-        'register' => $address,
+        // Adresse utilisee par FUXA pour lire la valeur dans la reponse JSON du hub
+        'address' => jsonata_register_address($register),
+        // Numero de registre Modbus brut, conserve pour reference / ecriture
+        'register' => $register,
         'rw' => $rw,
         'read' => true,
         'write' => $rw,
@@ -81,7 +94,7 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
 |--------------------------------------------------------------------------
 | DEVICE UNIQUE FUXA
 |--------------------------------------------------------------------------
-| Tous les équipements sont regroupés dans un seul appareil FUXA.
+| Tous les equipements sont regroupes dans un seul appareil FUXA.
 */
 $device = [
     'id' => 'climatisations',
@@ -110,7 +123,7 @@ $device = [
 | 116 + base : Temperature ambiante, valeur / 10
 | 123 + base : Puissance / information lecture
 |
-| Defaut general : 319 + 64 * (UI - 1)
+| Defaut general : 408 + 64 * (UI - 1) (coil)
 */
 foreach ($equipments as $equipment) {
     $equipmentId = (int)$equipment['id'];
@@ -232,8 +245,8 @@ foreach ($equipments as $equipment) {
         $device['tags'],
         $prefixId . '_defaut_general',
         $displayPrefix . ' - Defaut general',
-        'discrete',
-        319 + (64 * ($ui - 1)),
+        'coil',
+        408 + (64 * ($ui - 1)),
         false,
         $meta . ' | Defaut general / alarme'
     );
@@ -247,5 +260,5 @@ foreach ($equipments as $equipment) {
 header('Content-Type: application/json; charset=utf-8');
 header('Content-Disposition: attachment; filename="fuxa_tags_clim.json"');
 
- echo json_encode([$device], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+echo json_encode([$device], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 exit;
