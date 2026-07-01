@@ -396,7 +396,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
         document.querySelectorAll(".commandButton").forEach(button => {
             button.addEventListener("click", async () => {
-
+                document.getElementById("equipment_id").value = id;   
                 const id = button.dataset.id;
 
                 try {
@@ -426,6 +426,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                     console.error(e);
                     alert("Erreur lecture équipement");
                 }
+                 
             });
         });
 
