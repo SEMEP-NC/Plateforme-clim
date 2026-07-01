@@ -403,7 +403,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                 currentEquipmentId = id;
 
                 document.getElementById("equipment_id").value = id;
-                document.getElementById("commandModalLabel").innerText = "Chargement...";
+
                 try {
                     const res = await fetch(`/api/modbus_proxy.php?id=${id}`);
                     const data = await res.json();
@@ -432,8 +432,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                     document.querySelectorAll("#commandForm input[type=checkbox]")
                         .forEach(c => c.checked = false);
 
-                    document.getElementById("commandModalLabel").innerText = "Commande unité";
-                    
                     modal.show();
 
                 } catch (e) {
