@@ -1,20 +1,29 @@
 <?php
 require 'config/db.php';
 
-$pdo = get_db();
+header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+try {
+    $pdo = get_db();
 
     $id = (int)($_POST['id'] ?? 0);
-
     $action = $_POST['action'] ?: null;
-    $temperature = $_POST['temperature'] !== '' ? (int)$_POST['temperature'] : null;
+
+    $temperature = ($_POST['temperature'] === '' || !isset($_POST['temperature']))
+        ? null
+        : (int)$_POST['temperature'];
+
     $execution_time = $_POST['execution_time'] ?? null;
 
     if (!$id || !$execution_time) {
-        die("Invalid data");
+        throw new Exception("Invalid data");
     }
 
+    /**
+     * IMPORTANT :
+     * datetime-local = heure locale SANS timezone
+     * donc on considère que c'est UTC+11 côté UI
+     */
     $dt = new DateTime($execution_time, new DateTimeZone('+11:00'));
     $dt->setTimezone(new DateTimeZone('UTC'));
 
@@ -39,6 +48,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ':repeat_days' => $repeat_days_str
     ]);
 
-    header("Location: schedules.php");
+    echo json_encode([
+        "success" => true,
+        "id" => $id
+    ]);
+    exit;
+
+} catch (Throwable $e) {
+
+    echo json_encode([
+        "success" => false,
+        "error" => $e->getMessage()
+    ]);
     exit;
 }
