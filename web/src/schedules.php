@@ -97,7 +97,13 @@
 <a href="index.php" class="btn btn-secondary mb-3">
     Retour
 </a>
-<table>
+<table class="align-middle">
+    <tr>
+        <th width: 30%;></th>
+        <th width: 5%;></th>
+        <th width: 55%;></th>
+    </tr>   
+    
 <!-- =========================
      FORMULAIRE AJOUT
 ========================= -->
@@ -184,6 +190,7 @@
 
         </form>
     </td>
+    <td></td>
 <!-- =========================
      TABLEAU
 ========================= -->
