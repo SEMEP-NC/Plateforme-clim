@@ -396,9 +396,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
         document.querySelectorAll(".commandButton").forEach(button => {
             button.addEventListener("click", async () => {
-                document.getElementById("equipment_id").value = id;   
+                  
                 const id = button.dataset.id;
-
+                document.getElementById("equipment_id").value = id; 
                 try {
                     const res = await fetch(`/api/modbus_proxy.php?id=${id}`);
                     const data = await res.json();
