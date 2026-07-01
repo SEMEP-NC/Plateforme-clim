@@ -393,7 +393,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
                 try {
                     const url =
-                        `http://10.0.0.39:8500/read` +
+                        `http://modbus-hub:8500/read` +
                         `?ip=10.5.0.20` +
                         `&port=502` +
                         `&device_id=${id}` +
