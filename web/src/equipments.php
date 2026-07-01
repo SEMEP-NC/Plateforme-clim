@@ -378,7 +378,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-success">Envoyer</button>
+                        <button type="submit" class="btn btn-success" data-id="<?= $equipment['id'] ?>">Envoyer</button>
                     </div>
                 </div>
             </form>
