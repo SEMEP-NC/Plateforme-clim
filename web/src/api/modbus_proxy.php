@@ -1,9 +1,11 @@
 <?php
 require 'config/db.php';
 
-$db = get_db();
+header('Content-Type: application/json');
 
 $id = (int)($_GET['id'] ?? 0);
+
+$db = get_db();
 
 $stmt = $db->prepare("SELECT ip, port, slave_id, UI FROM equipments WHERE id = ?");
 $stmt->execute([$id]);
@@ -15,14 +17,10 @@ if (!$eq) {
     exit;
 }
 
-// fallback port
 $port = $eq['port'] ?: 502;
-
-// calcul adresse selon UI
 $ui = (int)$eq['UI'];
 $address = 102 + 25 * ($ui - 1);
 
-// appel modbus-hub (réseau docker)
 $url = "http://modbus-hub:8500/read?" . http_build_query([
     "ip" => $eq['ip'],
     "port" => $port,
@@ -32,7 +30,22 @@ $url = "http://modbus-hub:8500/read?" . http_build_query([
     "count" => 4
 ]);
 
-$response = file_get_contents($url);
+// IMPORTANT : gestion d'erreur propre
+$ch = curl_init($url);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_TIMEOUT, 3);
 
-header('Content-Type: application/json');
+$response = curl_exec($ch);
+
+if ($response === false) {
+    http_response_code(500);
+    echo json_encode([
+        "success" => false,
+        "error" => curl_error($ch)
+    ]);
+    exit;
+}
+
+curl_close($ch);
+
 echo $response;
