@@ -199,8 +199,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                 <div class="modal-body">
 
                     <table class="table table-bordered">
+
                         <tr>
-                            <th>Marche/Arrêt</th>
+                            <th>
+                                <input type="checkbox" id="send_power">
+                                Marche / Arrêt
+                            </th>
                             <td>
                                 <select id="g_power" class="form-select">
                                     <option value="170">Marche</option>
@@ -210,7 +214,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                         </tr>
 
                         <tr>
-                            <th>Mode</th>
+                            <th>
+                                <input type="checkbox" id="send_mode">
+                                Mode
+                            </th>
                             <td>
                                 <select id="g_mode" class="form-select">
                                     <option value="1">Froid</option>
@@ -223,14 +230,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                         </tr>
 
                         <tr>
-                            <th>Consigne</th>
+                            <th>
+                                <input type="checkbox" id="send_setpoint">
+                                Consigne
+                            </th>
                             <td>
                                 <input id="g_setpoint" type="number" class="form-control" min="16" max="30" step="0.5">
                             </td>
                         </tr>
 
                         <tr>
-                            <th>Ventilation</th>
+                            <th>
+                                <input type="checkbox" id="send_fan">
+                                Ventilation
+                            </th>
                             <td>
                                 <select id="g_fan" class="form-select">
                                     <option value="1">Auto</option>
