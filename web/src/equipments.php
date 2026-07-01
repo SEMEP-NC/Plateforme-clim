@@ -623,25 +623,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                 return;
             }
 
+            const registers = {};
+
+            if (document.getElementById("send_power_group").checked) {
+                const v = document.getElementById("g_power").value;
+                if (v !== "") registers.power = parseInt(v);
+            }
+
+            if (document.getElementById("send_mode_group").checked) {
+                const v = document.getElementById("g_mode").value;
+                if (v !== "") registers.mode = parseInt(v);
+            }
+
+            if (document.getElementById("send_setpoint_group").checked) {
+                const v = document.getElementById("g_setpoint").value;
+                if (v !== "") registers.setpoint = Math.round(parseFloat(v) * 10);
+            }
+
+            if (document.getElementById("send_fan_group").checked) {
+                const v = document.getElementById("g_fan").value;
+                if (v !== "") registers.fan = parseInt(v);
+            }
+
             const payload = {
                 group_id: currentGroupId,
-                const registers = {};
-
-                if (document.getElementById("send_power_group").checked) {
-                    registers.power = parseInt(document.getElementById("g_power").value);
-                }
-
-                if (document.getElementById("send_mode_group").checked) {
-                    registers.mode = parseInt(document.getElementById("g_mode").value);
-                }
-
-                if (document.getElementById("send_setpoint_group").checked) {
-                    registers.setpoint = Math.round(parseFloat(document.getElementById("g_setpoint").value) * 10);
-                }
-
-                if (document.getElementById("send_fan_group").checked) {
-                    registers.fan = parseInt(document.getElementById("g_fan").value);
-                }
+                registers: registers
             };
 
             try {
