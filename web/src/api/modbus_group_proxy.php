@@ -1,5 +1,7 @@
 <?php
+require '../config/db.php';
 $action = $_GET['action'] ?? null;
+$db = get_db();
 
 if ($action === 'write_group') {
 
