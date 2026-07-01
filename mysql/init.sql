@@ -23,9 +23,6 @@ CREATE TABLE IF NOT EXISTS schedules (
     executed TINYINT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (equipment_id)
-    REFERENCES equipments(id)
-    ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS command_logs (
