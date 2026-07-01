@@ -403,7 +403,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                 currentEquipmentId = id;
 
                 document.getElementById("equipment_id").value = id;
-
+                document.getElementById("commandModalLabel").innerText = "Chargement...";
                 try {
                     const res = await fetch(`/api/modbus_proxy.php?id=${id}`);
                     const data = await res.json();
@@ -432,6 +432,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                     document.querySelectorAll("#commandForm input[type=checkbox]")
                         .forEach(c => c.checked = false);
 
+                    document.getElementById("commandModalLabel").innerText = "Commande unité";
+                    
                     modal.show();
 
                 } catch (e) {
@@ -487,17 +489,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             }
 
             try {
-                const safeRegs = regs.map(v => {
-                    const n = Number(v);
-                    return (isNaN(n) || n === null || n === undefined) ? 0 : n;
-                });
+                
                 const res = await fetch(`/api/modbus_proxy.php?action=write&id=${id}`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
-                        registers: saferegs
+                        registers: regs
                     })
                 });
 
