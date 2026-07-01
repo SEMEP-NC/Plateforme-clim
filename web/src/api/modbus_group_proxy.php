@@ -1,4 +1,6 @@
 <?php
+$action = $_GET['action'] ?? null;
+
 if ($action === 'write_group') {
 
     header('Content-Type: application/json');
