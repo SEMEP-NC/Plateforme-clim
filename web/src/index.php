@@ -1,5 +1,6 @@
 <?php
 require 'auth.php';
+session_start();
 ?>
 <!DOCTYPE html>
 <html lang="fr">

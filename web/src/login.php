@@ -105,16 +105,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adminExists) {
                     Aucun administrateur détecté. Création obligatoire.
                 </div>
 
-                <label>Nom admin</label>
-                <input type="text" name="username" class="form-control mb-3" required>
+                <!-- USERNAME FORCÉ -->
+                <label>Nom utilisateur</label>
+                <input type="text"
+                       class="form-control mb-3"
+                       value="admin"
+                       disabled>
 
+                <!-- hidden pour POST -->
+                <input type="hidden" name="username" value="admin">
+
+                <!-- PASSWORD -->
                 <label>Mot de passe</label>
-                <input type="password" name="password" class="form-control mb-3" required>
+                <input type="password" name="password" id="pwd1"
+                       class="form-control mb-3" required>
+
+                <!-- CONFIRM PASSWORD -->
+                <label>Confirmer mot de passe</label>
+                <input type="password" name="password_confirm" id="pwd2"
+                       class="form-control mb-3" required>
+
+                <div id="pwdError" class="text-danger small d-none">
+                    Les mots de passe ne correspondent pas
+                </div>
 
             </div>
 
             <div class="modal-footer">
-                <button class="btn btn-success w-100">
+                <button type="submit" class="btn btn-success w-100">
                     Créer administrateur
                 </button>
             </div>
