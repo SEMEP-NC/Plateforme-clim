@@ -379,14 +379,30 @@
                 document.getElementById('edit_action').value = btn.dataset.action || '';
                 document.getElementById('edit_temperature').value = btn.dataset.temperature || '';
 
-                // SAFE datetime parsing
                 let dt = btn.dataset.execution || '';
-                if (dt.includes(' ')) {
-                    dt = dt.replace(' ', 'T');
-                }
-                dt = dt.substring(0, 16);
 
-                document.getElementById('edit_execution').value = dt;
+                if (dt) {
+                    // PHP format: "YYYY-MM-DD HH:MM:SS"
+                    dt = dt.replace(' ', 'T');
+
+                    const utcDate = new Date(dt + 'Z'); // force UTC
+
+                    // convert to UTC+11
+                    const localOffsetMs = 11 * 60 * 60 * 1000;
+                    const localDate = new Date(utcDate.getTime() + localOffsetMs);
+
+                    // format YYYY-MM-DDTHH:MM
+                    const pad = n => String(n).padStart(2, '0');
+
+                    const formatted =
+                        localDate.getFullYear() + '-' +
+                        pad(localDate.getMonth() + 1) + '-' +
+                        pad(localDate.getDate()) + 'T' +
+                        pad(localDate.getHours()) + ':' +
+                        pad(localDate.getMinutes());
+
+                    document.getElementById('edit_execution').value = formatted;
+                }
 
                 // reset repeat
                 document.querySelectorAll('.edit_repeat').forEach(cb => cb.checked = false);
