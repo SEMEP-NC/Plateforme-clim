@@ -229,7 +229,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                 <th>IP</th>
                                 <th>Slave</th>
                                 <th>Groupes</th>
-                                <th>Actions</th>
+                                <th>Commandes</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -249,6 +250,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                 <td>
                                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#equipModal<?= $equipment['id'] ?>">
                                         Groupes
+                                    </button>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-warning btn-sm commandButton" data-id="<?= $equipment['id'] ?>"data-name="<?= htmlspecialchars($equipment['name']) ?>">
+                                        Commande
                                     </button>
                                 </td>
                                 <td>
@@ -292,8 +298,105 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
         </div>
     </div>
     <?php endforeach; ?>
+    <!-- ========================= MODALS COMMANDE EQUIP ========================= -->
+    <div class="modal fade" id="commandModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <form id="commandForm">
+                <input type="hidden" id="equipment_id" name="equipment_id">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            Commande unité
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <table class="table table-bordered align-middle">
+                            <thead>
+                                <tr>
+                                    <th width="60"></th>
+                                    <th>Paramètre</th>
+                                    <th>Valeur</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input class="form-check-input" type="checkbox" name="send_power"></td>
+                                    <td>Marche / Arrêt</td>
+                                    <td>
+                                        <select class="form-select" id="power" name="power">
+                                            <option value="170">Marche</option>
+                                            <option value="85">Arrêt</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><input class="form-check-input" type="checkbox" name="send_mode"></td>
+                                    <td>Mode</td>
+                                    <td>
+                                        <select class="form-select" id="mode" name="mode">
+                                            <option value="1">Froid</option>
+                                            <option value="2">Déshumidification</option>
+                                            <option value="3">Ventilation</option>
+                                            <option value="4">Chauffage</option>
+                                            <option value="5">Automatique</option>
+                                            <option value="6">Plancher chauffant</option>
+                                            <option value="7">Chauffage rapide</option>
+                                            <option value="8">Heat Supply</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><input class="form-check-input" type="checkbox" name="send_setpoint"></td>
+                                    <td>Consigne</td>
+                                    <td><input class="form-control" type="number" min="16" max="30" step="0.5" id="setpoint" name="setpoint"></td>
+                                </tr>
+                                <tr>
+                                    <td><input class="form-check-input" type="checkbox" name="send_fan"> </td>
+                                    <td>Vitesse ventilation</td>
+                                    <td>
+                                        <select class="form-select" id="fan" name="fan">
+                                            <option value="1">Auto</option>
+                                            <option value="2">Faible</option>
+                                            <option value="3">Moyen faible</option>
+                                            <option value="4">Moyen</option>
+                                            <option value="5">Moyen fort</option>
+                                            <option value="6">Fort</option>
+                                            <option value="7">Turbo</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-success">Envoyer</button>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const modal=new bootstrap.Modal(document.getElementById("commandModal"));
+        document.querySelectorAll(".commandButton").forEach(button=>{
+            button.addEventListener("click",()=>{
+                const id=button.dataset.id;
+                document.getElementById("equipment_id").value=id;
+                fetch("api/read_equipment.php?id="+id)
+                    .then(r=>r.json())
+                    .then(data=>{
+                        document.getElementById("power").value=data.power;
+                        document.getElementById("mode").value=data.mode;
+                        document.getElementById("setpoint").value=data.setpoint;
+                        document.getElementById("fan").value=data.fan;
+                        document.querySelectorAll("#commandForm input[type=checkbox]").forEach(c=>c.checked=false);
+                        modal.show();
+                    });
+                });
+            });
+    </script>
 </body>
 </html>
