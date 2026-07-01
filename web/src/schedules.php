@@ -192,6 +192,7 @@
 
     <thead class="table-dark">
         <tr>
+            <th>Actif</th>
             <th>Équipement</th>
             <th>Action</th>
             <th>Température</th>
@@ -206,6 +207,14 @@
 
         <?php foreach ($schedules as $schedule): ?>
             <tr>
+                <td>
+                    <form method="POST" action="toggle_schedule.php">
+                        <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
+                        <button class="btn btn-sm <?= $schedule['enabled'] ? 'btn-success' : 'btn-secondary' ?>">
+                            <?= $schedule['enabled'] ? 'Actif' : 'Inactif' ?>
+                        </button>
+                    </form>
+                </td>
                 <td>
                     <?php if (!empty($schedule['group_name'])): ?>
                         <span class="badge bg-primary">
@@ -266,7 +275,7 @@
                         <span class="badge bg-warning text-dark">Non</span>
                     <?php endif; ?>
                 </td>
-                <td>
+                <td class="d-flex gap-1">
                     <button
                         class="btn btn-sm btn-primary editScheduleBtn"
                         data-id="<?= $schedule['id'] ?>"
@@ -278,12 +287,20 @@
                         Modifier
                     </button>
 
-                    <form method="POST" action="delete_schedule.php" style="display:inline;">
+                    <form method="POST" action="duplicate_schedule.php">
+                        <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
+                        <button class="btn btn-sm btn-outline-primary">
+                            Dupliquer
+                        </button>
+                    </form>
+
+                    <form method="POST" action="delete_schedule.php">
                         <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
                         <button class="btn btn-sm btn-danger" onclick="return confirm('Supprimer ce planning ?')">
                             Supprimer
                         </button>
                     </form>
+
                 </td>
             </tr>
 
