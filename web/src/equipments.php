@@ -387,36 +387,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        
         const modalEl = document.getElementById("commandModal");
         const modal = new bootstrap.Modal(modalEl);
 
         let lastReadRegisters = [];
+        let currentEquipmentId = null;
 
-
+        /* =========================
+        READ + OPEN MODAL
+        ========================= */
         document.querySelectorAll(".commandButton").forEach(button => {
             button.addEventListener("click", async () => {
-                  
+
                 const id = button.dataset.id;
-                document.getElementById("equipment_id").value = id; 
+                currentEquipmentId = id;
+
+                document.getElementById("equipment_id").value = id;
+
                 try {
                     const res = await fetch(`/api/modbus_proxy.php?id=${id}`);
                     const data = await res.json();
 
-                    if (!data.success) throw new Error("Modbus error");
+                    if (!data.success) throw new Error("Modbus read error");
 
-                    const regs = data.registers;
+                    const regs = Array.isArray(data.registers) ? data.registers : [];
 
-                    // sauvegarde pour read-modify-write
-                    lastReadRegisters = [...regs];
+                    // sécurité anti None/undefined
+                    lastReadRegisters = regs.map(v =>
+                        (v === null || v === undefined || isNaN(v)) ? 0 : Number(v)
+                    );
+
+                    // fallback si pas 4 registres
+                    while (lastReadRegisters.length < 4) {
+                        lastReadRegisters.push(0);
+                    }
 
                     // UI update
-                    document.getElementById("power").value = regs[0];
-                    document.getElementById("mode").value = regs[1];
-                    document.getElementById("setpoint").value = regs[2] / 10;
-                    document.getElementById("fan").value = regs[3];
+                    document.getElementById("power").value = lastReadRegisters[0];
+                    document.getElementById("mode").value = lastReadRegisters[1];
+                    document.getElementById("setpoint").value = lastReadRegisters[2] / 10;
+                    document.getElementById("fan").value = lastReadRegisters[3];
 
-                    // reset checkboxes à chaque ouverture
+                    // reset checkboxes
                     document.querySelectorAll("#commandForm input[type=checkbox]")
                         .forEach(c => c.checked = false);
 
@@ -426,38 +438,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                     console.error(e);
                     alert("Erreur lecture équipement");
                 }
-                 
             });
         });
 
 
-
+        /* =========================
+        WRITE (READ-MODIFY-WRITE)
+        ========================= */
         document.getElementById("commandForm").addEventListener("submit", async (e) => {
             e.preventDefault();
 
-            const id = document.getElementById("equipment_id").value;
+            const id = currentEquipmentId || document.getElementById("equipment_id").value;
 
-            // fallback = valeurs lues
+            if (!id) {
+                alert("ID équipement manquant");
+                return;
+            }
+
+            // clone sécurisé
             const regs = [...lastReadRegisters];
+
+            // fallback sécurité
+            for (let i = 0; i < 4; i++) {
+                if (regs[i] === undefined || regs[i] === null || isNaN(regs[i])) {
+                    regs[i] = 0;
+                }
+            }
 
             // POWER
             if (document.querySelector('[name="send_power"]').checked) {
-                regs[0] = parseInt(document.getElementById("power").value);
+                regs[0] = parseInt(document.getElementById("power").value) || 0;
             }
 
             // MODE
             if (document.querySelector('[name="send_mode"]').checked) {
-                regs[1] = parseInt(document.getElementById("mode").value);
+                regs[1] = parseInt(document.getElementById("mode").value) || 0;
             }
 
             // SETPOINT (x10 Modbus)
             if (document.querySelector('[name="send_setpoint"]').checked) {
-                regs[2] = Math.round(parseFloat(document.getElementById("setpoint").value) * 10);
+                const sp = parseFloat(document.getElementById("setpoint").value);
+                regs[2] = isNaN(sp) ? 0 : Math.round(sp * 10);
             }
 
             // FAN
             if (document.querySelector('[name="send_fan"]').checked) {
-                regs[3] = parseInt(document.getElementById("fan").value);
+                regs[3] = parseInt(document.getElementById("fan").value) || 0;
             }
 
             try {
@@ -473,7 +499,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
                 const data = await res.json();
 
-                if (!data.success) throw new Error("Write failed");
+                if (!data.success) throw new Error(data.error || "Write failed");
 
                 alert("Commande envoyée");
                 modal.hide();
@@ -483,7 +509,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                 alert("Erreur écriture Modbus");
             }
         });
-
     </script>
 </body>
 </html>
