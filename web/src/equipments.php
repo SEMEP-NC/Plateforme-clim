@@ -185,73 +185,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
         </div>
     </div>
      <!-- ========================= MODALS COMMANDE GROUP ========================= -->   
-    <div class="modal-dialog modal-lg">
-        <form id="groupCommandForm" class="modal-content">
-            <input type="hidden" id="group_id">
-            <div class="modal-header">
-                <h5 class="modal-title">Commande groupe</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">               
-                <table class="table table-bordered align-middle">
+    <div class="modal fade" id="groupCommandModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <form id="groupCommandForm" class="modal-content">
+                <input type="hidden" id="group_id">
+                <div class="modal-header">
+                    <h5 class="modal-title">Commande groupe</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">               
+                    <table class="table table-bordered align-middle">
 
-                    <tr>
-                        <td><input class="form-check-input" type="checkbox" id="send_power_group"></td>
-                        <td>Marche / Arrêt</td>
-                        <td>
-                            <select id="g_power" class="form-select">
-                                <option value=""></option>
-                                <option value="170">Marche</option>
-                                <option value="85">Arrêt</option>
-                            </select>
-                        </td>
-                    </tr>
+                        <tr>
+                            <td><input class="form-check-input" type="checkbox" id="send_power_group"></td>
+                            <td>Marche / Arrêt</td>
+                            <td>
+                                <select id="g_power" class="form-select">
+                                    <option value=""></option>
+                                    <option value="170">Marche</option>
+                                    <option value="85">Arrêt</option>
+                                </select>
+                            </td>
+                        </tr>
 
-                    <tr>
-                        <td><input class="form-check-input" type="checkbox" id="send_mode_group"></td>
-                        <td>Mode</td>
-                        <td>
-                            <select id="g_mode" class="form-select">
-                                <option value=""></option>
-                                <option value="1">Froid</option>
-                                <option value="2">Déshumidification</option>
-                                <option value="3">Ventilation</option>
-                                <option value="4">Chauffage</option>
-                                <option value="5">Auto</option>
-                            </select>
-                        </td>
-                    </tr>
+                        <tr>
+                            <td><input class="form-check-input" type="checkbox" id="send_mode_group"></td>
+                            <td>Mode</td>
+                            <td>
+                                <select id="g_mode" class="form-select">
+                                    <option value=""></option>
+                                    <option value="1">Froid</option>
+                                    <option value="2">Déshumidification</option>
+                                    <option value="3">Ventilation</option>
+                                    <option value="4">Chauffage</option>
+                                    <option value="5">Auto</option>
+                                </select>
+                            </td>
+                        </tr>
 
-                    <tr>
-                        <td><input class="form-check-input" type="checkbox" id="send_setpoint_group"></td>
-                        <td>Consigne</td>
-                        <td>
-                            <input id="g_setpoint" type="number" class="form-control" min="16" max="30" step="0.5">
-                        </td>
-                    </tr>
+                        <tr>
+                            <td><input class="form-check-input" type="checkbox" id="send_setpoint_group"></td>
+                            <td>Consigne</td>
+                            <td>
+                                <input id="g_setpoint" type="number" class="form-control" min="16" max="30" step="0.5">
+                            </td>
+                        </tr>
 
-                    <tr>
-                        <td><input class="form-check-input" type="checkbox" id="send_fan_group"></td>
-                        <td>Ventilation</td>
-                        <td>
-                            <select id="g_fan" class="form-select">
-                                <option value=""></option>
-                                <option value="1">Auto</option>
-                                <option value="2">Faible</option>
-                                <option value="3">Moyen</option>
-                                <option value="4">Fort</option>
-                            </select>
-                        </td>
-                    </tr>
+                        <tr>
+                            <td><input class="form-check-input" type="checkbox" id="send_fan_group"></td>
+                            <td>Ventilation</td>
+                            <td>
+                                <select id="g_fan" class="form-select">
+                                    <option value=""></option>
+                                    <option value="1">Auto</option>
+                                    <option value="2">Faible</option>
+                                    <option value="3">Moyen</option>
+                                    <option value="4">Fort</option>
+                                </select>
+                            </td>
+                        </tr>
 
-                </table>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="submit" class="btn btn-success">Envoyer groupe</button>
-            </div>
-        </form>
-        
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success">Envoyer groupe</button>
+                </div>
+            </form>
+        </div>    
     </div>
   
     <!-- ========================= MODALS GROUP → EQUIP ========================= -->
