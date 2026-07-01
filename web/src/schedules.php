@@ -23,10 +23,13 @@
     $schedules = $pdo->query("
         SELECT
             schedules.*,
-            equipments.name AS equipment_name
+            equipments.name AS equipment_name,
+            groups_hvac.name AS group_name
         FROM schedules
         LEFT JOIN equipments
             ON equipments.id = schedules.equipment_id
+        LEFT JOIN groups_hvac
+            ON groups_hvac.id = schedules.group_id
         ORDER BY schedules.execution_time ASC
     ")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -40,6 +43,18 @@
         SELECT id, name
         FROM equipments
         WHERE enabled = 1
+        ORDER BY name
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
+    /*
+    |--------------------------------------------------------------------------
+    | GROUPS LIST
+    |--------------------------------------------------------------------------
+    */
+
+    $groups = $pdo->query("
+        SELECT id, name
+        FROM groups_hvac
         ORDER BY name
     ")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -91,8 +106,25 @@
 
     <h4 class="mb-3">Ajouter un planning</h4>
 
-    <label class="form-label">Équipement</label>
-    <select name="equipment_id" class="form-control mb-3" required>
+    <label class="form-label">Cible</label>
+
+    <select name="equipment_id" class="form-control mb-3">
+        <option value="">— Aucun équipement —</option>
+        <?php foreach ($equipments as $equipment): ?>
+            <option value="<?= (int)$equipment['id'] ?>">
+                Équipement : <?= htmlspecialchars($equipment['name']) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+
+    <select name="group_id" class="form-control mb-3">
+        <option value="">— Aucun groupe —</option>
+        <?php foreach ($groups as $group): ?>
+            <option value="<?= (int)$group['id'] ?>">
+                Groupe : <?= htmlspecialchars($group['name']) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
 
         <?php foreach ($equipments as $equipment): ?>
             <option value="<?= (int)$equipment['id'] ?>">
@@ -101,6 +133,9 @@
         <?php endforeach; ?>
 
     </select>
+    <small class="text-muted">
+        Choisir soit un équipement, soit un groupe (pas les deux).
+    </small>
 
     <label class="form-label">Action</label>
         <select name="action" class="form-control mb-3">
@@ -177,7 +212,17 @@
         <?php foreach ($schedules as $schedule): ?>
             <tr>
                 <td>
-                    <?= htmlspecialchars($schedule['equipment_name'] ?? '—') ?>
+                    <?php if (!empty($schedule['group_name'])): ?>
+                        <span class="badge bg-primary">
+                            Groupe : <?= htmlspecialchars($schedule['group_name']) ?>
+                        </span>
+                    <?php elseif (!empty($schedule['equipment_name'])): ?>
+                        <span class="badge bg-secondary">
+                            Équipement : <?= htmlspecialchars($schedule['equipment_name']) ?>
+                        </span>
+                    <?php else: ?>
+                        <span class="text-muted">—</span>
+                    <?php endif; ?>
                 </td>
                 <td>
                     <?php if ($schedule['action'] === 'ON'): ?>

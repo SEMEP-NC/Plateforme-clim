@@ -5,8 +5,19 @@ require 'config/db.php';
 $pdo = get_db();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $equipment_id = (int)($_POST['equipment_id'] ?? 0);
+    $equipment_id = !empty($_POST['equipment_id'])
+        ? (int)$_POST['equipment_id']
+        : null;
 
+    $group_id = !empty($_POST['group_id'])
+        ? (int)$_POST['group_id']
+        : null;
+
+    if (($equipment_id === null && $group_id === null) ||
+        ($equipment_id !== null && $group_id !== null)) {
+        http_response_code(400);
+        die('Veuillez choisir un équipement OU un groupe (un seul).');
+    }
     $action = empty($_POST['action'])
         ? null
         : $_POST['action'];
@@ -59,12 +70,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $stmt = $pdo->prepare("
         INSERT INTO schedules
-            (equipment_id, action, temperature, execution_time, repeat_days, executed)
+            (equipment_id, group_id, action, temperature, execution_time, repeat_days, executed)
         VALUES
-            (:equipment_id, :action, :temperature, :execution_time, :repeat_days, 0)
+            (:equipment_id, :group_id, :action, :temperature, :execution_time, :repeat_days, 0)
     ");
 
-    $stmt->bindValue(':equipment_id', $equipment_id, PDO::PARAM_INT);
+    if ($equipment_id === null) {
+        $stmt->bindValue(':equipment_id', null, PDO::PARAM_NULL);
+    } else {
+        $stmt->bindValue(':equipment_id', $equipment_id, PDO::PARAM_INT);
+    }
+
+    if ($group_id === null) {
+        $stmt->bindValue(':group_id', null, PDO::PARAM_NULL);
+    } else {
+        $stmt->bindValue(':group_id', $group_id, PDO::PARAM_INT);
+    }
 
     if ($action === null) {
         $stmt->bindValue(':action', null, PDO::PARAM_NULL);
