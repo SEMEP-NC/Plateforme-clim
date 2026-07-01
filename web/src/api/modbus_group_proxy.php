@@ -60,7 +60,8 @@ if ($action === 'write_group') {
             "type" => "register",
             "address" => $address,
             "count" => 4,
-            "values" => $regs
+            "values" => $regs,
+            "UI" => $eq['UI']
         ];
 
         $ch = curl_init($url);
