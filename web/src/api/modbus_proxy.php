@@ -3,9 +3,10 @@ require '../config/db.php';
 
 header('Content-Type: application/json');
 
-$id = (int)($_GET['id'] ?? 0);
-
 $db = get_db();
+
+$action = $_GET['action'] ?? 'read';
+$id = (int)($_GET['id'] ?? 0);
 
 $stmt = $db->prepare("SELECT ip, port, slave_id, UI FROM equipments WHERE id = ?");
 $stmt->execute([$id]);
@@ -21,31 +22,104 @@ $port = $eq['port'] ?: 502;
 $ui = (int)$eq['UI'];
 $address = 102 + 25 * ($ui - 1);
 
-$url = "http://modbus-hub:8500/read?" . http_build_query([
-    "ip" => $eq['ip'],
-    "port" => $port,
-    "device_id" => $eq['slave_id'],
-    "type" => "register",
-    "address" => $address,
-    "count" => 4
-]);
+/* =========================
+   READ
+========================= */
+if ($action === 'read') {
 
-// IMPORTANT : gestion d'erreur propre
-$ch = curl_init($url);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_TIMEOUT, 3);
-
-$response = curl_exec($ch);
-
-if ($response === false) {
-    http_response_code(500);
-    echo json_encode([
-        "success" => false,
-        "error" => curl_error($ch)
+    $url = "http://modbus-hub:8500/read?" . http_build_query([
+        "ip" => $eq['ip'],
+        "port" => $port,
+        "device_id" => $eq['slave_id'],
+        "type" => "register",
+        "address" => $address,
+        "count" => 4
     ]);
+    
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+
+    $response = curl_exec($ch);
+
+    if ($response === false) {
+        http_response_code(500);
+        echo json_encode([
+            "success" => false,
+            "error" => curl_error($ch)
+        ]);
+        exit;
+    }
+
+    curl_close($ch);
+
+    echo $response;
     exit;
 }
 
-curl_close($ch);
+/* =========================
+   WRITE
+========================= */
+if ($action === 'write') {
 
-echo $response;
+    header('Content-Type: application/json');
+
+    $payload = json_decode(file_get_contents("php://input"), true);
+
+    if (!$payload || !isset($payload['registers'])) {
+        echo json_encode([
+            "success" => false,
+            "error" => "Invalid JSON or missing registers"
+        ]);
+        exit;
+    }
+
+    $registers = $payload['registers'];
+
+    if (!is_array($registers) || count($registers) !== 4) {
+        echo json_encode([
+            "success" => false,
+            "error" => "Registers must be an array of 4 values"
+        ]);
+        exit;
+    }
+
+    // URL modbus-hub
+    $url = "http://modbus-hub:8500/write";
+
+    $requestBody = [
+        "ip" => $eq['ip'],
+        "port" => $port,
+        "device_id" => $eq['slave_id'],
+        "type" => "multiple_registers",
+        "address" => $address,
+        "count" => 4,
+        "values" => array_map('intval', $registers)
+    ];
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json'
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($requestBody));
+
+    $response = curl_exec($ch);
+
+    if ($response === false) {
+        echo json_encode([
+            "success" => false,
+            "error" => curl_error($ch)
+        ]);
+        curl_close($ch);
+        exit;
+    }
+
+    curl_close($ch);
+
+    // renvoyer brut modbus-hub
+    echo $response;
+    exit;
+}

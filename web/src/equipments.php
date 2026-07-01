@@ -14,7 +14,7 @@ $groups = $db->query("
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 $equipments = $db->query("
-    SELECT * FROM equipments ORDER BY name
+    SELECT * FROM equipments ORDER BY UI
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 /* relations */
@@ -387,8 +387,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        
         const modalEl = document.getElementById("commandModal");
         const modal = new bootstrap.Modal(modalEl);
+
+        let lastReadRegisters = [];
+
 
         document.querySelectorAll(".commandButton").forEach(button => {
             button.addEventListener("click", async () => {
@@ -403,12 +407,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
                     const regs = data.registers;
 
+                    // sauvegarde pour read-modify-write
+                    lastReadRegisters = [...regs];
+
+                    // UI update
                     document.getElementById("power").value = regs[0];
                     document.getElementById("mode").value = regs[1];
                     document.getElementById("setpoint").value = regs[2] / 10;
                     document.getElementById("fan").value = regs[3];
 
-                    modal.show(); // ✔ OK maintenant
+                    // reset checkboxes à chaque ouverture
+                    document.querySelectorAll("#commandForm input[type=checkbox]")
+                        .forEach(c => c.checked = false);
+
+                    modal.show();
 
                 } catch (e) {
                     console.error(e);
@@ -416,6 +428,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                 }
             });
         });
+
+
+
+        document.getElementById("commandForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const id = document.getElementById("equipment_id").value;
+
+            // fallback = valeurs lues
+            const regs = [...lastReadRegisters];
+
+            // POWER
+            if (document.querySelector('[name="send_power"]').checked) {
+                regs[0] = parseInt(document.getElementById("power").value);
+            }
+
+            // MODE
+            if (document.querySelector('[name="send_mode"]').checked) {
+                regs[1] = parseInt(document.getElementById("mode").value);
+            }
+
+            // SETPOINT (x10 Modbus)
+            if (document.querySelector('[name="send_setpoint"]').checked) {
+                regs[2] = Math.round(parseFloat(document.getElementById("setpoint").value) * 10);
+            }
+
+            // FAN
+            if (document.querySelector('[name="send_fan"]').checked) {
+                regs[3] = parseInt(document.getElementById("fan").value);
+            }
+
+            try {
+                const res = await fetch(`/api/modbus_proxy.php?action=write&id=${id}`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        registers: regs
+                    })
+                });
+
+                const data = await res.json();
+
+                if (!data.success) throw new Error("Write failed");
+
+                alert("Commande envoyée");
+                modal.hide();
+
+            } catch (err) {
+                console.error(err);
+                alert("Erreur écriture Modbus");
+            }
+        });
+
     </script>
 </body>
 </html>
