@@ -154,7 +154,6 @@ $units = $db->query("
         <label class="form-label">SLAVE IDS</label>
         <input type="text" name="slave_ids" value="<?= htmlspecialchars($config['slave_ids'] ?? '') ?>" class="form-control mb-3">
 
-        <button type="submit" name="save_config" value="1" class="btn btn-primary">Sauvegarder</button>
         <button type="submit" name="run_discovery" value="1" class="btn btn-warning">Recherche</button>
     </div>
 

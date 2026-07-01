@@ -1,6 +1,16 @@
 <?php
 require '../config/db.php';
 
+function log_modbus($msg, $data = null) {
+    $line = "[MODBUS PROXY] " . $msg;
+
+    if ($data !== null) {
+        $line .= " " . json_encode($data, JSON_UNESCAPED_SLASHES);
+    }
+
+    error_log($line);
+}
+
 header('Content-Type: application/json');
 
 $db = get_db();
@@ -66,6 +76,8 @@ if ($action === 'write') {
 
     $payload = json_decode(file_get_contents("php://input"), true);
 
+
+
     if (!$payload || !isset($payload['registers'])) {
         echo json_encode([
             "success" => false,
@@ -74,7 +86,18 @@ if ($action === 'write') {
         exit;
     }
 
-    $registers = $payload['registers'];
+    $registers = $payload['registers'] ?? [];
+
+
+    $registers = array_map(function($v) {
+        if (!is_numeric($v)) return 0;
+        return (int)$v;
+    }, $registers);
+
+    // force taille fixe 4
+    while (count($registers) < 4) {
+        $registers[] = 0;
+    }
 
     if (!is_array($registers) || count($registers) !== 4) {
         echo json_encode([
@@ -83,6 +106,7 @@ if ($action === 'write') {
         ]);
         exit;
     }
+
 
     // URL modbus-hub
     $url = "http://modbus-hub:8500/write";
@@ -96,7 +120,7 @@ if ($action === 'write') {
         "count" => 4,
         "values" => array_map('intval', $registers)
     ];
-
+    
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -106,13 +130,21 @@ if ($action === 'write') {
     ]);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($requestBody));
 
+   
+
     $response = curl_exec($ch);
 
     if ($response === false) {
+
+        log_modbus("CURL ERROR", [
+            "error" => curl_error($ch)
+        ]);
+
         echo json_encode([
             "success" => false,
             "error" => curl_error($ch)
         ]);
+
         curl_close($ch);
         exit;
     }
