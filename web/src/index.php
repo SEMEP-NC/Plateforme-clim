@@ -1,6 +1,6 @@
 <?php
 require 'auth.php';
-session_start();
+require_login()
 ?>
 <!DOCTYPE html>
 <html lang="fr">

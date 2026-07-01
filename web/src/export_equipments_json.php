@@ -1,6 +1,5 @@
 <?php
-require 'auth.php';
-session_start();
+
 require 'config/db.php';
 
 $db = get_db();
