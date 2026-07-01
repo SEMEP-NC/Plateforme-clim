@@ -376,35 +376,28 @@
             btn.addEventListener('click', () => {
 
                 document.getElementById('edit_id').value = btn.dataset.id || '';
-                document.getElementById('edit_action').value = btn.dataset.action || '';
-                document.getElementById('edit_temperature').value = btn.dataset.temperature || '';
 
+                // ACTION (IMPORTANT)
+                const action = btn.dataset.action;
+                document.getElementById('edit_action').value =
+                    (action === "ON" || action === "OFF") ? action : "";
+
+                // TEMPERATURE (IMPORTANT)
+                const temp = btn.dataset.temperature;
+                document.getElementById('edit_temperature').value =
+                    (temp !== "" && temp !== null && temp !== "null") ? temp : "";
+
+                // DATETIME (UTC -> affichage local UTC+11 inchangé UI)
                 let dt = btn.dataset.execution || '';
+                if (dt.includes(' ')) dt = dt.replace(' ', 'T');
+                dt = dt.substring(0, 16);
+                document.getElementById('edit_execution').value = dt;
 
-                if (dt) {
-                    dt = dt.replace(' ', 'T');
-
-                    // IMPORTANT: interprétation UTC correcte
-                    const date = new Date(dt + 'Z');
-
-                    const pad = n => String(n).padStart(2, '0');
-
-                    const formatted =
-                        date.getFullYear() + '-' +
-                        pad(date.getMonth() + 1) + '-' +
-                        pad(date.getDate()) + 'T' +
-                        pad(date.getHours()) + ':' +
-                        pad(date.getMinutes());
-
-                    document.getElementById('edit_execution').value = formatted;
-                }
-
-                // reset repeat
+                // repeat reset
                 document.querySelectorAll('.edit_repeat').forEach(cb => cb.checked = false);
 
                 if (btn.dataset.repeat) {
                     const days = btn.dataset.repeat.split(',');
-
                     document.querySelectorAll('.edit_repeat').forEach(cb => {
                         cb.checked = days.includes(cb.value);
                     });
@@ -425,7 +418,16 @@
                     body: new FormData(form)
                 });
 
-                const data = await res.json();
+                const text = await res.text(); // IMPORTANT debug safe
+
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (err) {
+                    console.error("RAW RESPONSE:", text);
+                    alert("Erreur serveur (JSON invalide)");
+                    return;
+                }
 
                 if (!data.success) {
                     alert('Erreur update');
@@ -435,7 +437,6 @@
                 location.reload();
             });
         }
-
     });
 </script>
 
