@@ -385,7 +385,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             button.addEventListener("click",()=>{
                 const id=button.dataset.id;
                 document.getElementById("equipment_id").value=id;
-                fetch("api/read_equipment.php?id="+id)
+                fetch("read_equipment.php?id="+id)
                     .then(r=>r.json())
                     .then(data=>{
                         document.getElementById("power").value=data.power;
