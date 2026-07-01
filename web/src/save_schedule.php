@@ -43,9 +43,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $execution_time = $_POST['execution_time'] ?? '';
 
-    if ($equipment_id <= 0 || $execution_time === '') {
+    if ($execution_time === '') {
         http_response_code(400);
         die('Formulaire incomplet.');
+    }
+
+    // obligation : soit equipment soit group
+    if (($equipment_id === null || $equipment_id <= 0) && ($group_id === null || $group_id <= 0)) {
+        http_response_code(400);
+        die('Veuillez sélectionner un équipement ou un groupe.');
     }
 
     $dt = new DateTime($execution_time, new DateTimeZone('+11:00'));
