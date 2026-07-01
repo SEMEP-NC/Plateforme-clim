@@ -2,19 +2,13 @@
 require '../config/db.php';
 
 function log_modbus($msg, $data = null) {
-    $ts = date("Y-m-d H:i:s");
-
-    $line = "[$ts] [MODBUS PROXY] $msg";
+    $line = "[MODBUS PROXY] " . $msg;
 
     if ($data !== null) {
         $line .= " " . json_encode($data, JSON_UNESCAPED_SLASHES);
     }
 
-    file_put_contents(
-        __DIR__ . "/modbus_proxy.log",
-        $line . PHP_EOL,
-        FILE_APPEND
-    );
+    error_log($line);
 }
 
 header('Content-Type: application/json');
