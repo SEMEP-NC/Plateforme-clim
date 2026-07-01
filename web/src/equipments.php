@@ -185,59 +185,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
         </div>
     </div>
      <!-- ========================= MODALS COMMANDE GROUP ========================= -->   
-    <div class="modal-body">
+    <div class="modal fade" id="groupCommandModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <form id="groupCommandForm" class="modal-content">
 
-        <table class="table table-bordered align-middle">
+                <table class="table table-bordered align-middle">
 
-            <tr>
-                <td><input class="form-check-input" type="checkbox" id="send_power_group"></td>
-                <td>Marche / Arrêt</td>
-                <td>
-                    <select id="g_power" class="form-select">
-                        <option value="170">Marche</option>
-                        <option value="85">Arrêt</option>
-                    </select>
-                </td>
-            </tr>
+                    <tr>
+                        <td><input class="form-check-input" type="checkbox" id="send_power_group"></td>
+                        <td>Marche / Arrêt</td>
+                        <td>
+                            <select id="g_power" class="form-select">
+                                <option value="170">Marche</option>
+                                <option value="85">Arrêt</option>
+                            </select>
+                        </td>
+                    </tr>
 
-            <tr>
-                <td><input class="form-check-input" type="checkbox" id="send_mode_group"></td>
-                <td>Mode</td>
-                <td>
-                    <select id="g_mode" class="form-select">
-                        <option value="1">Froid</option>
-                        <option value="2">Déshumidification</option>
-                        <option value="3">Ventilation</option>
-                        <option value="4">Chauffage</option>
-                        <option value="5">Auto</option>
-                    </select>
-                </td>
-            </tr>
+                    <tr>
+                        <td><input class="form-check-input" type="checkbox" id="send_mode_group"></td>
+                        <td>Mode</td>
+                        <td>
+                            <select id="g_mode" class="form-select">
+                                <option value="1">Froid</option>
+                                <option value="2">Déshumidification</option>
+                                <option value="3">Ventilation</option>
+                                <option value="4">Chauffage</option>
+                                <option value="5">Auto</option>
+                            </select>
+                        </td>
+                    </tr>
 
-            <tr>
-                <td><input class="form-check-input" type="checkbox" id="send_setpoint_group"></td>
-                <td>Consigne</td>
-                <td>
-                    <input id="g_setpoint" type="number" class="form-control" min="16" max="30" step="0.5">
-                </td>
-            </tr>
+                    <tr>
+                        <td><input class="form-check-input" type="checkbox" id="send_setpoint_group"></td>
+                        <td>Consigne</td>
+                        <td>
+                            <input id="g_setpoint" type="number" class="form-control" min="16" max="30" step="0.5">
+                        </td>
+                    </tr>
 
-            <tr>
-                <td><input class="form-check-input" type="checkbox" id="send_fan_group"></td>
-                <td>Ventilation</td>
-                <td>
-                    <select id="g_fan" class="form-select">
-                        <option value="1">Auto</option>
-                        <option value="2">Faible</option>
-                        <option value="3">Moyen</option>
-                        <option value="4">Fort</option>
-                    </select>
-                </td>
-            </tr>
+                    <tr>
+                        <td><input class="form-check-input" type="checkbox" id="send_fan_group"></td>
+                        <td>Ventilation</td>
+                        <td>
+                            <select id="g_fan" class="form-select">
+                                <option value="1">Auto</option>
+                                <option value="2">Faible</option>
+                                <option value="3">Moyen</option>
+                                <option value="4">Fort</option>
+                            </select>
+                        </td>
+                    </tr>
 
-        </table>
-
+                </table>
+            </form>
+        </div>
     </div>
+  
     <!-- ========================= MODALS GROUP → EQUIP ========================= -->
     <?php foreach ($groups as $group): ?>
     <div class="modal fade" id="groupModal<?= $group['id'] ?>" tabindex="-1">
