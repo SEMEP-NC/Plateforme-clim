@@ -75,6 +75,19 @@ CREATE TABLE equipment_groups (
         ON DELETE CASCADE
 );
 
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('admin','user') NOT NULL DEFAULT 'user',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO users(username, password_hash, role)
+SELECT 'admin','admin','admin'
+WHERE NOT EXISTS (
+    SELECT 1 FROM users
+)
 INSERT INTO discovery_config(start_ip, end_ip, ports, slave_ids)
 SELECT '10.5.0.20', '10.5.0.20', '502', '1'
 WHERE NOT EXISTS (
