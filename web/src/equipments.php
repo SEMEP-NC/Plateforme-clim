@@ -387,17 +387,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const res = await fetch(`modbus_proxy.php?id=${id}`);
-        const data = await res.json();
+        document.querySelectorAll(".commandButton").forEach(button => {
+            button.addEventListener("click", async () => {
 
-        if (!data.success) throw new Error("Modbus error");
+                const id = button.dataset.id;
+                const ui = parseInt(button.dataset.ui, 10);
 
-        const regs = data.registers;
+                document.getElementById("equipment_id").value = id;
 
-        document.getElementById("power").value = regs[0];
-        document.getElementById("mode").value = regs[1];
-        document.getElementById("setpoint").value = regs[2] / 10;
-        document.getElementById("fan").value = regs[3];
+                try {
+                    const res = await fetch(`modbus_proxy.php?id=${id}`);
+                    const data = await res.json();
+
+                    if (!data.success) throw new Error("Modbus error");
+
+                    const regs = data.registers;
+
+                    document.getElementById("power").value = regs[0];
+                    document.getElementById("mode").value = regs[1];
+                    document.getElementById("setpoint").value = regs[2] / 10;
+                    document.getElementById("fan").value = regs[3];
+
+                    modal.show();
+
+                } catch (e) {
+                    console.error(e);
+                    alert("Erreur lecture Modbus");
+                }
+            });
+        });
     </script>
 </body>
 </html>
