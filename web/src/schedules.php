@@ -89,7 +89,7 @@
         rel="stylesheet"
     >
 </head>
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <body class="container mt-5">
 
 <h1 class="mb-4">Planning HVAC</h1>
@@ -97,17 +97,13 @@
 <a href="index.php" class="btn btn-secondary mb-3">
     Retour
 </a>
-<table class="align-middle">
-    <tr>
-        <th width: 30%;></th>
-        <th width: 5%;></th>
-        <th width: 55%;></th>
-    </tr>   
+<table>
+ 
     
 <!-- =========================
      FORMULAIRE AJOUT
 ========================= -->
-    <td>
+    <td style="vertical-align: top;">
         <form method="POST" action="save_schedule.php" class="card p-4 mb-5">
 
             <h4 class="mb-3">Ajouter un planning</h4>
@@ -190,11 +186,11 @@
 
         </form>
     </td>
-    <td></td>
+    <td style="width:20px;"></td>
 <!-- =========================
      TABLEAU
 ========================= -->
-    <td>
+    <td style="vertical-align: top;">
         <table class="table table-bordered table-striped align-middle">
 
             <thead class="table-dark">
