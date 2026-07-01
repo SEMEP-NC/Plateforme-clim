@@ -1,6 +1,5 @@
 <?php
-require 'auth.php';
-session_start();
+
 require '../config/db.php';
 
 function log_modbus($msg, $data = null) {
