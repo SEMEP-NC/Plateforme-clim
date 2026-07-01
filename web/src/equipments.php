@@ -185,86 +185,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
         </div>
     </div>
      <!-- ========================= MODALS COMMANDE GROUP ========================= -->   
-    <div class="modal fade" id="groupCommandModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <form id="groupCommandForm" class="modal-content">
+    <div class="modal-body">
 
-                <input type="hidden" id="group_id">
+        <table class="table table-bordered align-middle">
 
-                <div class="modal-header">
-                    <h5 class="modal-title">Commande groupe</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
+            <tr>
+                <td><input class="form-check-input" type="checkbox" id="send_power_group"></td>
+                <td>Marche / Arrêt</td>
+                <td>
+                    <select id="g_power" class="form-select">
+                        <option value="170">Marche</option>
+                        <option value="85">Arrêt</option>
+                    </select>
+                </td>
+            </tr>
 
-                <div class="modal-body">
+            <tr>
+                <td><input class="form-check-input" type="checkbox" id="send_mode_group"></td>
+                <td>Mode</td>
+                <td>
+                    <select id="g_mode" class="form-select">
+                        <option value="1">Froid</option>
+                        <option value="2">Déshumidification</option>
+                        <option value="3">Ventilation</option>
+                        <option value="4">Chauffage</option>
+                        <option value="5">Auto</option>
+                    </select>
+                </td>
+            </tr>
 
-                    <table class="table table-bordered">
+            <tr>
+                <td><input class="form-check-input" type="checkbox" id="send_setpoint_group"></td>
+                <td>Consigne</td>
+                <td>
+                    <input id="g_setpoint" type="number" class="form-control" min="16" max="30" step="0.5">
+                </td>
+            </tr>
 
-                        <tr>
-                            <th>
-                                <input type="checkbox" id="send_power">
-                                Marche / Arrêt
-                            </th>
-                            <td>
-                                <select id="g_power" class="form-select">
-                                    <option value="170">Marche</option>
-                                    <option value="85">Arrêt</option>
-                                </select>
-                            </td>
-                        </tr>
+            <tr>
+                <td><input class="form-check-input" type="checkbox" id="send_fan_group"></td>
+                <td>Ventilation</td>
+                <td>
+                    <select id="g_fan" class="form-select">
+                        <option value="1">Auto</option>
+                        <option value="2">Faible</option>
+                        <option value="3">Moyen</option>
+                        <option value="4">Fort</option>
+                    </select>
+                </td>
+            </tr>
 
-                        <tr>
-                            <th>
-                                <input type="checkbox" id="send_mode">
-                                Mode
-                            </th>
-                            <td>
-                                <select id="g_mode" class="form-select">
-                                    <option value="1">Froid</option>
-                                    <option value="2">Déshumidification</option>
-                                    <option value="3">Ventilation</option>
-                                    <option value="4">Chauffage</option>
-                                    <option value="5">Auto</option>
-                                </select>
-                            </td>
-                        </tr>
+        </table>
 
-                        <tr>
-                            <th>
-                                <input type="checkbox" id="send_setpoint">
-                                Consigne
-                            </th>
-                            <td>
-                                <input id="g_setpoint" type="number" class="form-control" min="16" max="30" step="0.5">
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <th>
-                                <input type="checkbox" id="send_fan">
-                                Ventilation
-                            </th>
-                            <td>
-                                <select id="g_fan" class="form-select">
-                                    <option value="1">Auto</option>
-                                    <option value="2">Faible</option>
-                                    <option value="3">Moyen</option>
-                                    <option value="4">Fort</option>
-                                </select>
-                            </td>
-                        </tr>
-
-                    </table>
-
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-success">Envoyer groupe</button>
-                </div>
-
-            </form>
-        </div>
     </div>
     <!-- ========================= MODALS GROUP → EQUIP ========================= -->
     <?php foreach ($groups as $group): ?>
@@ -479,14 +451,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const modalEl = document.getElementById("commandModal");
-        const modal = new bootstrap.Modal(modalEl);
+        const equipModalEl = document.getElementById("commandModal");
+        const equipModal = new bootstrap.Modal(equipModalEl);
+
+        const groupModalEl = document.getElementById("groupCommandModal");
+        const groupModal = new bootstrap.Modal(groupModalEl);
 
         let lastReadRegisters = [];
         let currentEquipmentId = null;
+        let currentGroupId = null;
 
         /* =========================
-        READ + OPEN MODAL
+        EQUIPMENT : OPEN + READ
         ========================= */
         document.querySelectorAll(".commandButton").forEach(button => {
             button.addEventListener("click", async () => {
@@ -500,21 +476,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                     const res = await fetch(`/api/modbus_proxy.php?id=${id}`);
                     const data = await res.json();
 
-                    if (!data.success) throw new Error("Modbus read error");
+                    if (!data.success) {
+                        throw new Error(data.error || "Modbus read error");
+                    }
 
                     const regs = Array.isArray(data.registers) ? data.registers : [];
 
-                    // sécurité anti None/undefined
                     lastReadRegisters = regs.map(v =>
                         (v === null || v === undefined || isNaN(v)) ? 0 : Number(v)
                     );
 
-                    // fallback si pas 4 registres
                     while (lastReadRegisters.length < 4) {
                         lastReadRegisters.push(0);
                     }
 
-                    // UI update
+                    // UI
                     document.getElementById("power").value = lastReadRegisters[0];
                     document.getElementById("mode").value = lastReadRegisters[1];
                     document.getElementById("setpoint").value = lastReadRegisters[2] / 10;
@@ -524,7 +500,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                     document.querySelectorAll("#commandForm input[type=checkbox]")
                         .forEach(c => c.checked = false);
 
-                    modal.show();
+                    equipModal.show();
 
                 } catch (e) {
                     console.error(e);
@@ -535,7 +511,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
 
         /* =========================
-        WRITE (READ-MODIFY-WRITE)
+        EQUIPMENT : WRITE
         ========================= */
         document.getElementById("commandForm").addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -547,47 +523,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                 return;
             }
 
-            // clone sécurisé
             const regs = [...lastReadRegisters];
 
-            // fallback sécurité
             for (let i = 0; i < 4; i++) {
                 if (regs[i] === undefined || regs[i] === null || isNaN(regs[i])) {
                     regs[i] = 0;
                 }
             }
 
-            // POWER
             if (document.querySelector('[name="send_power"]').checked) {
                 regs[0] = parseInt(document.getElementById("power").value) || 0;
             }
 
-            // MODE
             if (document.querySelector('[name="send_mode"]').checked) {
                 regs[1] = parseInt(document.getElementById("mode").value) || 0;
             }
 
-            // SETPOINT (x10 Modbus)
             if (document.querySelector('[name="send_setpoint"]').checked) {
                 const sp = parseFloat(document.getElementById("setpoint").value);
                 regs[2] = isNaN(sp) ? 0 : Math.round(sp * 10);
             }
 
-            // FAN
             if (document.querySelector('[name="send_fan"]').checked) {
                 regs[3] = parseInt(document.getElementById("fan").value) || 0;
             }
 
             try {
-                
                 const res = await fetch(`/api/modbus_proxy.php?action=write&id=${id}`, {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        registers: regs
-                    })
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ registers: regs })
                 });
 
                 const data = await res.json();
@@ -595,7 +560,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                 if (!data.success) throw new Error(data.error || "Write failed");
 
                 alert("Commande envoyée");
-                modal.hide();
+                equipModal.hide();
 
             } catch (err) {
                 console.error(err);
@@ -603,52 +568,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             }
         });
 
+
         /* =========================
-        GROUPS
+        GROUP : OPEN MODAL
         ========================= */
-        const groupModal = new bootstrap.Modal(document.getElementById("groupCommandModal"));
-
-        let currentGroupId = null;
-
-        /* OPEN MODAL */
         document.querySelectorAll(".groupCommandButton").forEach(btn => {
             btn.addEventListener("click", () => {
 
                 currentGroupId = btn.dataset.id;
-
                 document.getElementById("group_id").value = currentGroupId;
+
+                // RESET CHECKBOX GROUP
+                document.querySelectorAll("#groupCommandForm input[type=checkbox]")
+                    .forEach(c => c.checked = false);
+
+                // RESET INPUTS OPTIONNELS
+                document.getElementById("g_setpoint").value = "";
 
                 groupModal.show();
             });
         });
 
 
-        /* SUBMIT GROUP COMMAND */
+        /* =========================
+        GROUP : WRITE (BROADCAST)
+        ========================= */
         document.getElementById("groupCommandForm").addEventListener("submit", async (e) => {
             e.preventDefault();
+
+            if (!currentGroupId) {
+                alert("Groupe manquant");
+                return;
+            }
 
             const payload = {
                 group_id: currentGroupId,
                 registers: {
-                    power: parseInt(document.getElementById("g_power").value),
-                    mode: parseInt(document.getElementById("g_mode").value),
-                    setpoint: parseFloat(document.getElementById("g_setpoint").value),
-                    fan: parseInt(document.getElementById("g_fan").value)
+                    power: document.getElementById("send_power").checked
+                        ? parseInt(document.getElementById("g_power").value)
+                        : null,
+
+                    mode: document.getElementById("send_mode").checked
+                        ? parseInt(document.getElementById("g_mode").value)
+                        : null,
+
+                    setpoint: document.getElementById("send_setpoint").checked
+                        ? (parseFloat(document.getElementById("g_setpoint").value) * 10)
+                        : null,
+
+                    fan: document.getElementById("send_fan").checked
+                        ? parseInt(document.getElementById("g_fan").value)
+                        : null
                 }
             };
 
             try {
                 const res = await fetch("/api/modbus_group_proxy.php?action=write_group", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
                 });
 
-                const data = await res.json();
+                const text = await res.text();
 
-                if (!data.success) throw new Error("Group write failed");
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    console.error("RAW RESPONSE:", text);
+                    throw new Error("Invalid JSON from server");
+                }
+
+                if (!data.success) throw new Error(data.error || "Group write failed");
 
                 alert("Commande groupe envoyée");
                 groupModal.hide();
