@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS equipments (
 
 CREATE TABLE IF NOT EXISTS schedules (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    equipment_id INT NOT NULL,
+    equipment_id NULL,
+    group_id NULL,
     action VARCHAR(20) NULL,
     temperature INT NULL,
     execution_time DATETIME NOT NULL,
