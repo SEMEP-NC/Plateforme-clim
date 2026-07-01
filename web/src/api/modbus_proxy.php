@@ -91,7 +91,7 @@ if ($action === 'write') {
         "ip" => $eq['ip'],
         "port" => $port,
         "device_id" => $eq['slave_id'],
-        "type" => "registers",
+        "type" => "register",
         "address" => $address,
         "count" => 4,
         "values" => array_map('intval', $registers)
