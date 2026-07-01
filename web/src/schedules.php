@@ -382,24 +382,19 @@
                 let dt = btn.dataset.execution || '';
 
                 if (dt) {
-                    // PHP format: "YYYY-MM-DD HH:MM:SS"
                     dt = dt.replace(' ', 'T');
 
-                    const utcDate = new Date(dt + 'Z'); // force UTC
+                    // IMPORTANT: interprétation UTC correcte
+                    const date = new Date(dt + 'Z');
 
-                    // convert to UTC+11
-                    const localOffsetMs = 11 * 60 * 60 * 1000;
-                    const localDate = new Date(utcDate.getTime() + localOffsetMs);
-
-                    // format YYYY-MM-DDTHH:MM
                     const pad = n => String(n).padStart(2, '0');
 
                     const formatted =
-                        localDate.getFullYear() + '-' +
-                        pad(localDate.getMonth() + 1) + '-' +
-                        pad(localDate.getDate()) + 'T' +
-                        pad(localDate.getHours()) + ':' +
-                        pad(localDate.getMinutes());
+                        date.getFullYear() + '-' +
+                        pad(date.getMonth() + 1) + '-' +
+                        pad(date.getDate()) + 'T' +
+                        pad(date.getHours()) + ':' +
+                        pad(date.getMinutes());
 
                     document.getElementById('edit_execution').value = formatted;
                 }
