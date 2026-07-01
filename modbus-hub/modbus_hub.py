@@ -44,6 +44,7 @@ class WritePayload(BaseModel):
     slave: int = Field(default=DEFAULT_DEVICE_ID)
     address: int
     value: int | bool | None = None
+    values: list[int] | None = None
     type: str
 
 
@@ -150,6 +151,7 @@ async def write_worker():
             device_id = int(job.get("slave", DEFAULT_DEVICE_ID))
             mode = job["type"]
             address = int(job["address"])
+            values = job.get("values")
             value = job.get("value")
 
             with get_lock(ip, port):
@@ -161,7 +163,28 @@ async def write_worker():
                 if mode == "coil":
                     result = client.write_coil(address, bool(value), device_id=device_id)
                 elif mode == "register":
-                    result = client.write_registers(address, [int(value)], device_id=device_id)
+                      # CAS MULTI REGISTRES
+                    if values is not None:
+                        safe_values = [
+                            int(v) if v is not None else 0
+                            for v in values
+                        ]
+
+                        result = client.write_registers(
+                            address,
+                            safe_values,
+                            device_id=device_id
+                        )
+
+                    # CAS SINGLE REGISTER (compat legacy)
+                    else:
+                        safe_value = 0 if value is None else int(value)
+
+                        result = client.write_registers(
+                            address,
+                            [safe_value],
+                            device_id=device_id
+                        )
                 else:
                     log.error("[WRITE] invalid type %s", mode)
                     continue
@@ -255,7 +278,7 @@ def read_get(
             response["value"] = response["bits"][0]
 
     return response
-    
+
 @app.get("/write")
 async def write_get(
     ip: str = Query(..., description="Adresse IP de la passerelle Modbus TCP"),
