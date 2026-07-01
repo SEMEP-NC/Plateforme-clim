@@ -185,10 +185,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
         </div>
     </div>
      <!-- ========================= MODALS COMMANDE GROUP ========================= -->   
-    <div class="modal fade" id="groupCommandModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <form id="groupCommandForm" class="modal-content">
-
+    <div class="modal-dialog modal-lg">
+        <form id="groupCommandForm" class="modal-content">
+            <input type="hidden" id="group_id">
+            <div class="modal-header">
+                <h5 class="modal-title">Commande groupe</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">               
                 <table class="table table-bordered align-middle">
 
                     <tr>
@@ -241,8 +245,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                     </tr>
 
                 </table>
-            </form>
-        </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="submit" class="btn btn-success">Envoyer groupe</button>
+            </div>
+        </form>
+        
     </div>
   
     <!-- ========================= MODALS GROUP → EQUIP ========================= -->
@@ -589,8 +598,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                 document.querySelectorAll("#groupCommandForm input[type=checkbox]")
                     .forEach(c => c.checked = false);
 
+                document.querySelectorAll("#groupCommandForm select")
+                    .forEach(s => s.value = "");
+
+                document.querySelectorAll("#groupCommandForm input[type=number]")
+                    .forEach(i => i.value = "");
                 // RESET INPUTS OPTIONNELS
-                document.getElementById("g_setpoint").value = "";
+                document.getElementById("g_setpoint").value = "24";
 
                 groupModal.show();
             });
@@ -610,22 +624,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
             const payload = {
                 group_id: currentGroupId,
-                registers: {
-                    power: document.getElementById("send_power").checked
-                        ? parseInt(document.getElementById("g_power").value)
-                        : null,
+                const registers = {};
 
-                    mode: document.getElementById("send_mode").checked
-                        ? parseInt(document.getElementById("g_mode").value)
-                        : null,
+                if (document.getElementById("send_power_group").checked) {
+                    registers.power = parseInt(document.getElementById("g_power").value);
+                }
 
-                    setpoint: document.getElementById("send_setpoint").checked
-                        ? (parseFloat(document.getElementById("g_setpoint").value) * 10)
-                        : null,
+                if (document.getElementById("send_mode_group").checked) {
+                    registers.mode = parseInt(document.getElementById("g_mode").value);
+                }
 
-                    fan: document.getElementById("send_fan").checked
-                        ? parseInt(document.getElementById("g_fan").value)
-                        : null
+                if (document.getElementById("send_setpoint_group").checked) {
+                    registers.setpoint = Math.round(parseFloat(document.getElementById("g_setpoint").value) * 10);
+                }
+
+                if (document.getElementById("send_fan_group").checked) {
+                    registers.fan = parseInt(document.getElementById("g_fan").value);
                 }
             };
 
