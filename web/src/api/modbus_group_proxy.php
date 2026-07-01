@@ -18,7 +18,7 @@ if ($action === 'write_group') {
 
     // récupérer équipements du groupe
     $stmt = $db->prepare("
-        SELECT e.ip, e.slave_id, e.id
+        SELECT e.ip, e.slave_id, e.id, e.UI
         FROM equipments e
         JOIN equipment_groups eg ON eg.equipment_id = e.id
         WHERE eg.group_id = ?
@@ -52,13 +52,13 @@ if ($action === 'write_group') {
     $results = [];
 
     foreach ($equipments as $eq) {
-
+        $address = 102 + 25 * ((int)$eq['UI'] - 1);
         $requestBody = [
             "ip" => $eq['ip'],
             "port" => 502,
             "device_id" => $eq['slave_id'],
             "type" => "register",
-            "address" => 127,
+            "address" => $address,
             "count" => 4,
             "values" => $regs
         ];

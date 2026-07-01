@@ -637,7 +637,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
             if (document.getElementById("send_setpoint_group").checked) {
                 const v = document.getElementById("g_setpoint").value;
-                if (v !== "") registers.setpoint = Math.round(parseFloat(v) * 10);
+                if (v !== "") registers.setpoint = Math.round(parseFloat(v));
             }
 
             if (document.getElementById("send_fan_group").checked) {
