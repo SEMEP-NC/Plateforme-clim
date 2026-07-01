@@ -126,13 +126,7 @@
         <?php endforeach; ?>
     </select>
 
-        <?php foreach ($equipments as $equipment): ?>
-            <option value="<?= (int)$equipment['id'] ?>">
-                <?= htmlspecialchars($equipment['name']) ?>
-            </option>
-        <?php endforeach; ?>
 
-    </select>
     <small class="text-muted">
         Choisir soit un équipement, soit un groupe (pas les deux).
     </small>
