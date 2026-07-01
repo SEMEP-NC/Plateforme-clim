@@ -74,7 +74,17 @@ if ($action === 'write') {
         exit;
     }
 
-    $registers = $payload['registers'];
+    $registers = $payload['registers'] ?? [];
+
+    $registers = array_map(function($v) {
+        if (!is_numeric($v)) return 0;
+        return (int)$v;
+    }, $registers);
+
+    // force taille fixe 4
+    while (count($registers) < 4) {
+        $registers[] = 0;
+    }
 
     if (!is_array($registers) || count($registers) !== 4) {
         echo json_encode([

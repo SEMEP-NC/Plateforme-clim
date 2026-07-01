@@ -487,13 +487,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             }
 
             try {
+                const safeRegs = regs.map(v => {
+                    const n = Number(v);
+                    return (isNaN(n) || n === null || n === undefined) ? 0 : n;
+                });
                 const res = await fetch(`/api/modbus_proxy.php?action=write&id=${id}`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
-                        registers: regs
+                        registers: saferegs
                     })
                 });
 
