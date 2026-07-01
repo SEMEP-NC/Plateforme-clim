@@ -253,7 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                     </button>
                                 </td>
                                 <td>
-                                    <button type="button" class="btn btn-warning btn-sm commandButton" data-id="<?= $equipment['id'] ?>"data-name="<?= htmlspecialchars($equipment['name']) ?>">
+                                    <button type="button" class="btn btn-warning btn-sm commandButton" data-ui="<?= $equipment['UI'] ?>" data-id="<?= $equipment['id'] ?>"data-name="<?= htmlspecialchars($equipment['name']) ?>">
                                         Commande
                                     </button>
                                 </td>
@@ -380,23 +380,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const modal=new bootstrap.Modal(document.getElementById("commandModal"));
-        document.querySelectorAll(".commandButton").forEach(button=>{
-            button.addEventListener("click",()=>{
-                const id=button.dataset.id;
-                document.getElementById("equipment_id").value=id;
-                fetch("read_equipment.php?id="+id)
-                    .then(r=>r.json())
-                    .then(data=>{
-                        document.getElementById("power").value=data.power;
-                        document.getElementById("mode").value=data.mode;
-                        document.getElementById("setpoint").value=data.setpoint;
-                        document.getElementById("fan").value=data.fan;
-                        document.querySelectorAll("#commandForm input[type=checkbox]").forEach(c=>c.checked=false);
-                        modal.show();
-                    });
-                });
+        document.querySelectorAll(".commandButton").forEach(button => {
+            button.addEventListener("click", async () => {
+
+                const id = button.dataset.id;
+                const ui = parseInt(button.dataset.ui, 10);
+
+                document.getElementById("equipment_id").value = id;
+
+                // calcul adresse Modbus
+                const address = 102 + 25 * (ui - 1);
+
+                try {
+                    const url =
+                        `http://10.0.0.39:8500/read` +
+                        `?ip=10.5.0.20` +
+                        `&port=502` +
+                        `&device_id=${id}` +
+                        `&type=register` +
+                        `&address=${address}` +
+                        `&count=4`;
+
+                    const res = await fetch(url);
+                    const data = await res.json();
+
+                    if (!data.success) throw new Error("Modbus error");
+
+                    const regs = data.registers;
+
+                    document.querySelectorAll("#commandForm input[type=checkbox]")
+                        .forEach(c => c.checked = false);
+
+                    document.getElementById("power").value = regs[0];
+                    document.getElementById("mode").value = regs[1];
+                    document.getElementById("setpoint").value = regs[2] / 10;
+                    document.getElementById("fan").value = regs[3];
+
+                    modal.show();
+
+                } catch (e) {
+                    console.error(e);
+                    alert("Erreur lecture Modbus");
+                }
             });
+        });
     </script>
 </body>
 </html>
