@@ -52,6 +52,15 @@ require 'auth.php';
     </div>
 
 </div>
+<div class="mt-auto text-center pb-4">
+
+    <form method="POST" action="logout.php">
+        <button class="btn btn-outline-danger px-5">
+            Déconnexion
+        </button>
+    </form>
+
+</div>
 
 </body>
 </html>
