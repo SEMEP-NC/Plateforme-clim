@@ -387,17 +387,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        const modalEl = document.getElementById("commandModal");
+        const modal = new bootstrap.Modal(modalEl);
+
         document.querySelectorAll(".commandButton").forEach(button => {
             button.addEventListener("click", async () => {
 
                 const id = button.dataset.id;
-                const ui = parseInt(button.dataset.ui, 10);
-
-                document.getElementById("equipment_id").value = id;
 
                 try {
-                    const res = await fetch(`api/modbus_proxy.php?id=${id}`);
-                    
+                    const res = await fetch(`/api/modbus_proxy.php?id=${id}`);
                     const data = await res.json();
 
                     if (!data.success) throw new Error("Modbus error");
@@ -409,11 +408,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                     document.getElementById("setpoint").value = regs[2] / 10;
                     document.getElementById("fan").value = regs[3];
 
-                    modal.show();
+                    modal.show(); // ✔ OK maintenant
 
                 } catch (e) {
                     console.error(e);
-                    alert("Erreur lecture Modbus");
+                    alert("Erreur lecture équipement");
                 }
             });
         });
