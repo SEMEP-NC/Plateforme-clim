@@ -396,7 +396,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                 document.getElementById("equipment_id").value = id;
 
                 try {
-                    const res = await fetch(`modbus_proxy.php?id=${id}`);
+                    const res = await fetch(`api/modbus_proxy.php?id=${id}`);
                     const data = await res.json();
 
                     if (!data.success) throw new Error("Modbus error");
