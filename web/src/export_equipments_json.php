@@ -39,11 +39,11 @@ function clean_id($value) {
 | Le hub renvoie : { "success": true, "cached": false, "registers": [ ... ] }
 | ou registers[N] correspond directement au registre Modbus N.
 | Pour que FUXA (device WebAPI) sache extraire la bonne valeur de la
-| reponse JSON, le champ "address" du tag doit etre une expression
-| JSONata pointant vers l'index du tableau : registers[102]
+| reponse JSON, le champ "address" du tag doit utiliser la syntaxe
+| confirmee cote FUXA/hub : registers:[102]  (deux-points avant le crochet)
 */
 function jsonata_register_address($register) {
-    return 'registers[' . (int)$register . ']';
+    return 'registers:[' . (int)$register . ']';
 }
 
 function add_tag(&$tags, $tagId, $name, $type, $register, $rw, $description, $extra = []) {
@@ -160,7 +160,7 @@ foreach ($equipments as $equipment) {
         $device['tags'],
         $prefixId . '_marche_arret',
         $displayPrefix . ' - Marche / Arret',
-        'coil',
+        'holding',
         102 + $base,
         true,
         $meta . ' | Commande marche/arret Modbus',
@@ -258,7 +258,7 @@ foreach ($equipments as $equipment) {
 |--------------------------------------------------------------------------
 */
 header('Content-Type: application/json; charset=utf-8');
-header('Content-Disposition: attachment; filename="fuxa_tags_clim.json"');
+header('Content-Disposition: attachment; filename="equipments_export.json"');
 
 echo json_encode([$device], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 exit;
