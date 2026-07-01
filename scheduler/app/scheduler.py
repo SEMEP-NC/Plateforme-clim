@@ -156,6 +156,7 @@ def process_planning():
         FROM schedules
         WHERE schedules.executed = 0
           AND schedules.execution_time <= UTC_TIMESTAMP()
+          AND schedules.enabled = 1
         ORDER BY schedules.execution_time ASC
     """)
 

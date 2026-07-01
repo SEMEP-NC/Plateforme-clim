@@ -198,6 +198,7 @@
             <th>Prochaine execution</th>
             <th>Repetition</th>
             <th>Exécuté</th>
+            <th>Action</th>
         </tr>
     </thead>
 
@@ -265,6 +266,25 @@
                         <span class="badge bg-warning text-dark">Non</span>
                     <?php endif; ?>
                 </td>
+                <td>
+                    <button
+                        class="btn btn-sm btn-primary editScheduleBtn"
+                        data-id="<?= $schedule['id'] ?>"
+                        data-action="<?= htmlspecialchars($schedule['action']) ?>"
+                        data-temperature="<?= htmlspecialchars($schedule['temperature']) ?>"
+                        data-execution="<?= htmlspecialchars($schedule['execution_time']) ?>"
+                        data-repeat="<?= htmlspecialchars($schedule['repeat_days']) ?>"
+                    >
+                        Modifier
+                    </button>
+
+                    <form method="POST" action="delete_schedule.php" style="display:inline;">
+                        <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
+                        <button class="btn btn-sm btn-danger" onclick="return confirm('Supprimer ce planning ?')">
+                            Supprimer
+                        </button>
+                    </form>
+                </td>
             </tr>
 
         <?php endforeach; ?>
@@ -272,6 +292,108 @@
     </tbody>
 
 </table>
+<div class="modal fade" id="editScheduleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="POST" action="update_schedule.php" class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Modifier planning</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <input type="hidden" name="id" id="edit_id">
+
+                <label class="form-label">Action</label>
+                <select name="action" id="edit_action" class="form-control mb-3">
+                    <option value="">Aucun changement</option>
+                    <option value="ON">ON</option>
+                    <option value="OFF">OFF</option>
+                </select>
+
+                <label class="form-label">Température</label>
+                <select name="temperature" id="edit_temperature" class="form-control mb-3">
+                    <option value="">Aucun changement</option>
+                    <?php for ($t=16;$t<=30;$t++): ?>
+                        <option value="<?= $t ?>"><?= $t ?>°C</option>
+                    <?php endfor; ?>
+                </select>
+
+                <label class="form-label">Execution</label>
+                <input type="datetime-local" name="execution_time" id="edit_execution" class="form-control mb-3">
+
+                <label class="form-label">Repeat days</label>
+                <div>
+                    <?php foreach ($dayLabels as $day => $label): ?>
+                        <div class="form-check">
+                            <input class="form-check-input edit_repeat" type="checkbox" name="repeat_days[]" value="<?= $day ?>">
+                            <label class="form-check-label"><?= $label ?></label>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button class="btn btn-success">Sauvegarder</button>
+            </div>
+
+        </form>
+    </div>
+</div>
+<script>
+    const editModal = new bootstrap.Modal(document.getElementById('editScheduleModal'));
+
+    document.querySelectorAll('.editScheduleBtn').forEach(btn => {
+        btn.addEventListener('click', () => {
+
+            document.getElementById('edit_id').value = btn.dataset.id;
+            document.getElementById('edit_action').value = btn.dataset.action || '';
+            document.getElementById('edit_temperature').value = btn.dataset.temperature || '';
+
+            // datetime-local format fix (UTC → local)
+            const dt = btn.dataset.execution.replace(' ', 'T').slice(0,16);
+            document.getElementById('edit_execution').value = dt;
+
+            // reset repeat
+            document.querySelectorAll('.edit_repeat').forEach(cb => cb.checked = false);
+
+            if (btn.dataset.repeat) {
+                const days = btn.dataset.repeat.split(',');
+                document.querySelectorAll('.edit_repeat').forEach(cb => {
+                    cb.checked = days.includes(cb.value);
+                });
+            }
+
+            editModal.show();
+        });
+    });
+    document.querySelector('#editScheduleModal form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const form = e.target;
+
+        const payload = new FormData(form);
+
+        const res = await fetch('update_schedule.php', {
+            method: 'POST',
+            body: payload
+        });
+
+        const data = await res.json();
+
+        if (!data.success) {
+            alert('Erreur update');
+            return;
+        }
+
+        // update UI sans reload (simple refresh ligne)
+        location.reload(); // version simple propre
+
+    });
+</script>
 
 </body>
 

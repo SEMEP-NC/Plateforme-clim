@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS schedules (
     execution_time DATETIME NOT NULL,
     repeat_days VARCHAR(32) NULL,
     executed TINYINT DEFAULT 0,
+    enabled TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
 );
