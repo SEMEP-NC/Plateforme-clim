@@ -1,6 +1,22 @@
 <?php
 require '../config/db.php';
 
+function log_modbus($msg, $data = null) {
+    $ts = date("Y-m-d H:i:s");
+
+    $line = "[$ts] [MODBUS PROXY] $msg";
+
+    if ($data !== null) {
+        $line .= " " . json_encode($data, JSON_UNESCAPED_SLASHES);
+    }
+
+    file_put_contents(
+        __DIR__ . "/modbus_proxy.log",
+        $line . PHP_EOL,
+        FILE_APPEND
+    );
+}
+
 header('Content-Type: application/json');
 
 $db = get_db();
@@ -61,10 +77,14 @@ if ($action === 'read') {
    WRITE
 ========================= */
 if ($action === 'write') {
-
+    log_modbus("WRITE REQUEST RECEIVED", [
+        "payload_raw" => file_get_contents("php://input")
+    ]);
     header('Content-Type: application/json');
 
     $payload = json_decode(file_get_contents("php://input"), true);
+
+    log_modbus("PAYLOAD DECODED", $payload);
 
     if (!$payload || !isset($payload['registers'])) {
         echo json_encode([
@@ -75,6 +95,8 @@ if ($action === 'write') {
     }
 
     $registers = $payload['registers'] ?? [];
+
+    log_modbus("REGISTERS NORMALIZED 1", $registers);
 
     $registers = array_map(function($v) {
         if (!is_numeric($v)) return 0;
@@ -93,6 +115,7 @@ if ($action === 'write') {
         ]);
         exit;
     }
+    log_modbus("REGISTERS NORMALIZED 2", $registers);
 
     // URL modbus-hub
     $url = "http://modbus-hub:8500/write";
@@ -106,7 +129,7 @@ if ($action === 'write') {
         "count" => 4,
         "values" => array_map('intval', $registers)
     ];
-
+    
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -116,13 +139,21 @@ if ($action === 'write') {
     ]);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($requestBody));
 
+    log_modbus("SENDING TO HUB", $requestBody);
+
     $response = curl_exec($ch);
 
     if ($response === false) {
+
+        log_modbus("CURL ERROR", [
+            "error" => curl_error($ch)
+        ]);
+
         echo json_encode([
             "success" => false,
             "error" => curl_error($ch)
         ]);
+
         curl_close($ch);
         exit;
     }
