@@ -14,8 +14,8 @@ CREATE TABLE IF NOT EXISTS equipments (
 
 CREATE TABLE IF NOT EXISTS schedules (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    equipment_id NULL,
-    group_id NULL,
+    equipment_id INT NULL,
+    group_id INT NULL,
     action VARCHAR(20) NULL,
     temperature INT NULL,
     execution_time DATETIME NOT NULL,
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS discovery_config (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE groups_hvac (
+CREATE TABLE IF NOT EXISTS groups_hvac (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL
 );
