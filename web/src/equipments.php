@@ -149,7 +149,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                     <tr>
                         <th>Nom</th>
                         <th>Unités</th>
-                        <th>Actions</th>
+                        <th>Commandes</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -159,6 +160,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                         <td>
                             <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#groupModal<?= $group['id'] ?>">
                                 Voir unités
+                            </button>
+                        </td>
+                        <td>
+                            <button
+                                type="button"
+                                class="btn btn-warning btn-sm groupCommandButton"
+                                data-id="<?= $group['id'] ?>"
+                                data-name="<?= htmlspecialchars($group['name']) ?>"
+                            >
+                                Commande
                             </button>
                         </td>
                         <td>
@@ -173,7 +184,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             </table>
         </div>
     </div>
+     <!-- ========================= MODALS COMMANDE GROUP ========================= -->   
+    <div class="modal fade" id="groupCommandModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <form id="groupCommandForm" class="modal-content">
 
+                <input type="hidden" id="group_id">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Commande groupe</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <table class="table table-bordered">
+                        <tr>
+                            <th>Marche/Arrêt</th>
+                            <td>
+                                <select id="g_power" class="form-select">
+                                    <option value="170">Marche</option>
+                                    <option value="85">Arrêt</option>
+                                </select>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <th>Mode</th>
+                            <td>
+                                <select id="g_mode" class="form-select">
+                                    <option value="1">Froid</option>
+                                    <option value="2">Déshumidification</option>
+                                    <option value="3">Ventilation</option>
+                                    <option value="4">Chauffage</option>
+                                    <option value="5">Auto</option>
+                                </select>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <th>Consigne</th>
+                            <td>
+                                <input id="g_setpoint" type="number" class="form-control" min="16" max="30" step="0.5">
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <th>Ventilation</th>
+                            <td>
+                                <select id="g_fan" class="form-select">
+                                    <option value="1">Auto</option>
+                                    <option value="2">Faible</option>
+                                    <option value="3">Moyen</option>
+                                    <option value="4">Fort</option>
+                                </select>
+                            </td>
+                        </tr>
+
+                    </table>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success">Envoyer groupe</button>
+                </div>
+
+            </form>
+        </div>
+    </div>
     <!-- ========================= MODALS GROUP → EQUIP ========================= -->
     <?php foreach ($groups as $group): ?>
     <div class="modal fade" id="groupModal<?= $group['id'] ?>" tabindex="-1">
@@ -508,6 +587,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             } catch (err) {
                 console.error(err);
                 alert("Erreur écriture Modbus");
+            }
+        });
+
+        /* =========================
+        GROUPS
+        ========================= */
+        const groupModal = new bootstrap.Modal(document.getElementById("groupCommandModal"));
+
+        let currentGroupId = null;
+
+        /* OPEN MODAL */
+        document.querySelectorAll(".groupCommandButton").forEach(btn => {
+            btn.addEventListener("click", () => {
+
+                currentGroupId = btn.dataset.id;
+
+                document.getElementById("group_id").value = currentGroupId;
+
+                groupModal.show();
+            });
+        });
+
+
+        /* SUBMIT GROUP COMMAND */
+        document.getElementById("groupCommandForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const payload = {
+                group_id: currentGroupId,
+                registers: {
+                    power: parseInt(document.getElementById("g_power").value),
+                    mode: parseInt(document.getElementById("g_mode").value),
+                    setpoint: parseFloat(document.getElementById("g_setpoint").value),
+                    fan: parseInt(document.getElementById("g_fan").value)
+                }
+            };
+
+            try {
+                const res = await fetch("/api/modbus_group_proxy.php?action=write_group", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                if (!data.success) throw new Error("Group write failed");
+
+                alert("Commande groupe envoyée");
+                groupModal.hide();
+
+            } catch (err) {
+                console.error(err);
+                alert("Erreur commande groupe");
             }
         });
     </script>

@@ -71,14 +71,12 @@ if ($action === 'read') {
    WRITE
 ========================= */
 if ($action === 'write') {
-    log_modbus("WRITE REQUEST RECEIVED", [
-        "payload_raw" => file_get_contents("php://input")
-    ]);
+
     header('Content-Type: application/json');
 
     $payload = json_decode(file_get_contents("php://input"), true);
 
-    log_modbus("PAYLOAD DECODED", $payload);
+
 
     if (!$payload || !isset($payload['registers'])) {
         echo json_encode([
@@ -90,7 +88,6 @@ if ($action === 'write') {
 
     $registers = $payload['registers'] ?? [];
 
-    log_modbus("REGISTERS NORMALIZED 1", $registers);
 
     $registers = array_map(function($v) {
         if (!is_numeric($v)) return 0;
@@ -109,7 +106,7 @@ if ($action === 'write') {
         ]);
         exit;
     }
-    log_modbus("REGISTERS NORMALIZED 2", $registers);
+
 
     // URL modbus-hub
     $url = "http://modbus-hub:8500/write";
@@ -133,7 +130,7 @@ if ($action === 'write') {
     ]);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($requestBody));
 
-    log_modbus("SENDING TO HUB", $requestBody);
+   
 
     $response = curl_exec($ch);
 
