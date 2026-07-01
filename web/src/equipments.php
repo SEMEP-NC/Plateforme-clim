@@ -196,6 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                         <td>Marche / Arrêt</td>
                         <td>
                             <select id="g_power" class="form-select">
+                                <option value=""></option>
                                 <option value="170">Marche</option>
                                 <option value="85">Arrêt</option>
                             </select>
@@ -207,6 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                         <td>Mode</td>
                         <td>
                             <select id="g_mode" class="form-select">
+                                <option value=""></option>
                                 <option value="1">Froid</option>
                                 <option value="2">Déshumidification</option>
                                 <option value="3">Ventilation</option>
@@ -229,6 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                         <td>Ventilation</td>
                         <td>
                             <select id="g_fan" class="form-select">
+                                <option value=""></option>
                                 <option value="1">Auto</option>
                                 <option value="2">Faible</option>
                                 <option value="3">Moyen</option>
