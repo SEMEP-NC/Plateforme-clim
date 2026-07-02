@@ -9,8 +9,8 @@ from db import get_connection
 from discover import cleanup_offline_devices, discover, save
 
 
-INTERVAL = int(os.getenv("SCHEDULER_INTERVAL", "60"))
-DISCOVERY_INTERVAL = int(os.getenv("DISCOVERY_INTERVAL", "300"))
+INTERVAL = int(os.getenv("SCHEDULER_INTERVAL", "230"))
+DISCOVERY_INTERVAL = int(os.getenv("DISCOVERY_INTERVAL", "3600"))
 HUB_WRITE_URL = os.getenv("HUB_WRITE_URL", "http://modbus-hub:8500/write")
 LOCAL_TZ = timezone(timedelta(hours=11))
 
@@ -421,6 +421,140 @@ def run_discovery_if_needed():
 
         last_discovery = now
 
+def read_coil(ip, port, slave_id, address):
+    try:
+        r = requests.get(
+            "http://modbus-hub:8500/read",
+            params={
+                "ip": ip,
+                "port": port,
+                "device_id": slave_id,
+                "type": "coil",
+                "address": address,
+                "count": 1
+            },
+            timeout=5
+        )
+
+        data = r.json().get("registers", [])
+        return 1 if data and data[0] else 0
+
+    except Exception:
+        return 0
+
+def collect_telemetry():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT id, ip, port, slave_id, UI
+        FROM equipments
+        WHERE enabled = 1
+    """)
+
+    equipments = cur.fetchall()
+    outdoor_cache = {}
+
+    def get_outdoor_temp(ip, port, slave_id):
+        key = f"{ip}:{port}:{slave_id}"
+
+        if key in outdoor_cache:
+            return outdoor_cache[key]
+
+        try:
+            r = requests.get(
+                "http://modbus-hub:8500/read",
+                params={
+                    "ip": ip,
+                    "port": port,
+                    "device_id": slave_id,
+                    "type": "register",
+                    "address": 3307,
+                    "count": 1
+                },
+                timeout=5
+            )
+
+            data = r.json().get("registers", [])
+            value = (data[0] / 10) if data and data[0] is not None else None
+
+        except Exception:
+            value = None
+
+        outdoor_cache[key] = value
+        return value
+
+    for eq in equipments:
+
+        ui = int(eq["UI"])
+        base = 102 + 25 * (ui - 1)
+
+        try:
+            r = requests.get(
+                "http://modbus-hub:8500/read",
+                params={
+                    "ip": eq["ip"],
+                    "port": eq["port"],
+                    "device_id": eq["slave_id"],
+                    "type": "register",
+                    "address": base,
+                    "count": 13
+                },
+                timeout=5
+            )
+
+            data = r.json().get("registers", [])
+
+            if len(data) < 13:
+                continue
+
+            state = 1 if data[0] == 170 else 0
+            setpoint = data[2] / 10 if data[2] is not None else None
+            return_temp = data[12] / 10 if data[12] is not None else None
+
+            coil_addr = 319 + (64 * (ui - 1))
+            fault = read_coil(eq["ip"], eq["port"], eq["slave_id"], coil_addr)
+
+            outside_temp = get_outdoor_temp(eq["ip"], eq["port"], eq["slave_id"])
+
+            # UPDATE
+            cur.execute("""
+                UPDATE equipments
+                SET state=%s,
+                    setpoint=%s,
+                    return_temp=%s,
+                    outside_temp=%s,
+                    fault=%s
+                WHERE id=%s
+            """, (
+                state,
+                setpoint,
+                return_temp,
+                outside_temp,
+                fault,
+                eq["id"]
+            ))
+
+            # HISTORY
+            cur.execute("""
+                INSERT INTO equipment_history
+                (equipment_id, created_at, setpoint, return_temp, outside_temp, state, fault)
+                VALUES (%s, NOW(), %s, %s, %s, %s, %s)
+            """, (
+                eq["id"],
+                setpoint,
+                return_temp,
+                outside_temp,
+                state,
+                fault
+            ))
+
+        except Exception as e:
+            print(f"[TELEMETRY ERROR] {eq['id']} {e}")
+
+    conn.commit()
+    conn.close()  
+
 
 def main():
     wait_for_db()
@@ -429,6 +563,7 @@ def main():
     while True:
         run_discovery_if_needed()
         process_planning()
+        collect_telemetry()
         time.sleep(INTERVAL)
 
 

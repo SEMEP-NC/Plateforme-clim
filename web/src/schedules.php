@@ -1,4 +1,7 @@
 <?php
+require 'auth.php';
+session_start();
+require_login();
 
     require 'config/db.php';
 
@@ -82,6 +85,7 @@
 
 <head>
     <meta charset="UTF-8">
+    
     <title>Planning HVAC</title>
 
     <link
@@ -91,8 +95,9 @@
 </head>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <body class="container mt-5">
-
-<h1 class="mb-4">Planning HVAC</h1>
+<div class="text-center mt-4">
+    <h1 class="fw-bold">Planning</h1>
+</div>
 
 <a href="index.php" class="btn btn-secondary mb-3">
     Retour

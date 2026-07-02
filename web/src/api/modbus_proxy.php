@@ -44,7 +44,7 @@ if ($action === 'read') {
         "device_id" => $eq['slave_id'],
         "type" => "register",
         "address" => $address,
-        "count" => 4
+        "count" => 5
     ]);
     
     $ch = curl_init($url);
@@ -96,14 +96,14 @@ if ($action === 'write') {
     }, $registers);
 
     // force taille fixe 4
-    while (count($registers) < 4) {
+    while (count($registers) < 5) {
         $registers[] = 0;
     }
 
-    if (!is_array($registers) || count($registers) !== 4) {
+    if (!is_array($registers) || count($registers) !== 5) {
         echo json_encode([
             "success" => false,
-            "error" => "Registers must be an array of 4 values"
+            "error" => "Registers must be an array of 5 values"
         ]);
         exit;
     }
@@ -118,7 +118,7 @@ if ($action === 'write') {
         "device_id" => $eq['slave_id'],
         "type" => "register",
         "address" => $address,
-        "count" => 4,
+        "count" => 5,
         "values" => array_map('intval', $registers)
     ];
     

@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS equipments (
     power INT,
     UI INT NOT NULL,
     enabled TINYINT DEFAULT 1,
+    return_temp DECIMAL(5,1) NULL,
+    outside_temp DECIMAL(5,1) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     UNIQUE KEY uniq_UI_ip_port_slave (UI, ip, port, slave_id)
@@ -87,4 +89,19 @@ INSERT INTO discovery_config(start_ip, end_ip, ports, slave_ids)
 SELECT '10.5.0.20', '10.5.0.20', '502', '1'
 WHERE NOT EXISTS (
     SELECT 1 FROM discovery_config
+);
+
+CREATE TABLE equipment_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    equipment_id INT NOT NULL,
+    created_at DATETIME NOT NULL,
+
+    setpoint DECIMAL(5,1) NULL,
+    return_temp DECIMAL(5,1) NULL,
+    outside_temp DECIMAL(5,1) NULL,
+    state TINYINT NULL, -- 1 = ON, 0 = OFF
+    fault TINYINT DEFAULT 0
+
+    INDEX (equipment_id),
+    INDEX (created_at)
 );

@@ -1,6 +1,6 @@
 <?php
 require 'config/db.php';
-
+session_start();
 
 $pdo = get_db();
 

@@ -1,6 +1,7 @@
 <?php
 require 'auth.php';
 session_start();
+require_login();
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -34,7 +35,7 @@ session_start();
             Équipements
         </a>
 
-        <a href="schedules.php" class="btn btn-success menu-btn">
+        <a href="schedules.php" class="btn btn-primary menu-btn">
             Planning
         </a>
 

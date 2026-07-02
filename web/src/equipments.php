@@ -1,5 +1,7 @@
 <?php
-
+require 'auth.php';
+session_start();
+require_login();
 require 'config/db.php';
 
 $db = get_db();
@@ -129,7 +131,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 </head>
 
 <body class="container mt-5">
-    <h1>Équipements</h1>
+    <div class="text-center mt-4">
+        <h1 class="fw-bold">Équipements</h1>
+    </div>
     <a href="index.php" class="btn btn-secondary mb-3">Retour</a>
 
     <!-- ========================= GROUPES ========================= -->
@@ -290,16 +294,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
         </div>
         <div class="card-body">
             <form method="POST">
-                <div class="d-flex justify-content-between mb-3">
-                    <button type="submit" name="save_all" class="btn btn-success">
-                        💾 Sauvegarder
-                    </button>
-                    <div class="d-flex gap-2">
-                        <a href="export_equipments_json.php" class="btn btn-info">
-                            📥 Exporter en JSON
-                        </a>
+                <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                    <div class="d-flex justify-content-between mb-3">
+                        <button type="submit" name="save_all" class="btn btn-success">
+                            💾 Sauvegarder
+                        </button>
+                        <div class="d-flex gap-2">
+                            <a href="export_equipments_json.php" class="btn btn-info">
+                                📥 Exporter en JSON
+                            </a>
+                        </div>
                     </div>
-                </div>
+                <?php endif; ?>
 
                 <div class="table-responsive">
                     <table class="table table-bordered table-striped align-middle" id="equipmentsTable">
@@ -308,18 +314,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                 <th>Nom</th>
                                 <th>UI</th>
                                 <th>Puissance</th>
-                                <th>IP</th>
-                                <th>Slave</th>
+                                <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                    <th>IP</th>
+                                    <th>Slave</th>
+                                <?php endif; ?>
                                 <th>Groupes</th>
                                 <th>Commandes</th>
-                                <th></th>
+                                <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                    <th></th>
+                                <?php endif; ?>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($equipments as $equipment): ?>
                             <tr>
                                 <td>
-                                    <input type="text" name="name[<?= $equipment['id'] ?>]" value="<?= htmlspecialchars($equipment['name']) ?>" class="form-control">
+                                    <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                        <input type="text" name="name[<?= $equipment['id'] ?>]" value="
+                                    <?php endif; ?>
+                                    <?= htmlspecialchars($equipment['name']) ?>
+                                    <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                        " class="form-control">
+                                    <?php endif; ?>
                                 </td>
                                 <td><?= htmlspecialchars($equipment['UI']) ?></td>
                                 <td>
@@ -327,8 +343,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                         ? number_format($equipment['power']/10, 1) . ' kW'
                                         : htmlspecialchars($equipment['power']) ?>
                                 </td>
-                                <td><?= htmlspecialchars($equipment['ip']) ?></td>
-                                <td><?= htmlspecialchars($equipment['slave_id']) ?></td>
+                                <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                    <td><?= htmlspecialchars($equipment['ip']) ?></td>
+                                    <td><?= htmlspecialchars($equipment['slave_id']) ?></td>
+                                <?php endif; ?>
                                 <td>
                                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#equipModal<?= $equipment['id'] ?>">
                                         Groupes
@@ -346,12 +364,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                         Commande
                                     </button>
                                 </td>
-                                <td>
-                                    <form method="POST">
-                                        <input type="hidden" name="id" value="<?= $equipment['id'] ?>">
-                                        <button class="btn btn-danger btn-sm" name="delete_equipment" onclick="return confirm('Supprimer cet équipement ?')">❌</button>
-                                    </form>
-                                </td>
+                                <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                    <td>
+                                        <form method="POST">
+                                            <input type="hidden" name="id" value="<?= $equipment['id'] ?>">
+                                            <button class="btn btn-danger btn-sm" name="delete_equipment" onclick="return confirm('Supprimer cet équipement ?')">❌</button>
+                                        </form>
+                                    </td>
+                                <?php endif; ?>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -455,6 +475,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                         </select>
                                     </td>
                                 </tr>
+                                <tr>
+                                    <td>
+                                        <input class="form-check-input" type="checkbox" name="send_min_setpoint">
+                                    </td>
+                                    <td>Limite basse consigne</td>
+                                    <td>
+                                        <input
+                                            class="form-control"
+                                            type="number"
+                                            min="10"
+                                            max="30"
+                                            step="0.5"
+                                            id="min_setpoint"
+                                            name="min_setpoint"
+                                        >
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -513,6 +550,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                     document.getElementById("mode").value = lastReadRegisters[1];
                     document.getElementById("setpoint").value = lastReadRegisters[2] / 10;
                     document.getElementById("fan").value = lastReadRegisters[3];
+                    document.getElementById("min_setpoint").value = lastReadRegisters[4] / 10;
 
                     // reset checkboxes
                     document.querySelectorAll("#commandForm input[type=checkbox]")
@@ -543,7 +581,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
             const regs = [...lastReadRegisters];
 
-            for (let i = 0; i < 4; i++) {
+            for (let i = 0; i < 5; i++) {
                 if (regs[i] === undefined || regs[i] === null || isNaN(regs[i])) {
                     regs[i] = 0;
                 }
@@ -564,6 +602,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
             if (document.querySelector('[name="send_fan"]').checked) {
                 regs[3] = parseInt(document.getElementById("fan").value) || 0;
+            }
+            if (document.querySelector('[name="send_min_setpoint"]').checked) {
+                const minSp = parseFloat(document.getElementById("min_setpoint").value);
+                regs[4] = isNaN(minSp) ? 0 : Math.round(minSp * 10);
             }
 
             try {
