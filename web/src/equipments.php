@@ -312,12 +312,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                         <thead>
                             <tr>
                                 <th>Nom</th>
-                                <th>UI</th>
-                                <th>Puissance</th>
                                 <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                    <th>UI</th>
+                                    <th>Puissance</th>
                                     <th>IP</th>
                                     <th>Slave</th>
                                 <?php endif; ?>
+                                <th>État</th>
+                                <th>Temp reprise</th>
                                 <th>Groupes</th>
                                 <th>Commandes</th>
                                 <?php if ($_SESSION['user']['role'] === 'admin'): ?>
@@ -337,16 +339,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                         " class="form-control">
                                     <?php endif; ?>
                                 </td>
-                                <td><?= htmlspecialchars($equipment['UI']) ?></td>
-                                <td>
-                                    <?= is_numeric($equipment['power'])
-                                        ? number_format($equipment['power']/10, 1) . ' kW'
-                                        : htmlspecialchars($equipment['power']) ?>
-                                </td>
+                                <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                    <td><?= htmlspecialchars($equipment['UI']) ?></td>
+                                    <td>
+                                        <?= is_numeric($equipment['power'])
+                                            ? number_format($equipment['power']/10, 1) . ' kW'
+                                            : htmlspecialchars($equipment['power']) ?>
+                                    </td>
+                                <?php endif; ?>
                                 <?php if ($_SESSION['user']['role'] === 'admin'): ?>
                                     <td><?= htmlspecialchars($equipment['ip']) ?></td>
                                     <td><?= htmlspecialchars($equipment['slave_id']) ?></td>
                                 <?php endif; ?>
+                                <td>
+                                    <?php if (!empty($equipment['state'])): ?>
+                                        <span class="badge bg-success">ON</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary">OFF</span>
+                                    <?php endif; ?>
+                                </td>
+
+                                <td>
+                                    <?= $equipment['return_temp'] !== null
+                                        ? number_format($equipment['return_temp'], 1) . ' °C'
+                                        : '-' ?>
+                                </td>
                                 <td>
                                     <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#equipModal<?= $equipment['id'] ?>">
                                         Groupes
