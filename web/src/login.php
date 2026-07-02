@@ -144,4 +144,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adminExists) {
 <?php endif; ?>
 
 </body>
+<script>
+document.querySelector("form").addEventListener("submit", function(e) {
+
+    const p1 = document.getElementById("pwd1").value;
+    const p2 = document.getElementById("pwd2").value;
+
+    if (p1 !== p2) {
+        e.preventDefault();
+        document.getElementById("pwdError").classList.remove("d-none");
+    }
+});
+</script>
 </html>
