@@ -83,11 +83,6 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO users(username, password_hash, role)
-SELECT 'admin','admin','admin'
-WHERE NOT EXISTS (
-    SELECT 1 FROM users
-)
 INSERT INTO discovery_config(start_ip, end_ip, ports, slave_ids)
 SELECT '10.5.0.20', '10.5.0.20', '502', '1'
 WHERE NOT EXISTS (
