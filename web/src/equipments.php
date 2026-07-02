@@ -331,13 +331,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                             <?php foreach ($equipments as $equipment): ?>
                             <tr>
                                 <td>
-                                    <?php if ($_SESSION['user']['role'] === 'admin'): ?>
-                                        <input type="text" name="name[<?= $equipment['id'] ?>]" value="
-                                    <?php endif; ?>
-                                    <?= htmlspecialchars($equipment['name']) ?>
-                                    <?php if ($_SESSION['user']['role'] === 'admin'): ?>
-                                        " class="form-control">
-                                    <?php endif; ?>
+                                    <?php if ($_SESSION['user']['role'] === 'admin'): ?><input type="text" name="name[<?= $equipment['id'] ?>]" value="<?php endif; ?><?= htmlspecialchars($equipment['name']) ?><?php if ($_SESSION['user']['role'] === 'admin'): ?>" class="form-control"><?php endif; ?>
                                 </td>
                                 <?php if ($_SESSION['user']['role'] === 'admin'): ?>
                                     <td><?= htmlspecialchars($equipment['UI']) ?></td>

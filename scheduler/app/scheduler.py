@@ -505,7 +505,7 @@ def collect_telemetry():
 
             data = r.json().get("registers", [])
 
-            if len(data) < 13:
+            if len(data) < 15:
                 continue
 
             state = 1 if data[0] == 170 else 0
