@@ -510,7 +510,7 @@ def collect_telemetry():
 
             state = 1 if data[0] == 170 else 0
             setpoint = data[2] / 10 if data[2] is not None else None
-            return_temp = data[12] / 10 if data[12] is not None else None
+            return_temp = data[14] / 10 if data[14] is not None else None
 
             coil_addr = 319 + (64 * (ui - 1))
             fault = read_coil(eq["ip"], eq["port"], eq["slave_id"], coil_addr)

@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS equipments (
     enabled TINYINT DEFAULT 1,
     return_temp DECIMAL(5,1) NULL,
     outside_temp DECIMAL(5,1) NULL,
+    setpoint DECIMAL(5,1) NULL,
+    state TINYINT(1) DEFAULT 0,
+    fault TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     UNIQUE KEY uniq_UI_ip_port_slave (UI, ip, port, slave_id)
