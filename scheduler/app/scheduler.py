@@ -462,6 +462,7 @@ def collect_telemetry():
             return outdoor_cache[key]
 
         try:
+            print(f"[OUTDOOR TEMP] READ ip={ip} port={port} slave={slave_id}", flush=True)
             r = requests.get(
                 "http://modbus-hub:8500/read",
                 params={
@@ -474,11 +475,13 @@ def collect_telemetry():
                 },
                 timeout=5
             )
+            print(f"[OUTDOOR TEMP] HTTP {r.status_code} {r.text}", flush=True)
 
             data = r.json().get("registers", [])
             value = (data[0] / 10) if data and data[0] is not None else None
 
         except Exception:
+            print(f"[OUTDOOR TEMP] ERROR {e}", flush=True)
             value = None
 
         outdoor_cache[key] = value
@@ -514,7 +517,7 @@ def collect_telemetry():
 
             coil_addr = 319 + (64 * (ui - 1))
             fault = read_coil(eq["ip"], eq["port"], eq["slave_id"], coil_addr)
-
+            print(f"[TELEMETRY] equipment {eq['id']} UI={ui}", flush=True)
             outside_temp = get_outdoor_temp(eq["ip"], eq["port"], eq["slave_id"])
 
             # UPDATE
