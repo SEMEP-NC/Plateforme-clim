@@ -498,7 +498,7 @@ def collect_telemetry():
                     "device_id": eq["slave_id"],
                     "type": "register",
                     "address": base,
-                    "count": 13
+                    "count": 15
                 },
                 timeout=5
             )
