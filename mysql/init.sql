@@ -91,16 +91,15 @@ WHERE NOT EXISTS (
     SELECT 1 FROM discovery_config
 );
 
-CREATE TABLE equipment_history (
+CREATE TABLE IF NOT EXISTS equipment_history (
     id INT AUTO_INCREMENT PRIMARY KEY,
     equipment_id INT NOT NULL,
     created_at DATETIME NOT NULL,
-
     setpoint DECIMAL(5,1) NULL,
     return_temp DECIMAL(5,1) NULL,
     outside_temp DECIMAL(5,1) NULL,
     state TINYINT NULL, -- 1 = ON, 0 = OFF
-    fault TINYINT DEFAULT 0
+    fault TINYINT DEFAULT 0,
 
     INDEX (equipment_id),
     INDEX (created_at)

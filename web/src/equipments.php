@@ -341,11 +341,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                 </td>
                                 <?php if ($_SESSION['user']['role'] === 'admin'): ?>
                                     <td><?= htmlspecialchars($equipment['UI']) ?></td>
-                                    <td>
-                                        <?= is_numeric($equipment['power'])
-                                            ? number_format($equipment['power']/10, 1) . ' kW'
-                                            : htmlspecialchars($equipment['power']) ?>
-                                    </td>
+                                <td>
+                                    <?= is_numeric($equipment['power'])
+                                        ? number_format($equipment['power']/10, 1) . ' kW'
+                                        : htmlspecialchars($equipment['power']) ?>
+                                </td>
                                 <?php endif; ?>
                                 <?php if ($_SESSION['user']['role'] === 'admin'): ?>
                                     <td><?= htmlspecialchars($equipment['ip']) ?></td>
