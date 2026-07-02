@@ -1,8 +1,6 @@
 <?php
 require 'config/db.php';
-require 'auth.php';
 
-require_admin();
 
 $pdo = get_db();
 

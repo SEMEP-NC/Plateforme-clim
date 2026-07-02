@@ -1,4 +1,6 @@
 <?php
+
+
 require 'config/db.php';
 
 $db = get_db();
