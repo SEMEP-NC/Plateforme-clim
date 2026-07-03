@@ -135,6 +135,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
         <h1 class="fw-bold">Équipements</h1>
     </div>
     <a href="index.php" class="btn btn-secondary mb-3">Retour</a>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 
     <!-- ========================= GROUPES ========================= -->
     <div class="card mb-4">
@@ -322,6 +327,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                 <th>Temp reprise</th>
                                 <th>Groupes</th>
                                 <th>Commandes</th>
+                                <th>Historique</th>
                                 <?php if ($_SESSION['user']['role'] === 'admin'): ?>
                                     <th></th>
                                 <?php endif; ?>
@@ -373,6 +379,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                         data-port="<?= $equipment['port'] ?? 502 ?>"
                                         data-name="<?= htmlspecialchars($equipment['name']) ?>">
                                         Commande
+                                    </button>
+                                </td>
+                                <td>
+                                    <button
+                                        type="button"
+                                        class="btn btn-info btn-sm historyButton"
+                                        data-id="<?= $equipment['id'] ?>"
+                                        data-name="<?= htmlspecialchars($equipment['name']) ?>">
+                                        Historique
                                     </button>
                                 </td>
                                 <?php if ($_SESSION['user']['role'] === 'admin'): ?>
@@ -514,7 +529,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             </form>
         </div>
     </div>
+    <!-- ========================= MODALS COURBES ========================= -->
+    <div class="modal fade" id="historyModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
 
+                <div class="modal-header">
+                    <h5 id="historyTitle"></h5>
+
+                    <button class="btn-close"
+                            data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <canvas id="historyChart" height="650"></canvas>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const equipModalEl = document.getElementById("commandModal");
@@ -731,6 +766,174 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                 alert("Erreur commande groupe");
             }
         });
+
+
+    let historyChart = null;
+
+    function toUTCPlus11(dateStr) {
+        // équipement DB en UTC -> conversion locale +11
+        const d = new Date(dateStr);
+        return new Date(d.getTime() + 11 * 60 * 60 * 1000);
+    }
+
+    document.querySelectorAll(".historyButton").forEach(button => {
+        button.addEventListener("click", async function () {
+
+            try {
+                const id = this.dataset.id;
+                const name = this.dataset.name;
+
+                document.getElementById("historyTitle").textContent = name;
+
+                const response = await fetch("equipment_history.php?id=" + id);
+
+                if (!response.ok) {
+                    throw new Error("HTTP " + response.status);
+                }
+
+                const data = await response.json();
+
+                if (!Array.isArray(data)) {
+                    console.error("API invalid:", data);
+                    return;
+                }
+
+                const labels = data.map(p => toUTCPlus11(p.created_at));
+
+                const retour = data.map(p => p.return_temp);
+                const consigne = data.map(p => p.setpoint);
+                const ext = data.map(p => p.outside_temp);
+
+                // ON/OFF (0/10 demandé)
+                const state = data.map(p => (p.state ? 10 : 0));
+
+                const modalEl = document.getElementById("historyModal");
+                const canvas = document.getElementById("historyChart");
+
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+                modal.show();
+
+                modalEl.addEventListener("shown.bs.modal", function handler() {
+
+                    modalEl.removeEventListener("shown.bs.modal", handler);
+
+                    if (historyChart) {
+                        historyChart.destroy();
+                    }
+
+                    const ctx = canvas.getContext("2d");
+
+                    historyChart = new Chart(ctx, {
+                        type: "line",
+                        data: {
+                            labels,
+                            datasets: [
+                                {
+                                    label: "Retour",
+                                    data: retour,
+                                    borderColor: "#0d6efd",
+                                    tension: 0.35,
+                                    pointRadius: 0,
+                                    yAxisID: "y"
+                                },
+                                {
+                                    label: "Consigne",
+                                    data: consigne,
+                                    borderColor: "#198754",
+                                    tension: 0.35,
+                                    pointRadius: 0,
+                                    yAxisID: "y"
+                                },
+                                {
+                                    label: "Extérieur",
+                                    data: ext,
+                                    borderColor: "#fd7e14",
+                                    tension: 0.35,
+                                    pointRadius: 0,
+                                    yAxisID: "y"
+                                },
+                                {
+                                    label: "ON/OFF",
+                                    data: state,
+                                    borderColor: "#dc3545",
+                                    stepped: true,
+                                    pointRadius: 0,
+                                    yAxisID: "yState"
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+
+                            interaction: {
+                                mode: "index",
+                                intersect: false
+                            },
+
+                            plugins: {
+                                legend: { position: "top" },
+
+                                zoom: {
+                                    pan: {
+                                        enabled: true,
+                                        mode: "x"
+                                    },
+                                    zoom: {
+                                        wheel: { enabled: true },
+                                        pinch: { enabled: true },
+                                        mode: "x"
+                                    }
+                                }
+                            },
+
+                            scales: {
+                                x: {
+                                    type: "time",
+                                    time: {
+                                        tooltipFormat: "dd/MM/yyyy HH:mm",
+                                        displayFormats: {
+                                            minute: "HH:mm",
+                                            hour: "dd/MM HH:mm"
+                                        }
+                                    },
+                                    ticks: {
+                                        source: "auto"
+                                    }
+                                },
+
+                                y: {
+                                    min: 0,
+                                    max: 35,
+                                    title: {
+                                        display: true,
+                                        text: "Température (°C)"
+                                    }
+                                },
+
+                                yState: {
+                                    position: "right",
+                                    min: 0,
+                                    max: 10,
+                                    ticks: {
+                                        stepSize: 10,
+                                        callback: v => v === 10 ? "ON" : "OFF"
+                                    },
+                                    grid: {
+                                        drawOnChartArea: false
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }, { once: true });
+
+            } catch (err) {
+                console.error("ERROR:", err);
+            }
+        });
+    });
     </script>
 </body>
 </html>

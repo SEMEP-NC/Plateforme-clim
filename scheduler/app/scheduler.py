@@ -515,7 +515,7 @@ def collect_telemetry():
             setpoint = data[2] / 10 if data[2] is not None else None
             return_temp = data[14] / 10 if data[14] is not None else None
 
-            coil_addr = 319 + (64 * (ui - 1))
+            coil_addr = 408 + (64 * (ui - 1))
             fault = read_coil(eq["ip"], eq["port"], eq["slave_id"], coil_addr)
             
             outside_temp = get_outdoor_temp(eq["ip"], eq["port"], eq["slave_id"])
