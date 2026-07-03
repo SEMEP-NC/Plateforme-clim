@@ -324,6 +324,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                     <th>Slave</th>
                                 <?php endif; ?>
                                 <th>État</th>
+                                <th>Défaut</th>
                                 <th>Temp reprise</th>
                                 <th>Groupes</th>
                                 <th>Commandes</th>
@@ -358,7 +359,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                         <span class="badge bg-secondary">OFF</span>
                                     <?php endif; ?>
                                 </td>
-
+                                <td>
+                                    <?php if (!empty($equipment['fault'])): ?>
+                                        <span class="badge bg-danger blink">DÉFAUT</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-success">NORMAL</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <?= $equipment['return_temp'] !== null
                                         ? number_format($equipment['return_temp'], 1) . ' °C'
@@ -767,173 +774,173 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             }
         });
 
+    //script modal courbe
+        let historyChart = null;
 
-    let historyChart = null;
+        function toUTCPlus11(dateStr) {
+            // équipement DB en UTC -> conversion locale +11
+            const d = new Date(dateStr);
+            return new Date(d.getTime() + 11 * 60 * 60 * 1000);
+        }
 
-    function toUTCPlus11(dateStr) {
-        // équipement DB en UTC -> conversion locale +11
-        const d = new Date(dateStr);
-        return new Date(d.getTime() + 11 * 60 * 60 * 1000);
-    }
+        document.querySelectorAll(".historyButton").forEach(button => {
+            button.addEventListener("click", async function () {
 
-    document.querySelectorAll(".historyButton").forEach(button => {
-        button.addEventListener("click", async function () {
+                try {
+                    const id = this.dataset.id;
+                    const name = this.dataset.name;
 
-            try {
-                const id = this.dataset.id;
-                const name = this.dataset.name;
+                    document.getElementById("historyTitle").textContent = name;
 
-                document.getElementById("historyTitle").textContent = name;
+                    const response = await fetch("equipment_history.php?id=" + id);
 
-                const response = await fetch("equipment_history.php?id=" + id);
-
-                if (!response.ok) {
-                    throw new Error("HTTP " + response.status);
-                }
-
-                const data = await response.json();
-
-                if (!Array.isArray(data)) {
-                    console.error("API invalid:", data);
-                    return;
-                }
-
-                const labels = data.map(p => toUTCPlus11(p.created_at));
-
-                const retour = data.map(p => p.return_temp);
-                const consigne = data.map(p => p.setpoint);
-                const ext = data.map(p => p.outside_temp);
-
-                // ON/OFF (0/10 demandé)
-                const state = data.map(p => (p.state ? 10 : 0));
-
-                const modalEl = document.getElementById("historyModal");
-                const canvas = document.getElementById("historyChart");
-
-                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-
-                modal.show();
-
-                modalEl.addEventListener("shown.bs.modal", function handler() {
-
-                    modalEl.removeEventListener("shown.bs.modal", handler);
-
-                    if (historyChart) {
-                        historyChart.destroy();
+                    if (!response.ok) {
+                        throw new Error("HTTP " + response.status);
                     }
 
-                    const ctx = canvas.getContext("2d");
+                    const data = await response.json();
 
-                    historyChart = new Chart(ctx, {
-                        type: "line",
-                        data: {
-                            labels,
-                            datasets: [
-                                {
-                                    label: "Retour",
-                                    data: retour,
-                                    borderColor: "#0d6efd",
-                                    tension: 0.35,
-                                    pointRadius: 0,
-                                    yAxisID: "y"
-                                },
-                                {
-                                    label: "Consigne",
-                                    data: consigne,
-                                    borderColor: "#198754",
-                                    tension: 0.35,
-                                    pointRadius: 0,
-                                    yAxisID: "y"
-                                },
-                                {
-                                    label: "Extérieur",
-                                    data: ext,
-                                    borderColor: "#fd7e14",
-                                    tension: 0.35,
-                                    pointRadius: 0,
-                                    yAxisID: "y"
-                                },
-                                {
-                                    label: "ON/OFF",
-                                    data: state,
-                                    borderColor: "#dc3545",
-                                    stepped: true,
-                                    pointRadius: 0,
-                                    yAxisID: "yState"
-                                }
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
+                    if (!Array.isArray(data)) {
+                        console.error("API invalid:", data);
+                        return;
+                    }
 
-                            interaction: {
-                                mode: "index",
-                                intersect: false
-                            },
+                    const labels = data.map(p => toUTCPlus11(p.created_at));
 
-                            plugins: {
-                                legend: { position: "top" },
+                    const retour = data.map(p => p.return_temp);
+                    const consigne = data.map(p => p.setpoint);
+                    const ext = data.map(p => p.outside_temp);
 
-                                zoom: {
-                                    pan: {
-                                        enabled: true,
-                                        mode: "x"
+                    // ON/OFF (0/10 demandé)
+                    const state = data.map(p => (p.state ? 10 : 0));
+
+                    const modalEl = document.getElementById("historyModal");
+                    const canvas = document.getElementById("historyChart");
+
+                    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+                    modal.show();
+
+                    modalEl.addEventListener("shown.bs.modal", function handler() {
+
+                        modalEl.removeEventListener("shown.bs.modal", handler);
+
+                        if (historyChart) {
+                            historyChart.destroy();
+                        }
+
+                        const ctx = canvas.getContext("2d");
+
+                        historyChart = new Chart(ctx, {
+                            type: "line",
+                            data: {
+                                labels,
+                                datasets: [
+                                    {
+                                        label: "Retour",
+                                        data: retour,
+                                        borderColor: "#0d6efd",
+                                        tension: 0.35,
+                                        pointRadius: 0,
+                                        yAxisID: "y"
                                     },
-                                    zoom: {
-                                        wheel: { enabled: true },
-                                        pinch: { enabled: true },
-                                        mode: "x"
+                                    {
+                                        label: "Consigne",
+                                        data: consigne,
+                                        borderColor: "#198754",
+                                        tension: 0.35,
+                                        pointRadius: 0,
+                                        yAxisID: "y"
+                                    },
+                                    {
+                                        label: "Extérieur",
+                                        data: ext,
+                                        borderColor: "#fd7e14",
+                                        tension: 0.35,
+                                        pointRadius: 0,
+                                        yAxisID: "y"
+                                    },
+                                    {
+                                        label: "ON/OFF",
+                                        data: state,
+                                        borderColor: "#dc3545",
+                                        stepped: true,
+                                        pointRadius: 0,
+                                        yAxisID: "yState"
                                     }
-                                }
+                                ]
                             },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
 
-                            scales: {
-                                x: {
-                                    type: "time",
-                                    time: {
-                                        tooltipFormat: "dd/MM/yyyy HH:mm",
-                                        displayFormats: {
-                                            minute: "HH:mm",
-                                            hour: "dd/MM HH:mm"
+                                interaction: {
+                                    mode: "index",
+                                    intersect: false
+                                },
+
+                                plugins: {
+                                    legend: { position: "top" },
+
+                                    zoom: {
+                                        pan: {
+                                            enabled: true,
+                                            mode: "x"
+                                        },
+                                        zoom: {
+                                            wheel: { enabled: true },
+                                            pinch: { enabled: true },
+                                            mode: "x"
+                                        }
+                                    }
+                                },
+
+                                scales: {
+                                    x: {
+                                        type: "time",
+                                        time: {
+                                            tooltipFormat: "dd/MM/yyyy HH:mm",
+                                            displayFormats: {
+                                                minute: "HH:mm",
+                                                hour: "dd/MM HH:mm"
+                                            }
+                                        },
+                                        ticks: {
+                                            source: "auto"
                                         }
                                     },
-                                    ticks: {
-                                        source: "auto"
-                                    }
-                                },
 
-                                y: {
-                                    min: 0,
-                                    max: 35,
-                                    title: {
-                                        display: true,
-                                        text: "Température (°C)"
-                                    }
-                                },
-
-                                yState: {
-                                    position: "right",
-                                    min: 0,
-                                    max: 10,
-                                    ticks: {
-                                        stepSize: 10,
-                                        callback: v => v === 10 ? "ON" : "OFF"
+                                    y: {
+                                        min: 0,
+                                        max: 35,
+                                        title: {
+                                            display: true,
+                                            text: "Température (°C)"
+                                        }
                                     },
-                                    grid: {
-                                        drawOnChartArea: false
+
+                                    yState: {
+                                        position: "right",
+                                        min: 0,
+                                        max: 10,
+                                        ticks: {
+                                            stepSize: 10,
+                                            callback: v => v === 10 ? "ON" : "OFF"
+                                        },
+                                        grid: {
+                                            drawOnChartArea: false
+                                        }
                                     }
                                 }
                             }
-                        }
-                    });
-                }, { once: true });
+                        });
+                    }, { once: true });
 
-            } catch (err) {
-                console.error("ERROR:", err);
-            }
+                } catch (err) {
+                    console.error("ERROR:", err);
+                }
+            });
         });
-    });
     </script>
 </body>
 </html>
