@@ -13,7 +13,7 @@ try {
         FROM equipment_history
         WHERE equipment_id = ?
         ORDER BY created_at DESC
-        LIMIT 200
+        LIMIT 1000
     ");
 
     $stmt->execute([$id]);

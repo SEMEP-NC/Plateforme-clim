@@ -9,7 +9,7 @@ from db import get_connection
 from discover import cleanup_offline_devices, discover, save
 
 
-INTERVAL = int(os.getenv("SCHEDULER_INTERVAL", "60"))
+INTERVAL = int(os.getenv("SCHEDULER_INTERVAL", "120"))
 DISCOVERY_INTERVAL = int(os.getenv("DISCOVERY_INTERVAL", "3600"))
 HUB_WRITE_URL = os.getenv("HUB_WRITE_URL", "http://modbus-hub:8500/write")
 LOCAL_TZ = timezone(timedelta(hours=11))
@@ -429,7 +429,7 @@ def read_coil(ip, port, slave_id, address):
                 "ip": ip,
                 "port": port,
                 "device_id": slave_id,
-                "type": "coil",
+                "type": "coils",
                 "address": address,
                 "count": 1
             },
