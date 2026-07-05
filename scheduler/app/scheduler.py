@@ -9,9 +9,9 @@ from db import get_connection
 from discover import cleanup_offline_devices, discover, save
 
 
-INTERVAL = int(os.getenv("SCHEDULER_INTERVAL", "120"))
-DISCOVERY_INTERVAL = int(os.getenv("DISCOVERY_INTERVAL", "3600"))
-HUB_WRITE_URL = os.getenv("HUB_WRITE_URL", "http://modbus-hub:8500/write")
+INTERVAL = int(os.getenv("SCHEDULER_INTERVAL"))
+DISCOVERY_INTERVAL = int(os.getenv("DISCOVERY_INTERVAL"))
+HUB_WRITE_URL = os.getenv("HUB_WRITE_URL")
 LOCAL_TZ = timezone(timedelta(hours=11))
 
 last_discovery = 0
@@ -20,10 +20,10 @@ last_discovery = 0
 def wait_for_db():
     print("Waiting for DB...", flush=True)
 
-    host = os.getenv("DB_HOST", "db")
-    user = os.getenv("DB_USER", "climuser")
-    password = os.getenv("DB_PASSWORD", "climpassword")
-    database = os.getenv("DB_NAME", "clim_manager")
+    host = os.getenv("DB_HOST")
+    user = os.getenv("DB_USER")
+    password = os.getenv("DB_PASSWORD")
+    database = os.getenv("DB_NAME")
 
     for i in range(30):
         try:

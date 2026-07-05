@@ -1,10 +1,10 @@
 <?php
 
 function get_db() {
-    $host = getenv('DB_HOST') ?: 'db';
-    $dbname = getenv('DB_NAME') ?: 'clim_manager';
-    $user = getenv('DB_USER') ?: 'climuser';
-    $password = getenv('DB_PASSWORD') ?: 'climpassword';
+    $host = getenv('DB_HOST');
+    $dbname = getenv('DB_NAME');
+    $user = getenv('DB_USER');
+    $password = getenv('DB_PASSWORD');
 
     try {
         $pdo = new PDO(

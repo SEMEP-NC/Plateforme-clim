@@ -5,7 +5,7 @@ services:
     container_name: clim_web
     restart: always
     ports:
-      - "8085:80"
+      - "${WEB_PORT}:80"
     volumes:
       - ./web/src:/var/www/html
     depends_on:
@@ -14,29 +14,26 @@ services:
       api:
         condition: service_started
     environment:
-      DB_HOST: db
-      DB_NAME: clim_manager
-      DB_USER: climuser
-      DB_PASSWORD: climpassword
+      DB_HOST: ${DB_HOST}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
       API_BASE_URL: http://clim_api:5001
-      HUB_URL_EXTERNAL: "http://10.0.0.39:8500/read"
-      HUB_WRITE_URL_EXTERNAL: "http://10.0.0.39:8500/write"
 
   api:
     build: ./api
     container_name: clim_api
     environment:
       PYTHONPATH: /app/shared
-      HUB_URL: http://modbus-hub:8500/read
-      DB_HOST: db
-      DB_NAME: clim_manager
-      DB_USER: climuser
-      DB_PASSWORD: climpassword
+      HUB_URL: ${HUB_URL}
+      DB_HOST: ${DB_HOST}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD} 
     volumes:
       - ./shared:/app/shared
     restart: always
-    ports:
-      - "5001:5001"
+
     depends_on:
       db:
         condition: service_healthy
@@ -48,10 +45,10 @@ services:
     restart: always
     container_name: clim_db
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: clim_manager
-      MYSQL_USER: climuser
-      MYSQL_PASSWORD: climpassword
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
       - db_data:/var/lib/mysql
       - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -66,11 +63,13 @@ services:
     container_name: clim_scheduler
     environment:
       PYTHONPATH: /app/shared
-      HUB_WRITE_URL: http://modbus-hub:8500/write
-      DB_HOST: db
-      DB_NAME: clim_manager
-      DB_USER: climuser
-      DB_PASSWORD: climpassword
+      HUB_WRITE_URL: ${HUB_WRITE_URL}
+      DB_HOST: ${DB_HOST}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SCHEDULER_INTERVAL: ${SCHEDULER_INTERVAL}
+
     volumes:
       - ./shared:/app/shared
     restart: always
@@ -83,15 +82,8 @@ services:
   modbus-hub:
     build: ./modbus-hub
     container_name: modbus_hub
-#    environment:
-#      MODBUS_PROXY_IP: 10.5.0.20
-#      MODBUS_PROXY_PORT: 502
-#      MODBUS_PROXY_SLAVE: 1
-#      MODBUS_PROXY_LISTEN_PORT: 1502
-#      MODBUS_PROXY_STORE_SIZE: 10000
     ports:
-      - "8500:8500"
-#     - "1502:1502"
+      - "${MODBUS_PORT}:8500"
     restart: always
 
 volumes:

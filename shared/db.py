@@ -5,10 +5,10 @@ import pymysql
 
 
 def get_connection():
-    host = os.getenv("DB_HOST", "db")
-    user = os.getenv("DB_USER", "climuser")
-    password = os.getenv("DB_PASSWORD", "climpassword")
-    database = os.getenv("DB_NAME", "clim_manager")
+    host = os.getenv("DB_HOST")
+    user = os.getenv("DB_USER")
+    password = os.getenv("DB_PASSWORD")
+    database = os.getenv("DB_NAME")
 
     for i in range(20):
         try:
