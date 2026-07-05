@@ -436,7 +436,7 @@ def read_coil(ip, port, slave_id, address):
             timeout=5
         )
 
-        data = r.json().get("coils", [])
+        data = r.json().get("bits", [])
         return 1 if data and data[0] else 0
 
     except Exception:
