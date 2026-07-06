@@ -12,7 +12,7 @@ Le projet fournit:
 
 ## Evolution 
 La liste des evolutions envisagés
-- Sheild individuel et all
+- Shield individuel et all
 - Historique défaut
 - Gestion des unités par site/localisation/etages/..
 - Ajout d'option de filtrage et de tri des unités
@@ -51,7 +51,7 @@ La liste des evolutions envisagés
                  +---------+----------+
                            |
                            v
-                    Passerelle Modbus
+                    Passerelle Modbus/GREE GMV
 ```
 
 ## Services
