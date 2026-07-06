@@ -12,9 +12,12 @@ Le projet fournit:
 
 ## Evolution 
 La liste des evolutions envisagés
+- Sheild individuel et all
+- Historique défaut
+- Gestion des unités par site/localisation/etages/..
+- Ajout d'option de filtrage et de tri des unités
 - Envoi de mail sur défaut equipement
 - Amelioration de l'outil historique
-- Ajout d'option de filtrage et de tri des unités
 - Mise en place d'un affichage sous forme de calendrier du planning
 
 ## Architecture
