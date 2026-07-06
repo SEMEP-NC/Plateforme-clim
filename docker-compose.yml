@@ -69,6 +69,7 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       SCHEDULER_INTERVAL: ${SCHEDULER_INTERVAL}
+      DISCOVERY_INTERVAL: ${DISCOVERY_INTERVAL}
 
     volumes:
       - ./shared:/app/shared
