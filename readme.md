@@ -79,7 +79,7 @@ docker compose logs -f scheduler
 
 ## Configuration
 
-Les variables principales sont definies dans `docker-compose.yml`.
+Les variables principales sont definies dans `.env`.
 
 | Variable | Description | Exemple |
 | `API_BASE_URL` | URL interne de l'API | `http://clim_api:5001` |
@@ -404,14 +404,3 @@ http://localhost:8500/health
 ```
 
 
-## Notes de securite
-
-Cette plateforme est prevue pour un reseau technique de confiance.
-
-Avant une exposition plus large, il est recommande de:
-
-- ajouter une authentification sur l'interface web;
-- placer l'application derriere un reverse proxy;
-- limiter l'acces aux ports `5001` et `8500`;
-- remplacer les mots de passe par des secrets ou un fichier `.env`;
-- eviter d'exposer les endpoints d'ecriture Modbus hors du reseau local.
