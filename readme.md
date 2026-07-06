@@ -1,4 +1,4 @@
-# Plateforme Clim
+# Plateforme Clim GREE
 
 Plateforme Docker pour detecter, declarer, planifier et piloter des climatiseurs via Modbus TCP.
 
@@ -9,6 +9,13 @@ Le projet fournit:
 - un hub Modbus FastAPI pour centraliser les lectures/ecritures;
 - un scheduler Python pour executer les actions programmees;
 - une base MariaDB pour conserver la configuration, les equipements, les plannings et les logs.
+
+## Evolution 
+La liste des evolutions envisagés
+- Envoi de mail sur défaut equipement
+- Amelioration de l'outil historique
+- Ajout d'option de filtrage et de tri des unités
+- Mise en place d'un affichage sous forme de calendrier du planning
 
 ## Architecture
 

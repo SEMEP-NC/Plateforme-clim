@@ -206,7 +206,6 @@ require_login();
                     <th>Température</th>
                     <th>Prochaine execution</th>
                     <th>Repetition</th>
-                    <th>Exécuté</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -275,13 +274,6 @@ require_login();
                                     $dayLabels
                                 )
                             ) ?>
-                        </td>
-                        <td>
-                            <?php if (!empty($schedule['executed'])): ?>
-                                <span class="badge bg-success">Oui</span>
-                            <?php else: ?>
-                                <span class="badge bg-warning text-dark">Non</span>
-                            <?php endif; ?>
                         </td>
                         <td class="d-flex gap-1">
                             <button
