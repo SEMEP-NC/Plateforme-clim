@@ -38,6 +38,9 @@ require_login();
         <a href="schedules.php" class="btn btn-primary menu-btn">
             Planning
         </a>
+        <a href="fault_history.php" class="btn btn-warning">
+            Historique défauts
+        </a>
 
         <?php if ($_SESSION['user']['role'] === 'admin'): ?>
             <a href="discovered_units.php" class="btn btn-warning">

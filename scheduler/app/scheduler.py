@@ -16,6 +16,27 @@ LOCAL_TZ = timezone(timedelta(hours=11))
 
 last_discovery = 0
 
+FAULTS = {
+    408: "Défaut général",
+    409: "Erreur communication",
+    410: "Protection unité intérieure",
+    411: "Protection ventilateur indoor",
+    412: "Bac à condensats plein",
+    413: "Protection surintensité",
+    414: "Protection prise en glace",
+    415: "Conflit mode",
+    416: "Défaut carte indoor",
+    417: "Défaut sonde reprise",
+    418: "Défaut sonde ambiance",
+    419: "Défaut sonde liquide",
+    420: "Défaut sonde gaz",
+    421: "Défaut sonde humidité",
+    422: "Conflit adresse",
+    423: "Pas de master",
+    424: "Défaut quantité unités"
+}
+
+fault_cache = {}
 
 def wait_for_db():
     print("Waiting for DB...", flush=True)
@@ -421,7 +442,8 @@ def run_discovery_if_needed():
 
         last_discovery = now
 
-def read_coil(ip, port, slave_id, address):
+def read_coils(ip, port, slave_id, address):
+
     try:
         r = requests.get(
             "http://modbus-hub:8500/read",
@@ -431,18 +453,19 @@ def read_coil(ip, port, slave_id, address):
                 "device_id": slave_id,
                 "type": "coils",
                 "address": address,
-                "count": 1
+                "count": 17
             },
             timeout=5
         )
 
-        data = r.json().get("bits", [])
-        return 1 if data and data[0] else 0
+        return r.json().get("bits", [0] * 17)
 
     except Exception:
-        return 0
+        return [0] * 17
 
 def collect_telemetry():
+    global fault_cache
+
     conn = get_connection()
     cur = conn.cursor()
 
@@ -462,7 +485,6 @@ def collect_telemetry():
             return outdoor_cache[key]
 
         try:
-            
             r = requests.get(
                 "http://modbus-hub:8500/read",
                 params={
@@ -475,13 +497,11 @@ def collect_telemetry():
                 },
                 timeout=5
             )
-            
 
             data = r.json().get("registers", [])
-            value = (data[0] / 10) if data and data[0] is not None else None
+            value = data[0] / 10 if data and data[0] is not None else None
 
         except Exception:
-            
             value = None
 
         outdoor_cache[key] = value
@@ -493,6 +513,10 @@ def collect_telemetry():
         base = 102 + 25 * (ui - 1)
 
         try:
+
+            #
+            # Lecture registres UI
+            #
             r = requests.get(
                 "http://modbus-hub:8500/read",
                 params={
@@ -506,24 +530,93 @@ def collect_telemetry():
                 timeout=5
             )
 
-            data = r.json().get("registers", [])
+            registers = r.json().get("registers", [])
 
-            if len(data) < 15:
+            if len(registers) < 15:
                 continue
 
-            state = 1 if data[0] == 170 else 0
-            setpoint = data[2] / 10 if data[2] is not None else None
-            return_temp = data[14] / 10 if data[14] is not None else None
+            state = 1 if registers[0] == 170 else 0
+            setpoint = registers[2] / 10 if registers[2] is not None else None
+            return_temp = registers[14] / 10 if registers[14] is not None else None
 
+            #
+            # Lecture défauts
+            #
             coil_addr = 408 + (64 * (ui - 1))
-            fault = read_coil(eq["ip"], eq["port"], eq["slave_id"], coil_addr)
-            
-            outside_temp = get_outdoor_temp(eq["ip"], eq["port"], eq["slave_id"])
 
-            # UPDATE
+            coils = read_coils(
+                eq["ip"],
+                eq["port"],
+                eq["slave_id"],
+                coil_addr
+            )
+
+            fault = 1 if any(coils) else 0
+
+            #
+            # Historique défauts
+            #
+            for i, value in enumerate(coils):
+
+                code = coil_addr + i
+
+                current = bool(value)
+
+                key = (eq["id"], code)
+
+                previous = fault_cache.get(key)
+
+                if previous is None:
+
+                    # Initialisation du cache
+                    fault_cache[key] = current
+
+                elif previous != current:
+
+                    fault_cache[key] = current
+
+                    cur.execute("""
+                        INSERT INTO equipment_fault_history
+                        (
+                            equipment_id,
+                            fault_code,
+                            fault_name,
+                            active,
+                            created_at
+                        )
+                        VALUES
+                        (%s,%s,%s,%s,NOW())
+                    """, (
+                        eq["id"],
+                        code,
+                        FAULTS.get(408 + i, f"Défaut {code}"),
+                        current
+                    ))
+
+                    print(
+                        f"[FAULT] "
+                        f"UI{ui} "
+                        f"{FAULTS.get(408 + i, code)} "
+                        f"{'ACTIVE' if current else 'CLEAR'}",
+                        flush=True
+                    )
+
+            #
+            # Température extérieure
+            #
+            outside_temp = get_outdoor_temp(
+                eq["ip"],
+                eq["port"],
+                eq["slave_id"]
+            )
+
+            #
+            # Mise à jour équipement
+            #
             cur.execute("""
                 UPDATE equipments
-                SET state=%s,
+                SET
+                    state=%s,
                     setpoint=%s,
                     return_temp=%s,
                     outside_temp=%s,
@@ -538,11 +631,22 @@ def collect_telemetry():
                 eq["id"]
             ))
 
-            # HISTORY
+            #
+            # Historique télémétrie
+            #
             cur.execute("""
                 INSERT INTO equipment_history
-                (equipment_id, created_at, setpoint, return_temp, outside_temp, state, fault)
-                VALUES (%s, NOW(), %s, %s, %s, %s, %s)
+                (
+                    equipment_id,
+                    created_at,
+                    setpoint,
+                    return_temp,
+                    outside_temp,
+                    state,
+                    fault
+                )
+                VALUES
+                (%s,NOW(),%s,%s,%s,%s,%s)
             """, (
                 eq["id"],
                 setpoint,
@@ -553,11 +657,14 @@ def collect_telemetry():
             ))
 
         except Exception as e:
-            print(f"[TELEMETRY ERROR] {eq['id']} {e}")
+
+            print(
+                f"[TELEMETRY ERROR] UI{ui}: {e}",
+                flush=True
+            )
 
     conn.commit()
-    conn.close()  
-
+    conn.close()
 
 def main():
     wait_for_db()

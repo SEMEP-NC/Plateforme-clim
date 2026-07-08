@@ -1,0 +1,90 @@
+# coils UI1  (coil + 64 * (UI-1))
+408 : Défaut general
+409 : Erreur Communication 
+410 : Protection unité interieure
+411 : Protection indoor fan
+412 : Bac a condensat plein
+413 : Protection surintensité
+414 : Protection prise en glace
+415 : Conflit mode
+416 : Défaut carte indoor
+417 : Défaut capteur temperature indoor
+418 : Défaut capteur temperature ambiant
+419 : Défaut capteur temperature liquide
+420 : Défaut capteur temperature gaz
+421 : Défaut capteur humidité
+422 : Conflit adresse
+423 : Pas de master unit
+424 : Défaut quantité unités 
+440 : Shield Energy saving
+441 : Shield consigne
+442 : Shield mode
+443 : Shield ON/OFF
+444 : Lock fonction
+
+#Register UI1 (register + 25 * (UI-1))
+102 : ON/OFF #0xAA=ON , 0x55=OFF
+103 : Mode #1=Froid, 2=Deshumidification, 3=Ventilation, 4=Chauffage, 5=Auto
+104 : Consigne #valeur x10 , plage 16-30°C
+105 : Vitesse ventilation #Erciture(1=auto, 2=low, 3=medium-low, 4=medium, 5=medium-high, 6=high, 7=turbo); Lecture(1=stop, 2=super-low, 3=low, 4=medium-low, 5=medium, 6=medium-high, 7=high, 8=super-high)
+106 : Limite basse consigne froid #valeur x10 , plage 16-30°C
+107 : Limite haute consigne chaud #valeur x10 , plage 16-30°C
+108 : Limite basse consigne deshumidification #valeur x10 , plage 16-30°C
+109 : Swing haut bas
+110 : Swing droite gauche
+111 : Quiet
+112 : Sleep
+113 : Temerature reprise #valeur x10 , plage -30 +138°C
+114 : gate control
+118 : Outdoor unit associé
+123 : Puissance unité
+
+#Register systems (register+ 10 * (system-1))
+6502 : Limite haute puissance compresseurs # plage 30-100 %
+6506 : Mode system #1=Froid seul, 2=Chaud seul, 3=Chaud et froid, 4=Ventil seul
+6507 : Temperature extérieure #plage -30 +155 °C
+
+#Presence equipements
+88-106 : Presence systemes 1 a 16 #oui/non
+120-374 : Presence unité interieure 1 a 255 #oui/non
+
+#Coils System 1 (coil + 48 * (system-1))
+16800 : Défaut general system
+16801 : Défaut communication passerelle
+16802 : 
+16803 : Pressions anormales
+16804 : Défaut HP
+16805 : Défaut BP
+16806 : Défaut temperature sortie compresseur
+16807 : Protection surintensité
+16808 : Erreur communication
+16809 : Défaut capteur temperature exterieure
+16810 : Défaut capteur temperature sortie compresseur
+16811 : Défaut capteur HP
+16812 : Défaut capteur BP
+16813 : Défaut capteur temperature sortie compresseur
+16814 : Défaut capacité system
+16815 : Défaut capteur temperature dégivrage
+16816 : system sub-cooler temperature sensor error
+16817 : Défaut capteur temperature seprateur gaz-liquide
+16818 : Défaut carte ventilateur
+16819 : Défaut carte compresseur
+16820 : Fonctionnement annormal carte compresseur
+16821 : Défaut tension carte compresseur
+16822 : Fonctionnement annormal carte ventilateur
+16823 : Défaut tension carte ventilateur
+16824 : Défaut module 1
+16825 : Défaut module 2
+16826 : Défaut module 3
+16827 : Défaut module 4
+16828 : Protection HP basse
+16829 : Protection HP temperature basse
+16830 : Défaut capteur temperature
+16831 : Erreur diverse
+16832 : 
+16833 : Unité en debugging
+16834 : Etat Marche compresseur
+16835 : System unrecoverable error
+16836 : System recoverable error
+
+

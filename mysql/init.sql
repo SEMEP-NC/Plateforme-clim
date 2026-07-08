@@ -107,3 +107,15 @@ CREATE TABLE IF NOT EXISTS equipment_history (
     INDEX (equipment_id),
     INDEX (created_at)
 );
+
+CREATE TABLE equipment_fault_history (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    equipment_id INT NOT NULL,
+    fault_code INT NOT NULL,
+    fault_name VARCHAR(100) NOT NULL,
+    active TINYINT(1) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX(equipment_id),
+    INDEX(created_at)
+);
