@@ -205,7 +205,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                 </div>
                 <div class="modal-body">               
                     <table class="table table-bordered align-middle">
-
+                        <thead>
+                            <tr>
+                                <th width="60"></th>
+                                <th>Paramètre</th>
+                                <th>Valeur</th>
+                            </tr>
+                        </thead>
                         <tr>
                             <td><input class="form-check-input" type="checkbox" id="send_power_group"></td>
                             <td>Marche / Arrêt</td>
@@ -252,6 +258,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                     <option value="3">Moyen</option>
                                     <option value="4">Fort</option>
                                 </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><input class="form-check-input" type="checkbox" id="send_min_setpoint_group"></td>
+                            <td>Limite consigne basse</td>
+                            <td>
+                                <input id="g_min_setpoint" type="number" class="form-control" min="16" max="30" step="0.5">
                             </td>
                         </tr>
 
@@ -527,6 +540,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                 </tr>
                             </tbody>
                         </table>
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <strong>Protections (Shield)</strong>
+                            </div>
+
+                            <div class="card-body">
+
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="shield_energy">
+                                    <label class="form-check-label" for="shield_energy">
+                                        Shield Energy Saving
+                                    </label>
+                                </div>
+
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="shield_setpoint">
+                                    <label class="form-check-label" for="shield_setpoint">
+                                        Shield Consigne
+                                    </label>
+                                </div>
+
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="shield_mode">
+                                    <label class="form-check-label" for="shield_mode">
+                                        Shield Mode
+                                    </label>
+                                </div>
+
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="shield_power">
+                                    <label class="form-check-label" for="shield_power">
+                                        Shield Marche / Arrêt
+                                    </label>
+                                </div>
+
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="lock_function">
+                                    <label class="form-check-label" for="lock_function">
+                                        Verrouillage télécommande
+                                    </label>
+                                </div>
+
+                            </div>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
@@ -589,6 +646,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                     }
 
                     const regs = Array.isArray(data.registers) ? data.registers : [];
+                    const shields = Array.isArray(data.coils) ? data.coils : [];
+
+                    document.getElementById("shield_energy").checked  = !!shields[0];
+                    document.getElementById("shield_setpoint").checked = !!shields[1];
+                    document.getElementById("shield_mode").checked     = !!shields[2];
+                    document.getElementById("shield_power").checked    = !!shields[3];
+                    document.getElementById("lock_function").checked   = !!shields[4];
 
                     lastReadRegisters = regs.map(v =>
                         (v === null || v === undefined || isNaN(v)) ? 0 : Number(v)
@@ -661,11 +725,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                 regs[4] = isNaN(minSp) ? 0 : Math.round(minSp * 10);
             }
 
+            const shields = [
+                document.getElementById("shield_energy").checked,
+                document.getElementById("shield_setpoint").checked,
+                document.getElementById("shield_mode").checked,
+                document.getElementById("shield_power").checked,
+                document.getElementById("lock_function").checked
+            ];
+
             try {
                 const res = await fetch(`/api/modbus_proxy.php?action=write&id=${id}`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ registers: regs })
+                    body: JSON.stringify({ registers: regs, shields: shields })
                 });
 
                 const data = await res.json();
@@ -702,6 +774,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                     .forEach(i => i.value = "");
                 // RESET INPUTS OPTIONNELS
                 document.getElementById("g_setpoint").value = "24";
+                document.getElementById("g_min_setpoint").value = "24";
 
                 groupModal.show();
             });
@@ -739,6 +812,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             if (document.getElementById("send_fan_group").checked) {
                 const v = document.getElementById("g_fan").value;
                 if (v !== "") registers.fan = parseInt(v);
+            }
+            if (document.getElementById("send_min_setpoint_group").checked) {
+                const v = document.getElementById("g_min_setpoint").value;
+                if (v !== "") registers.min_setpoint = Math.round(parseFloat(v));
             }
 
             const payload = {

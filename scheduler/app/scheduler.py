@@ -23,7 +23,7 @@ FAULTS = {
     411: "Protection ventilateur indoor",
     412: "Bac à condensats plein",
     413: "Protection surintensité",
-    414: "Protection prise en glace",
+    414: "Protection anti-gel",
     415: "Conflit mode",
     416: "Défaut carte indoor",
     417: "Défaut sonde reprise",

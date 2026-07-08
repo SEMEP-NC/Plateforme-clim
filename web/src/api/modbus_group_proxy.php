@@ -39,13 +39,14 @@ if ($action === 'write_group') {
     if (isset($registers[0])) {
         $regs = array_map(fn($v) => is_numeric($v) ? (int)$v : 0, $registers);
     } else {
-        // mapping partiel → fallback 4 registers
-        $regs = [0,0,0,0];
+        // mapping partiel → fallback 5 registers
+        $regs = [0,0,0,0,0];
 
         if (isset($registers['power'])) $regs[0] = (int)$registers['power'];
         if (isset($registers['mode'])) $regs[1] = (int)$registers['mode'];
         if (isset($registers['setpoint'])) $regs[2] = (int)($registers['setpoint'] * 10);
         if (isset($registers['fan'])) $regs[3] = (int)$registers['fan'];
+        if (isset($registers['min_setpoint'])) $regs[4] = (int)($registers['min_setpoint'] * 10);
     }
 
     $url = "http://modbus-hub:8500/write";
@@ -60,7 +61,7 @@ if ($action === 'write_group') {
             "device_id" => $eq['slave_id'],
             "type" => "register",
             "address" => $address,
-            "count" => 4,
+            "count" => 5,
             "values" => $regs,
             "UI" => $eq['UI']
         ];

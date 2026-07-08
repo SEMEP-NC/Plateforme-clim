@@ -161,7 +161,7 @@ async def write_worker():
                     continue
 
                 if mode == "coil":
-                    result = client.write_coil(address, bool(value), device_id=device_id)
+                    result = client.write_coils(address, bool(value), device_id=device_id)
                 elif mode == "register":
                       # CAS MULTI REGISTRES
                     if values is not None:

@@ -57,6 +57,7 @@ $faults=$stmt->fetchAll(PDO::FETCH_ASSOC);
     <body>
         <div class="container mt-4">
             <h3>Historique des défauts</h3>
+            <a href="index.php" class="btn btn-secondary mb-3">Retour</a>
             <div class="card mb-4">
                 <div class="card-body">
                     <form method="GET" class="row g-3">
@@ -89,7 +90,13 @@ $faults=$stmt->fetchAll(PDO::FETCH_ASSOC);
                     <tbody>
                         <?php foreach($faults as $f): ?>
                             <tr>
-                                <td><?= htmlspecialchars($f['created_at']) ?></td>
+                                <td>
+                                    <?php
+                                        $date = new DateTime($f['created_at'], new DateTimeZone('UTC'));
+                                        $date->setTimezone(new DateTimeZone('Pacific/Noumea'));
+                                        echo $date->format('d/m/Y H:i:s');
+                                    ?>
+                                </td>
                                 <td>UI<?= htmlspecialchars($f['UI']) ?></td>
                                 <td><?= htmlspecialchars($f['name']) ?></td>
                                 <td><?= htmlspecialchars($f['fault_name']) ?></td>

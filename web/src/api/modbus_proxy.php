@@ -38,33 +38,70 @@ $address = 102 + 25 * ($ui - 1);
 ========================= */
 if ($action === 'read') {
 
+    $coilAddress = 440 + 64 * ($ui - 1);
+
+    // Registers
     $url = "http://modbus-hub:8500/read?" . http_build_query([
-        "ip" => $eq['ip'],
-        "port" => $port,
-        "device_id" => $eq['slave_id'],
-        "type" => "register",
-        "address" => $address,
-        "count" => 5
+        "ip"=>$eq['ip'],
+        "port"=>$port,
+        "device_id"=>$eq['slave_id'],
+        "type"=>"register",
+        "address"=>$address,
+        "count"=>5
     ]);
-    
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 3);
 
-    $response = curl_exec($ch);
+    $ch=curl_init($url);
+    curl_setopt($ch,CURLOPT_RETURNTRANSFER,true);
+    curl_setopt($ch,CURLOPT_TIMEOUT,3);
 
-    if ($response === false) {
-        http_response_code(500);
+    $regResponse=curl_exec($ch);
+
+    if($regResponse===false){
         echo json_encode([
-            "success" => false,
-            "error" => curl_error($ch)
+            "success"=>false,
+            "error"=>curl_error($ch)
         ]);
         exit;
     }
 
     curl_close($ch);
 
-    echo $response;
+    $registers=json_decode($regResponse,true);
+
+    // Coils
+    $url = "http://modbus-hub:8500/read?" . http_build_query([
+        "ip"=>$eq['ip'],
+        "port"=>$port,
+        "device_id"=>$eq['slave_id'],
+        "type"=>"coils",
+        "address"=>$coilAddress,
+        "count"=>5
+    ]);
+
+    $ch=curl_init($url);
+    curl_setopt($ch,CURLOPT_RETURNTRANSFER,true);
+    curl_setopt($ch,CURLOPT_TIMEOUT,3);
+
+    $coilResponse=curl_exec($ch);
+
+    if($coilResponse===false){
+        echo json_encode([
+            "success"=>false,
+            "error"=>curl_error($ch)
+        ]);
+        exit;
+    }
+
+    curl_close($ch);
+
+    $coils=json_decode($coilResponse,true);
+
+    echo json_encode([
+        "success"=>true,
+        "registers"=>$registers["registers"] ?? [],
+        "coils"=>$coils["bits"] ?? []
+    ]);
+
     exit;
 }
 
@@ -88,6 +125,7 @@ if ($action === 'write') {
     }
 
     $registers = $payload['registers'] ?? [];
+    $shields = $payload["shields"] ?? [];
 
 
     $registers = array_map(function($v) {
@@ -95,11 +133,18 @@ if ($action === 'write') {
         return (int)$v;
     }, $registers);
 
-    // force taille fixe 4
+    // force taille fixe 5
     while (count($registers) < 5) {
         $registers[] = 0;
     }
 
+    $shields = array_map(function($v){
+        return $v ? true : false;
+    }, $shields);
+
+    while(count($shields)<5){
+        $shields[] = false;
+    }
     if (!is_array($registers) || count($registers) !== 5) {
         echo json_encode([
             "success" => false,
@@ -154,5 +199,35 @@ if ($action === 'write') {
 
     // renvoyer brut modbus-hub
     echo $response;
-    exit;
+        
+    $coilAddress = 440 + 64 * ($ui - 1);
+
+    $requestBody = [
+        "ip"=>$eq['ip'],
+        "port"=>$port,
+        "device_id"=>$eq['slave_id'],
+        "type"=>"coil",
+        "address"=>$coilAddress,
+        "count"=>5,
+        "values"=>$shields
+    ];
+
+    $ch=curl_init("http://modbus-hub:8500/write");
+
+    curl_setopt($ch,CURLOPT_RETURNTRANSFER,true);
+    curl_setopt($ch,CURLOPT_POST,true);
+    curl_setopt($ch,CURLOPT_HTTPHEADER,['Content-Type: application/json']);
+    curl_setopt($ch,CURLOPT_POSTFIELDS,json_encode($requestBody));
+
+    $coilResponse=curl_exec($ch);
+
+    if($coilResponse===false){
+        echo json_encode([
+            "success"=>false,
+            "error"=>curl_error($ch)
+        ]);
+        exit;
+    }
+
+    curl_close($ch);
 }
