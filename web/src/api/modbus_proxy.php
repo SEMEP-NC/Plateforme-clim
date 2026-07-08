@@ -206,7 +206,7 @@ if ($action === 'write') {
         "ip"=>$eq['ip'],
         "port"=>$port,
         "device_id"=>$eq['slave_id'],
-        "type"=>"coil",
+        "type"=>"coils",
         "address"=>$coilAddress,
         "count"=>5,
         "values"=>$shields
