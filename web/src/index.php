@@ -49,6 +49,11 @@ require_login();
         <?php endif; ?>
         <a></a>
         <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+            <a href="mail_settings.php" class="btn btn-danger">
+                Configuration mail
+            </a>
+        <?php endif; ?>
+        <?php if ($_SESSION['user']['role'] === 'admin'): ?>
             <a href="users.php" class="btn btn-danger">
                 Gestion utilisateurs
             </a>

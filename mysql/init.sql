@@ -116,7 +116,50 @@ CREATE TABLE equipment_fault_history (
     fault_name VARCHAR(100) NOT NULL,
     active TINYINT(1) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    mail_sent TINYINT(1) NOT NULL DEFAULT 0,
+    mail_sent_at DATETIME NULL,
 
     INDEX(equipment_id),
     INDEX(created_at)
 );
+
+CREATE TABLE mail_accounts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    smtp_host VARCHAR(255) NOT NULL,
+    smtp_port INT DEFAULT 587,
+    smtp_user VARCHAR(255),
+    smtp_password VARCHAR(255),
+    smtp_secure VARCHAR(20) DEFAULT 'tls',
+    sender_name VARCHAR(100),
+    sender_email VARCHAR(255),
+    enabled TINYINT DEFAULT 1
+);
+INSERT INTO mail_accounts (
+    id,
+    smtp_host,
+    smtp_port,
+    smtp_user,
+    smtp_password,
+    smtp_secure,
+    sender_name,
+    sender_email,
+    enabled
+)
+VALUES (1,'',587,'','','tls','','',1);
+
+
+CREATE TABLE mail_recipients (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(255) NOT NULL,
+    enabled TINYINT DEFAULT 1
+);
+
+
+CREATE TABLE mail_config (
+    id INT PRIMARY KEY DEFAULT 1,
+    enable_alarm TINYINT DEFAULT 1,
+    enable_return TINYINT DEFAULT 1,
+    delay_seconds INT DEFAULT 60
+);
+INSERT INTO mail_config(id,enable_alarm,enable_return,delay_seconds) VALUES(1,1,1,60);

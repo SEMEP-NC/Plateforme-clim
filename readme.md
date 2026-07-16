@@ -12,8 +12,7 @@ Le projet fournit:
 
 ## Evolution 
 La liste des evolutions envisagés
-- Gestion des unités par site/localisation/etages/..
-- Ajout d'option de filtrage et de tri des unités
+- passage https
 - Envoi de mail sur défaut equipement
 - Amelioration de l'outil historique
 - Mise en place d'un affichage sous forme de calendrier du planning

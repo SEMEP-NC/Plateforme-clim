@@ -7,6 +7,7 @@ import requests
 
 from db import get_connection
 from discover import cleanup_offline_devices, discover, save
+from mail_notifier import check_and_send
 
 
 INTERVAL = int(os.getenv("SCHEDULER_INTERVAL"))
@@ -674,7 +675,9 @@ def main():
         run_discovery_if_needed()
         process_planning()
         collect_telemetry()
+        check_and_send()
         time.sleep(INTERVAL)
+              
 
 
 if __name__ == "__main__":
