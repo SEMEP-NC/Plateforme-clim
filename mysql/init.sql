@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS equipments (
     ip VARCHAR(50) NOT NULL,
     port INT NOT NULL,
     slave_id INT NOT NULL,
+    localisation VARCHAR(75) NOT NULL DEFAULT '',
     power INT,
     UI INT NOT NULL,
     enabled TINYINT DEFAULT 1,

@@ -12,8 +12,6 @@ Le projet fournit:
 
 ## Evolution 
 La liste des evolutions envisagés
-- Shield individuel et all
-- Historique défaut
 - Gestion des unités par site/localisation/etages/..
 - Ajout d'option de filtrage et de tri des unités
 - Envoi de mail sur défaut equipement

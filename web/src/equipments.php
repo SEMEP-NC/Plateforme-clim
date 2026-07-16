@@ -20,6 +20,16 @@ $equipments = $db->query("
     SELECT * FROM equipments ORDER BY UI
 ")->fetchAll(PDO::FETCH_ASSOC);
 
+$localisations = [];
+
+foreach ($equipments as $equipment) {
+    if (!empty($equipment['localisation'])) {
+        $localisations[] = $equipment['localisation'];
+    }
+}
+
+$localisations = array_unique($localisations);
+sort($localisations);
 /* relations */
 $equipmentGroups = [];
 $groupEquipments = [];
@@ -102,9 +112,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_equipment_groups
 |--------------------------------------------------------------------------
 */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
+
+    $stmt = $db->prepare("
+        UPDATE equipments 
+        SET name = ?, localisation = ?
+        WHERE id = ?
+    ");
+
     foreach ($_POST['name'] as $id => $name) {
-        $db->prepare("UPDATE equipments SET name=? WHERE id=?")->execute([trim($name), (int)$id]);
+
+        $localisation = $_POST['localisation'][$id] ?? '';
+
+        $stmt->execute([
+            trim($name),
+            trim($localisation),
+            (int)$id
+        ]);
     }
+
     header("Location: equipments.php");
     exit;
 }
@@ -129,7 +154,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
     <title>Équipements</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
+<style>
+    .sortable {
+        cursor: pointer;
+        user-select: none;
+    }
 
+    .sortable:hover {
+        background-color: #f0f0f0;
+    }
+</style>
 <body class="container mt-5">
     <div class="text-center mt-4">
         <h1 class="fw-bold">Équipements</h1>
@@ -269,6 +303,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                         </tr>
 
                     </table>
+                    <div class="card mt-3">
+                        <div class="card-header p-0">
+                            <button
+                                class="btn btn-link text-decoration-none w-100 text-start p-3"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#shieldCollapse"
+                                aria-expanded="false"
+                                aria-controls="shieldCollapse">
+
+                                <strong>Protections (Shield)</strong>
+                            </button>
+                        </div>
+
+                        <div class="collapse" id="shieldCollapse">
+                            <div class="card-body">
+
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="g_shield_energy">
+                                    <label class="form-check-label" for="g_shield_energy">
+                                        Shield Energy Saving
+                                    </label>
+                                </div>
+
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="g_shield_setpoint">
+                                    <label class="form-check-label" for="g_shield_setpoint">
+                                        Shield Consigne
+                                    </label>
+                                </div>
+
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="g_shield_mode">
+                                    <label class="form-check-label" for="g_shield_mode">
+                                        Shield Mode
+                                    </label>
+                                </div>
+
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="g_shield_power">
+                                    <label class="form-check-label" for="g_shield_power">
+                                        Shield Marche / Arrêt
+                                    </label>
+                                </div>
+
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="g_lock_function">
+                                    <label class="form-check-label" for="g_lock_function">
+                                        Verrouillage télécommande
+                                    </label>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
@@ -280,29 +369,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
   
     <!-- ========================= MODALS GROUP → EQUIP ========================= -->
     <?php foreach ($groups as $group): ?>
-    <div class="modal fade" id="groupModal<?= $group['id'] ?>" tabindex="-1">
-        <div class="modal-dialog">
-            <form method="POST" class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Unités - <?= htmlspecialchars($group['name']) ?></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <?php foreach ($equipments as $equipment): ?>
-                    <?php $checked = in_array($equipment['id'], $groupEquipments[$group['id']] ?? []); ?>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="equipments[<?= $group['id'] ?>][]" value="<?= $equipment['id'] ?>" <?= $checked ? 'checked' : '' ?>>
-                        <label class="form-check-label"><?= htmlspecialchars($equipment['name']) ?></label>
+        <div class="modal fade" id="groupModal<?= $group['id'] ?>" tabindex="-1">
+            <div class="modal-dialog">
+                <form method="POST" class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Unités - <?= htmlspecialchars($group['name']) ?></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
-                    <?php endforeach; ?>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" name="save_groups" class="btn btn-success">Valider</button>
-                </div>
-            </form>
+                    <div class="modal-body">
+                        <?php foreach ($equipments as $equipment): ?>
+                        <?php $checked = in_array($equipment['id'], $groupEquipments[$group['id']] ?? []); ?>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="equipments[<?= $group['id'] ?>][]" value="<?= $equipment['id'] ?>" <?= $checked ? 'checked' : '' ?>>
+                            <label class="form-check-label"><?= htmlspecialchars($equipment['name']) ?></label>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" name="save_groups" class="btn btn-success">Valider</button>
+                    </div>
+                </form>
+            </div>
         </div>
-    </div>
     <?php endforeach; ?>
 
     <!-- ========================= EQUIPMENTS ========================= -->
@@ -317,11 +406,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                         <button type="submit" name="save_all" class="btn btn-success">
                             💾 Sauvegarder
                         </button>
-                        <div class="d-flex gap-2">
+                        <!-- <div class="d-flex gap-2">
                             <a href="export_equipments_json.php" class="btn btn-info">
                                 📥 Exporter en JSON
                             </a>
-                        </div>
+                        </div> -->
                     </div>
                 <?php endif; ?>
 
@@ -329,16 +418,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                     <table class="table table-bordered table-striped align-middle" id="equipmentsTable">
                         <thead>
                             <tr>
-                                <th>Nom</th>
+                                <th>Localisation
+                                    <div class="dropdown d-inline">
+                                        <button 
+                                            class="btn btn-sm btn-light"
+                                            type="button"
+                                            data-bs-toggle="dropdown">
+                                            🔽
+                                        </button>
+                                        <ul class="dropdown-menu p-2" style="max-height:250px;overflow:auto">
+
+                                            <?php foreach ($localisations as $loc): ?>
+                                                <li>
+                                                    <label class="dropdown-item">
+                                                        <input 
+                                                            type="checkbox"
+                                                            class="form-check-input me-2 localisation-filter"
+                                                            value="<?= htmlspecialchars($loc) ?>">
+                                                        <?= htmlspecialchars($loc) ?>
+                                                    </label>
+                                                </li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    </div>
+                                </th>
+                                <th data-sort="name" class="sortable">
+                                    Nom <span>↕</span>
+                                </th>
+
+                                <th data-sort="ui" class="sortable">
+                                    UI <span>↕</span>
+                                </th>
                                 <?php if ($_SESSION['user']['role'] === 'admin'): ?>
-                                    <th>UI</th>
                                     <th>Puissance</th>
                                     <th>IP</th>
                                     <th>Slave</th>
                                 <?php endif; ?>
-                                <th>État</th>
-                                <th>Défaut</th>
-                                <th>Temp reprise</th>
+                                <th data-sort="state" class="sortable">
+                                    État <span>↕</span>
+                                </th>
+
+                                <th data-sort="fault" class="sortable">
+                                    Défaut <span>↕</span>
+                                </th>
+
+                                <th data-sort="temp" class="sortable">
+                                    Temp reprise <span>↕</span>
+                                </th>
                                 <th>Groupes</th>
                                 <th>Commandes</th>
                                 <th>Historique</th>
@@ -350,36 +476,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                         <tbody>
                             <?php foreach ($equipments as $equipment): ?>
                             <tr>
-                                <td>
-                                    <?php if ($_SESSION['user']['role'] === 'admin'): ?><input type="text" name="name[<?= $equipment['id'] ?>]" value="<?php endif; ?><?= htmlspecialchars($equipment['name']) ?><?php if ($_SESSION['user']['role'] === 'admin'): ?>" class="form-control"><?php endif; ?>
+                                <td data-localisation="<?= htmlspecialchars($equipment['localisation'] ?? '') ?>">
+                                    <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                        <input 
+                                            type="text"
+                                            name="localisation[<?= $equipment['id'] ?>]"
+                                            value="<?= htmlspecialchars($equipment['localisation'] ?? '') ?>"
+                                            class="form-control">
+                                    <?php else: ?>
+                                        <?= htmlspecialchars($equipment['localisation'] ?? '') ?>
+                                    <?php endif; ?>
+                                </td>
+                                <td data-sort="<?= htmlspecialchars($equipment['name']) ?>">
+                                    <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                        <input 
+                                            type="text"
+                                            name="name[<?= $equipment['id'] ?>]"
+                                            value="<?= htmlspecialchars($equipment['name']) ?>"
+                                            class="form-control"
+                                            oninput="this.parentElement.dataset.sort=this.value">
+                                    <?php else: ?>
+                                        <?= htmlspecialchars($equipment['name']) ?>
+                                    <?php endif; ?>
+                                </td>
+
+                                
+                                <td data-sort="<?= (int)$equipment['UI'] ?>">
+                                    <?= htmlspecialchars($equipment['UI']) ?>
                                 </td>
                                 <?php if ($_SESSION['user']['role'] === 'admin'): ?>
-                                    <td><?= htmlspecialchars($equipment['UI']) ?></td>
-                                <td>
-                                    <?= is_numeric($equipment['power'])
-                                        ? number_format($equipment['power']/10, 1) . ' kW'
-                                        : htmlspecialchars($equipment['power']) ?>
-                                </td>
+                                    <td>
+                                        <?= is_numeric($equipment['power'])
+                                            ? number_format($equipment['power']/10, 1) . ' kW'
+                                            : htmlspecialchars($equipment['power']) ?>
+                                    </td>
                                 <?php endif; ?>
                                 <?php if ($_SESSION['user']['role'] === 'admin'): ?>
                                     <td><?= htmlspecialchars($equipment['ip']) ?></td>
                                     <td><?= htmlspecialchars($equipment['slave_id']) ?></td>
                                 <?php endif; ?>
-                                <td>
+                                <td data-sort="<?= !empty($equipment['state']) ? 1 : 0 ?>">
                                     <?php if (!empty($equipment['state'])): ?>
                                         <span class="badge bg-success">ON</span>
                                     <?php else: ?>
                                         <span class="badge bg-secondary">OFF</span>
                                     <?php endif; ?>
                                 </td>
-                                <td>
+                                <td data-sort="<?= !empty($equipment['fault']) ? 1 : 0 ?>">
                                     <?php if (!empty($equipment['fault'])): ?>
                                         <span class="badge bg-danger blink">DÉFAUT</span>
                                     <?php else: ?>
                                         <span class="badge bg-success">NORMAL</span>
                                     <?php endif; ?>
                                 </td>
-                                <td>
+                                <td data-sort="<?= $equipment['return_temp'] ?? -999 ?>">
                                     <?= $equipment['return_temp'] !== null
                                         ? number_format($equipment['return_temp'], 1) . ' °C'
                                         : '-' ?>
@@ -429,29 +579,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
     <!-- ========================= MODALS EQUIP → GROUP ========================= -->
     <?php foreach ($equipments as $equipment): ?>
-    <div class="modal fade" id="equipModal<?= $equipment['id'] ?>" tabindex="-1">
-        <div class="modal-dialog">
-            <form method="POST" class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Groupes - <?= htmlspecialchars($equipment['name']) ?></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <?php foreach ($groups as $group): ?>
-                    <?php $checked = in_array($group['id'], $equipmentGroups[$equipment['id']] ?? []); ?>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="groups[<?= $equipment['id'] ?>][]" value="<?= $group['id'] ?>" <?= $checked ? 'checked' : '' ?>>
-                        <label class="form-check-label"><?= htmlspecialchars($group['name']) ?></label>
+        <div class="modal fade" id="equipModal<?= $equipment['id'] ?>" tabindex="-1">
+            <div class="modal-dialog">
+                <form method="POST" class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Groupes - <?= htmlspecialchars($equipment['name']) ?></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
-                    <?php endforeach; ?>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" name="save_equipment_groups" class="btn btn-success">Valider</button>
-                </div>
-            </form>
+                    <div class="modal-body">
+                        <?php foreach ($groups as $group): ?>
+                        <?php $checked = in_array($group['id'], $equipmentGroups[$equipment['id']] ?? []); ?>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="groups[<?= $equipment['id'] ?>][]" value="<?= $group['id'] ?>" <?= $checked ? 'checked' : '' ?>>
+                            <label class="form-check-label"><?= htmlspecialchars($group['name']) ?></label>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" name="save_equipment_groups" class="btn btn-success">Valider</button>
+                    </div>
+                </form>
+            </div>
         </div>
-    </div>
     <?php endforeach; ?>
     <!-- ========================= MODALS COMMANDE EQUIP ========================= -->
     <div class="modal fade" id="commandModal" tabindex="-1">
@@ -647,6 +797,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
 
                     const regs = Array.isArray(data.registers) ? data.registers : [];
                     const shields = Array.isArray(data.coils) ? data.coils : [];
+                    // reset checkboxes
+                    document.querySelectorAll("#commandForm input[type=checkbox]")
+                        .forEach(c => c.checked = false);
 
                     document.getElementById("shield_energy").checked  = !!shields[0];
                     document.getElementById("shield_setpoint").checked = !!shields[1];
@@ -669,9 +822,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                     document.getElementById("fan").value = lastReadRegisters[3];
                     document.getElementById("min_setpoint").value = lastReadRegisters[4] / 10;
 
-                    // reset checkboxes
-                    document.querySelectorAll("#commandForm input[type=checkbox]")
-                        .forEach(c => c.checked = false);
+                    
 
                     equipModal.show();
 
@@ -787,6 +938,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
         document.getElementById("groupCommandForm").addEventListener("submit", async (e) => {
             e.preventDefault();
 
+            document.getElementById("groupCommandModal").addEventListener("show.bs.modal", () => {
+                const shieldCollapse = document.getElementById("shieldCollapse");
+                bootstrap.Collapse.getOrCreateInstance(shieldCollapse, {
+                    toggle: false
+                }).hide();
+            });
             if (!currentGroupId) {
                 alert("Groupe manquant");
                 return;
@@ -823,6 +980,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                 registers: registers
             };
 
+            const shieldCollapse = document.getElementById("shieldCollapse");
+
+            if (shieldCollapse.classList.contains("show")) {
+                payload.shields = [
+                    document.getElementById("g_shield_energy").checked,
+                    document.getElementById("g_shield_setpoint").checked,
+                    document.getElementById("g_shield_mode").checked,
+                    document.getElementById("g_shield_power").checked,
+                    document.getElementById("g_lock_function").checked
+                ];
+            }
+            
             try {
                 const res = await fetch("/api/modbus_group_proxy.php?action=write_group", {
                     method: "POST",
@@ -851,7 +1020,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             }
         });
 
-    //script modal courbe
+        //script modal courbe
         let historyChart = null;
 
         function toUTCPlus11(dateStr) {
@@ -1016,6 +1185,124 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                 } catch (err) {
                     console.error("ERROR:", err);
                 }
+            });
+        });
+        /* =========================
+        TRI TABLE UNITÉS
+        ========================= */
+
+        const sortDirections = {};
+
+        document.querySelectorAll("#equipmentsTable th.sortable").forEach(th => {
+
+            th.addEventListener("click", function () {
+
+                const table = document.getElementById("equipmentsTable");
+                const tbody = table.querySelector("tbody");
+
+                const key = this.dataset.sort;
+
+                // position réelle de la colonne cliquée
+                const colIndex = Array.from(
+                    this.parentElement.children
+                ).indexOf(this);
+
+                sortDirections[key] = !sortDirections[key];
+
+
+                const rows = Array.from(tbody.querySelectorAll("tr"));
+
+                rows.sort((a, b) => {
+
+                    let cellA = a.cells[colIndex];
+                    let cellB = b.cells[colIndex];
+
+                    let valA = "";
+                    let valB = "";
+
+
+                    // Cas Nom avec input admin
+                    const inputA = cellA.querySelector("input");
+                    const inputB = cellB.querySelector("input");
+
+                    if (inputA) {
+                        valA = inputA.value;
+                    } else {
+                        valA = cellA.innerText;
+                    }
+
+                    if (inputB) {
+                        valB = inputB.value;
+                    } else {
+                        valB = cellB.innerText;
+                    }
+
+
+                    valA = valA.trim();
+                    valB = valB.trim();
+
+
+                    // Colonnes numériques
+                    if (["ui", "temp"].includes(key)) {
+
+                        let numA = parseFloat(valA.replace(",", "."));
+                        let numB = parseFloat(valB.replace(",", "."));
+
+                        numA = isNaN(numA) ? -9999 : numA;
+                        numB = isNaN(numB) ? -9999 : numB;
+
+                        return sortDirections[key]
+                            ? numB - numA
+                            : numA - numB;
+                    }
+
+
+                    return sortDirections[key]
+                        ? valB.localeCompare(valA, "fr")
+                        : valA.localeCompare(valB, "fr");
+
+                });
+
+
+                rows.forEach(row => tbody.appendChild(row));
+
+
+                // Mise à jour icônes
+                document.querySelectorAll("#equipmentsTable th.sortable span")
+                    .forEach(span => span.textContent = "↕");
+
+                this.querySelector("span").textContent =
+                    sortDirections[key] ? "↓" : "↑";
+
+            });
+
+        });
+        /* =========================
+        FILTRE TABLE UNITÉS
+        ========================= */
+        document.querySelectorAll(".localisation-filter").forEach(cb => {
+            cb.addEventListener("change", function () {
+                const selected = Array.from(
+                    document.querySelectorAll(".localisation-filter:checked")
+                )
+                .map(cb => cb.value.toLowerCase());
+
+                document
+                    .querySelectorAll("#equipmentsTable tbody tr")
+                    .forEach(row => {
+                        const localisation = row.cells[0]
+                            .dataset.localisation
+                            .toLowerCase();
+
+                        if (
+                            selected.length === 0 ||
+                            selected.includes(localisation)
+                        ) {
+                            row.style.display = "";
+                        } else {
+                            row.style.display = "none";
+                        }
+                    });
             });
         });
     </script>

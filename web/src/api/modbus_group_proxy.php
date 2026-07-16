@@ -35,6 +35,9 @@ if ($action === 'write_group') {
 
     $registers = $payload['registers'] ?? [];
 
+    $hasShields = array_key_exists('shields', $payload);
+    $shields = $hasShields ? $payload['shields'] : [];
+
     // normalisation tableau
     if (isset($registers[0])) {
         $regs = array_map(fn($v) => is_numeric($v) ? (int)$v : 0, $registers);
@@ -47,6 +50,16 @@ if ($action === 'write_group') {
         if (isset($registers['setpoint'])) $regs[2] = (int)($registers['setpoint'] * 10);
         if (isset($registers['fan'])) $regs[3] = (int)$registers['fan'];
         if (isset($registers['min_setpoint'])) $regs[4] = (int)($registers['min_setpoint'] * 10);
+    }
+
+    if ($hasShields) {
+        $shields = array_map(function($v){
+            return (bool)$v;
+        }, $shields);
+
+        while (count($shields) < 5) {
+            $shields[] = false;
+        }
     }
 
     $url = "http://modbus-hub:8500/write";
@@ -79,6 +92,41 @@ if ($action === 'write_group') {
             "equipment_id" => $eq['id'],
             "response" => json_decode($response, true)
         ];
+
+        if ($hasShields) {
+
+            $coilAddress = 440 + 64 * ((int)$eq['UI'] - 1);
+
+            $requestBody = [
+                "ip" => $eq['ip'],
+                "port" => 502,
+                "device_id" => $eq['slave_id'],
+                "type" => "coils",
+                "address" => $coilAddress,
+                "count" => 5,
+                "values" => $shields,
+                "UI" => $eq['UI']
+            ];
+
+            $ch = curl_init("http://modbus-hub:8500/write");
+
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($requestBody));
+
+            $coilResponse = curl_exec($ch);
+
+            if ($coilResponse === false) {
+                echo json_encode([
+                    "success" => false,
+                    "error" => curl_error($ch)
+                ]);
+                exit;
+            }
+
+            curl_close($ch);
+        }
     }
 
     echo json_encode([

@@ -209,6 +209,18 @@ async def write_worker():
 
         await asyncio.sleep(0.02)
 
+def reset_client(ip, port):
+    key = f"{ip}:{port}"
+
+    client = clients.pop(key, None)
+
+    if client:
+        try:
+            client.close()
+        except Exception:
+            pass
+
+    clients_last_use.pop(key, None)
 
 def read_modbus(ip, port, device_id, address, count, mode):
     key = f"{mode}:{ip}:{port}:{device_id}:{address}:{count}"
@@ -244,6 +256,7 @@ def read_modbus(ip, port, device_id, address, count, mode):
 
     except Exception as e:
         log.error("[API] READ ERROR %s:%s -> %s", ip, port, e)
+        reset_client(ip, port)
         return {"success": False, "error": str(e)}
 
 
