@@ -120,6 +120,12 @@
                 </div>
                 <br>
                 <button class="btn btn-success" name="save_smtp">💾 Sauvegarder</button>
+                <!--<button
+                    type="submit"
+                    name="send_test_mail"
+                    class="btn btn-outline-primary">
+                    Envoyer un mail de test
+                </button> -->
             </form>
         </div>
     </div>

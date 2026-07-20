@@ -1,7 +1,7 @@
 from datetime import datetime, time as datetime_time, timedelta, timezone
 import os
 import time
-
+import threading
 import pymysql
 import requests
 
@@ -16,6 +16,8 @@ HUB_WRITE_URL = os.getenv("HUB_WRITE_URL")
 LOCAL_TZ = timezone(timedelta(hours=11))
 
 last_discovery = 0
+LAST_LOOP = time.time()
+LAST_LOOP_LOCK = threading.Lock()
 
 FAULTS = {
     408: "Défaut général",
@@ -38,6 +40,33 @@ FAULTS = {
 }
 
 fault_cache = {}
+
+def update_watchdog():
+    global LAST_LOOP
+
+    with LAST_LOOP_LOCK:
+        LAST_LOOP = time.time()
+
+
+def watchdog():
+
+    global LAST_LOOP
+
+    while True:
+
+        with LAST_LOOP_LOCK:
+            elapsed = time.time() - LAST_LOOP
+
+        if elapsed > (INTERVAL + 120):
+
+            print(
+                f"WATCHDOG: scheduler bloqué depuis {int(elapsed)} secondes",
+                flush=True
+            )
+
+            os._exit(1)
+
+        time.sleep(60)
 
 def wait_for_db():
     print("Waiting for DB...", flush=True)
@@ -163,266 +192,279 @@ def next_weekly_execution_utc(current_execution_time, repeat_days):
 
 
 def process_planning():
-    conn = get_connection()
-    cur = conn.cursor()
+    conn = None
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
 
-    cur.execute("""
-        SELECT
-            schedules.id AS schedule_id,
-            schedules.equipment_id,
-            schedules.group_id,
-            schedules.action,
-            schedules.temperature,
-            schedules.execution_time,
-            schedules.repeat_days
-        FROM schedules
-        WHERE schedules.executed = 0
-          AND schedules.execution_time <= UTC_TIMESTAMP()
-          AND schedules.enabled = 1
-        ORDER BY schedules.execution_time ASC
-    """)
+        cur.execute("""
+            SELECT
+                schedules.id AS schedule_id,
+                schedules.equipment_id,
+                schedules.group_id,
+                schedules.action,
+                schedules.temperature,
+                schedules.execution_time,
+                schedules.repeat_days
+            FROM schedules
+            WHERE schedules.executed = 0
+            AND schedules.execution_time <= UTC_TIMESTAMP()
+            AND schedules.enabled = 1
+            ORDER BY schedules.execution_time ASC
+        """)
 
-    schedules = cur.fetchall()
+        schedules = cur.fetchall()
 
-    if not schedules:
-        print("Aucun planning à exécuter", flush=True)
-        conn.close()
-        return
+        if not schedules:
+            print("Aucun planning à exécuter", flush=True)
+            conn.close()
+            return
 
-    print(f"{len(schedules)} planning(s) à exécuter", flush=True)
+        print(f"{len(schedules)} planning(s) à exécuter", flush=True)
 
-    for schedule in schedules:
+        for schedule in schedules:
 
-        schedule_id = schedule["schedule_id"]
+            schedule_id = schedule["schedule_id"]
 
-        try:
-
-            #
-            # Construction de la liste des équipements concernés
-            #
-            if schedule["group_id"]:
-
-                cur.execute("""
-                    SELECT
-                        e.id,
-                        e.name,
-                        e.ip,
-                        e.port,
-                        e.slave_id,
-                        e.UI
-                    FROM equipments e
-                    JOIN equipment_groups eg
-                        ON eg.equipment_id = e.id
-                    WHERE eg.group_id=%s
-                      AND e.enabled=1
-                    ORDER BY e.UI
-                """, (schedule["group_id"],))
-
-                targets = cur.fetchall()
-
-                print(
-                    f"Planning groupe {schedule['group_id']} -> {len(targets)} UI",
-                    flush=True
-                )
-
-            else:
-
-                cur.execute("""
-                    SELECT
-                        id,
-                        name,
-                        ip,
-                        port,
-                        slave_id,
-                        UI
-                    FROM equipments
-                    WHERE id=%s
-                      AND enabled=1
-                """, (schedule["equipment_id"],))
-
-                row = cur.fetchone()
-
-                if not row:
-                    continue
-
-                targets = [row]
-
-            all_ok = True
-
-            #
-            # Boucle sur chaque équipement
-            #
-            for eq in targets:
-
-                equipment_id = eq["id"]
-
-                ui = int(eq["UI"])
-
-                cmd_register = 102 + (25 * (ui - 1))
-                temp_register = 104 + (25 * (ui - 1))
-
-                print(
-                    f"UI={ui} "
-                    f"IP={eq['ip']} "
-                    f"CMD={cmd_register}",
-                    flush=True
-                )
+            try:
 
                 #
-                # Marche / Arrêt
+                # Construction de la liste des équipements concernés
                 #
-                action = schedule["action"]
-
-                if action == "ON":
-
-                    ok = hub_write(
-                        eq["ip"],
-                        eq["port"],
-                        eq["slave_id"],
-                        "register",
-                        cmd_register,
-                        0xAA
-                    )
-
-                    all_ok &= ok
-
-                    log_command(
-                        cur,
-                        equipment_id,
-                        schedule_id,
-                        "ON",
-                        "success" if ok else "error",
-                        f"reg={cmd_register} value=170"
-                    )
-
-                elif action == "OFF":
-
-                    ok = hub_write(
-                        eq["ip"],
-                        eq["port"],
-                        eq["slave_id"],
-                        "register",
-                        cmd_register,
-                        0x55
-                    )
-
-                    all_ok &= ok
-
-                    log_command(
-                        cur,
-                        equipment_id,
-                        schedule_id,
-                        "OFF",
-                        "success" if ok else "error",
-                        f"reg={cmd_register} value=85"
-                    )
-
-                elif action:
-
-                    all_ok = False
-
-                    log_command(
-                        cur,
-                        equipment_id,
-                        schedule_id,
-                        action,
-                        "error",
-                        "Action inconnue"
-                    )
-
-                #
-                # Température
-                #
-                if schedule["temperature"] is not None:
-
-                    temp_value = int(float(schedule["temperature"]) * 10)
-
-                    ok = hub_write(
-                        eq["ip"],
-                        eq["port"],
-                        eq["slave_id"],
-                        "register",
-                        temp_register,
-                        temp_value
-                    )
-
-                    all_ok &= ok
-
-                    log_command(
-                        cur,
-                        equipment_id,
-                        schedule_id,
-                        "TEMP",
-                        "success" if ok else "error",
-                        f"reg={temp_register} value={temp_value}"
-                    )
-
-            #
-            # Mise à jour du planning
-            #
-            if all_ok:
-
-                repeat_days = parse_repeat_days(schedule.get("repeat_days"))
-
-                if repeat_days:
-
-                    next_execution = next_weekly_execution_utc(
-                        schedule["execution_time"],
-                        repeat_days
-                    )
+                if schedule["group_id"]:
 
                     cur.execute("""
-                        UPDATE schedules
-                        SET execution_time=%s,
-                            executed=0
-                        WHERE id=%s
-                    """, (
-                        next_execution.strftime("%Y-%m-%d %H:%M:%S"),
-                        schedule_id
-                    ))
+                        SELECT
+                            e.id,
+                            e.name,
+                            e.ip,
+                            e.port,
+                            e.slave_id,
+                            e.UI
+                        FROM equipments e
+                        JOIN equipment_groups eg
+                            ON eg.equipment_id = e.id
+                        WHERE eg.group_id=%s
+                        AND e.enabled=1
+                        ORDER BY e.UI
+                    """, (schedule["group_id"],))
+
+                    targets = cur.fetchall()
 
                     print(
-                        f"Planning répété {schedule_id}",
+                        f"Planning groupe {schedule['group_id']} -> {len(targets)} UI",
                         flush=True
                     )
 
                 else:
 
                     cur.execute("""
-                        UPDATE schedules
-                        SET executed=1
+                        SELECT
+                            id,
+                            name,
+                            ip,
+                            port,
+                            slave_id,
+                            UI
+                        FROM equipments
                         WHERE id=%s
-                    """, (schedule_id,))
+                        AND enabled=1
+                    """, (schedule["equipment_id"],))
+
+                    row = cur.fetchone()
+
+                    if not row:
+                        continue
+
+                    targets = [row]
+
+                all_ok = True
+
+                #
+                # Boucle sur chaque équipement
+                #
+                for eq in targets:
+
+                    equipment_id = eq["id"]
+
+                    ui = int(eq["UI"])
+
+                    cmd_register = 102 + (25 * (ui - 1))
+                    temp_register = 104 + (25 * (ui - 1))
 
                     print(
-                        f"Planning terminé {schedule_id}",
+                        f"UI={ui} "
+                        f"IP={eq['ip']} "
+                        f"CMD={cmd_register}",
                         flush=True
                     )
 
-            else:
+                    #
+                    # Marche / Arrêt
+                    #
+                    action = schedule["action"]
+
+                    if action == "ON":
+
+                        ok = hub_write(
+                            eq["ip"],
+                            eq["port"],
+                            eq["slave_id"],
+                            "register",
+                            cmd_register,
+                            0xAA
+                        )
+
+                        all_ok &= ok
+
+                        log_command(
+                            cur,
+                            equipment_id,
+                            schedule_id,
+                            "ON",
+                            "success" if ok else "error",
+                            f"reg={cmd_register} value=170"
+                        )
+
+                    elif action == "OFF":
+
+                        ok = hub_write(
+                            eq["ip"],
+                            eq["port"],
+                            eq["slave_id"],
+                            "register",
+                            cmd_register,
+                            0x55
+                        )
+
+                        all_ok &= ok
+
+                        log_command(
+                            cur,
+                            equipment_id,
+                            schedule_id,
+                            "OFF",
+                            "success" if ok else "error",
+                            f"reg={cmd_register} value=85"
+                        )
+
+                    elif action:
+
+                        all_ok = False
+
+                        log_command(
+                            cur,
+                            equipment_id,
+                            schedule_id,
+                            action,
+                            "error",
+                            "Action inconnue"
+                        )
+
+                    #
+                    # Température
+                    #
+                    if schedule["temperature"] is not None:
+
+                        temp_value = int(float(schedule["temperature"]) * 10)
+
+                        ok = hub_write(
+                            eq["ip"],
+                            eq["port"],
+                            eq["slave_id"],
+                            "register",
+                            temp_register,
+                            temp_value
+                        )
+
+                        all_ok &= ok
+
+                        log_command(
+                            cur,
+                            equipment_id,
+                            schedule_id,
+                            "TEMP",
+                            "success" if ok else "error",
+                            f"reg={temp_register} value={temp_value}"
+                        )
+
+                #
+                # Mise à jour du planning
+                #
+                if all_ok:
+
+                    repeat_days = parse_repeat_days(schedule.get("repeat_days"))
+
+                    if repeat_days:
+
+                        next_execution = next_weekly_execution_utc(
+                            schedule["execution_time"],
+                            repeat_days
+                        )
+
+                        cur.execute("""
+                            UPDATE schedules
+                            SET execution_time=%s,
+                                executed=0
+                            WHERE id=%s
+                        """, (
+                            next_execution.strftime("%Y-%m-%d %H:%M:%S"),
+                            schedule_id
+                        ))
+
+                        print(
+                            f"Planning répété {schedule_id}",
+                            flush=True
+                        )
+
+                    else:
+
+                        cur.execute("""
+                            UPDATE schedules
+                            SET executed=1
+                            WHERE id=%s
+                        """, (schedule_id,))
+
+                        print(
+                            f"Planning terminé {schedule_id}",
+                            flush=True
+                        )
+
+                else:
+                    print(
+                        f"Planning {schedule_id} en erreur",
+                        flush=True
+                    )
+
+            except Exception as e:
+
                 print(
-                    f"Planning {schedule_id} en erreur",
+                    f"Erreur planning {schedule_id}: {e}",
                     flush=True
                 )
 
-        except Exception as e:
+                log_command(
+                    cur,
+                    schedule.get("equipment_id"),
+                    schedule_id,
+                    "SCHEDULE",
+                    "error",
+                    str(e)
+                )
 
-            print(
-                f"Erreur planning {schedule_id}: {e}",
-                flush=True
-            )
+                conn.commit()
 
-            log_command(
-                cur,
-                schedule.get("equipment_id"),
-                schedule_id,
-                "SCHEDULE",
-                "error",
-                str(e)
-            )
+    except Exception as e:
 
-    conn.commit()
-    conn.close()
+        print(
+            f"[PLANNING ERROR] {e}",
+            flush=True
+        )
+
+    finally:
+
+        if conn:
+            conn.close()
 
 
 def run_discovery_if_needed():
@@ -456,7 +498,7 @@ def read_coils(ip, port, slave_id, address):
                 "address": address,
                 "count": 17
             },
-            timeout=5
+            timeout=1
         )
 
         return r.json().get("bits", [0] * 17)
@@ -467,218 +509,269 @@ def read_coils(ip, port, slave_id, address):
 def collect_telemetry():
     global fault_cache
 
-    conn = get_connection()
-    cur = conn.cursor()
+    conn = None
 
-    cur.execute("""
-        SELECT id, ip, port, slave_id, UI
-        FROM equipments
-        WHERE enabled = 1
-    """)
+    try:
 
-    equipments = cur.fetchall()
-    outdoor_cache = {}
+        conn = get_connection()
+        cur = conn.cursor()
 
-    def get_outdoor_temp(ip, port, slave_id):
-        key = f"{ip}:{port}:{slave_id}"
+        cur.execute("""
+            SELECT id, ip, port, slave_id, UI
+            FROM equipments
+            WHERE enabled = 1
+        """)
 
-        if key in outdoor_cache:
-            return outdoor_cache[key]
+        equipments = cur.fetchall()
+        outdoor_cache = {}
 
-        try:
-            r = requests.get(
-                "http://modbus-hub:8500/read",
-                params={
-                    "ip": ip,
-                    "port": port,
-                    "device_id": slave_id,
-                    "type": "register",
-                    "address": 6507,
-                    "count": 1
-                },
-                timeout=5
-            )
+        def get_outdoor_temp(ip, port, slave_id):
+            key = f"{ip}:{port}:{slave_id}"
 
-            data = r.json().get("registers", [])
-            value = data[0] / 10 if data and data[0] is not None else None
+            if key in outdoor_cache:
+                return outdoor_cache[key]
 
-        except Exception:
-            value = None
+            try:
+                r = requests.get(
+                    "http://modbus-hub:8500/read",
+                    params={
+                        "ip": ip,
+                        "port": port,
+                        "device_id": slave_id,
+                        "type": "register",
+                        "address": 6507,
+                        "count": 1
+                    },
+                    timeout=1
+                )
 
-        outdoor_cache[key] = value
-        return value
+                data = r.json().get("registers", [])
+                value = data[0] / 10 if data and data[0] is not None else None
 
-    for eq in equipments:
+            except Exception:
+                value = None
 
-        ui = int(eq["UI"])
-        base = 102 + 25 * (ui - 1)
+            outdoor_cache[key] = value
+            return value
 
-        try:
+        for eq in equipments:
 
-            #
-            # Lecture registres UI
-            #
-            r = requests.get(
-                "http://modbus-hub:8500/read",
-                params={
-                    "ip": eq["ip"],
-                    "port": eq["port"],
-                    "device_id": eq["slave_id"],
-                    "type": "register",
-                    "address": base,
-                    "count": 15
-                },
-                timeout=5
-            )
+            ui = int(eq["UI"])
+            base = 102 + 25 * (ui - 1)
 
-            registers = r.json().get("registers", [])
+            try:
 
-            if len(registers) < 15:
-                continue
+                #
+                # Lecture registres UI
+                #
+                r = requests.get(
+                    "http://modbus-hub:8500/read",
+                    params={
+                        "ip": eq["ip"],
+                        "port": eq["port"],
+                        "device_id": eq["slave_id"],
+                        "type": "register",
+                        "address": base,
+                        "count": 15
+                    },
+                    timeout=1
+                )
 
-            state = 1 if registers[0] == 170 else 0
-            setpoint = registers[2] / 10 if registers[2] is not None else None
-            return_temp = registers[14] / 10 if registers[14] is not None else None
+                registers = r.json().get("registers", [])
 
-            #
-            # Lecture défauts
-            #
-            coil_addr = 408 + (64 * (ui - 1))
+                if len(registers) < 15:
+                    continue
 
-            coils = read_coils(
-                eq["ip"],
-                eq["port"],
-                eq["slave_id"],
-                coil_addr
-            )
+                state = 1 if registers[0] == 170 else 0
+                setpoint = registers[2] / 10 if registers[2] is not None else None
+                return_temp = registers[14] / 10 if registers[14] is not None else None
 
-            fault = 1 if any(coils) else 0
+                #
+                # Lecture défauts
+                #
+                coil_addr = 408 + (64 * (ui - 1))
 
-            #
-            # Historique défauts
-            #
-            for i, value in enumerate(coils):
+                coils = read_coils(
+                    eq["ip"],
+                    eq["port"],
+                    eq["slave_id"],
+                    coil_addr
+                )
 
-                code = coil_addr + i
+                fault = 1 if any(coils) else 0
 
-                current = bool(value)
+                #
+                # Historique défauts
+                #
+                for i, value in enumerate(coils):
 
-                key = (eq["id"], code)
+                    code = coil_addr + i
 
-                previous = fault_cache.get(key)
+                    current = bool(value)
 
-                if previous is None:
+                    key = (eq["id"], code)
 
-                    # Initialisation du cache
-                    fault_cache[key] = current
+                    previous = fault_cache.get(key)
 
-                elif previous != current:
+                    if previous is None:
 
-                    fault_cache[key] = current
+                        # Initialisation du cache
+                        fault_cache[key] = current
 
-                    cur.execute("""
-                        INSERT INTO equipment_fault_history
-                        (
-                            equipment_id,
-                            fault_code,
-                            fault_name,
-                            active,
-                            created_at
+                    elif previous != current:
+
+                        fault_cache[key] = current
+
+                        cur.execute("""
+                            INSERT INTO equipment_fault_history
+                            (
+                                equipment_id,
+                                fault_code,
+                                fault_name,
+                                active,
+                                created_at
+                            )
+                            VALUES
+                            (%s,%s,%s,%s,NOW())
+                        """, (
+                            eq["id"],
+                            code,
+                            FAULTS.get(408 + i, f"Défaut {code}"),
+                            current
+                        ))
+
+                        print(
+                            f"[FAULT] "
+                            f"UI{ui} "
+                            f"{FAULTS.get(408 + i, code)} "
+                            f"{'ACTIVE' if current else 'CLEAR'}",
+                            flush=True
                         )
-                        VALUES
-                        (%s,%s,%s,%s,NOW())
-                    """, (
-                        eq["id"],
-                        code,
-                        FAULTS.get(408 + i, f"Défaut {code}"),
-                        current
-                    ))
 
-                    print(
-                        f"[FAULT] "
-                        f"UI{ui} "
-                        f"{FAULTS.get(408 + i, code)} "
-                        f"{'ACTIVE' if current else 'CLEAR'}",
-                        flush=True
+                #
+                # Température extérieure
+                #
+                outside_temp = get_outdoor_temp(
+                    eq["ip"],
+                    eq["port"],
+                    eq["slave_id"]
+                )
+
+                #
+                # Mise à jour équipement
+                #
+                cur.execute("""
+                    UPDATE equipments
+                    SET
+                        state=%s,
+                        setpoint=%s,
+                        return_temp=%s,
+                        outside_temp=%s,
+                        fault=%s
+                    WHERE id=%s
+                """, (
+                    state,
+                    setpoint,
+                    return_temp,
+                    outside_temp,
+                    fault,
+                    eq["id"]
+                ))
+
+                #
+                # Historique télémétrie
+                #
+                cur.execute("""
+                    INSERT INTO equipment_history
+                    (
+                        equipment_id,
+                        created_at,
+                        setpoint,
+                        return_temp,
+                        outside_temp,
+                        state,
+                        fault
                     )
-
-            #
-            # Température extérieure
-            #
-            outside_temp = get_outdoor_temp(
-                eq["ip"],
-                eq["port"],
-                eq["slave_id"]
-            )
-
-            #
-            # Mise à jour équipement
-            #
-            cur.execute("""
-                UPDATE equipments
-                SET
-                    state=%s,
-                    setpoint=%s,
-                    return_temp=%s,
-                    outside_temp=%s,
-                    fault=%s
-                WHERE id=%s
-            """, (
-                state,
-                setpoint,
-                return_temp,
-                outside_temp,
-                fault,
-                eq["id"]
-            ))
-
-            #
-            # Historique télémétrie
-            #
-            cur.execute("""
-                INSERT INTO equipment_history
-                (
-                    equipment_id,
-                    created_at,
+                    VALUES
+                    (%s,NOW(),%s,%s,%s,%s,%s)
+                """, (
+                    eq["id"],
                     setpoint,
                     return_temp,
                     outside_temp,
                     state,
                     fault
+                ))
+
+            except Exception as e:
+
+                print(
+                    f"[TELEMETRY ERROR] UI{ui}: {e}",
+                    flush=True
                 )
-                VALUES
-                (%s,NOW(),%s,%s,%s,%s,%s)
-            """, (
-                eq["id"],
-                setpoint,
-                return_temp,
-                outside_temp,
-                state,
-                fault
-            ))
 
-        except Exception as e:
+            conn.commit()
 
-            print(
-                f"[TELEMETRY ERROR] UI{ui}: {e}",
-                flush=True
-            )
+    except Exception as e:
 
-    conn.commit()
-    conn.close()
+        print(
+            f"[TELEMETRY FATAL] {e}",
+            flush=True
+        )
+
+    finally:
+
+        if conn:
+            conn.close()
+
 
 def main():
     wait_for_db()
-    print("Scheduler HVAC démarré", flush=True)
+    print(
+        "Scheduler HVAC démarré",
+        flush=True
+    )
+    threading.Thread(
+        target=watchdog,
+        daemon=True
+    ).start()
 
     while True:
-        run_discovery_if_needed()
-        process_planning()
-        collect_telemetry()
-        check_and_send()
+        try:
+            print("[SCHED] Discovery",
+                flush=True
+            )
+            run_discovery_if_needed()
+            update_watchdog()
+            print(
+                "[SCHED] Planning",
+                flush=True
+            )
+            process_planning()
+            update_watchdog()
+            print(
+                "[SCHED] Telemetry",
+                flush=True
+            )
+            collect_telemetry()
+            update_watchdog()
+            #print(
+            #    "[SCHED] Mail",
+            #    flush=True
+            #)
+            #check_and_send()
+            #update_watchdog()
+            print(
+                "[SCHED] Cycle terminé",
+                flush=True
+            )
+        except Exception as e:
+            print(
+                f"[SCHED ERROR] {e}",
+                flush=True
+            )
+        update_watchdog()
         time.sleep(INTERVAL)
-              
-
-
+       
 if __name__ == "__main__":
     main()

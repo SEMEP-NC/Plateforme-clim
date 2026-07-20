@@ -226,3 +226,79 @@ def check_and_send():
     finally:
         if conn:
             conn.close()
+
+            
+def build_test_mail():
+
+    subject = "[HVAC] Test de configuration SMTP"
+
+    html = """
+    <html>
+    <body style="font-family:Arial,sans-serif">
+
+        <h2>Supervision HVAC</h2>
+
+        <p>Ce message confirme que la configuration SMTP est correcte.</p>
+
+        <table border="1" cellpadding="6" cellspacing="0">
+            <tr>
+                <td><b>Statut</b></td>
+                <td style="color:green;">OK</td>
+            </tr>
+        </table>
+
+        <br>
+
+        <p>
+            Si vous recevez ce message,
+            les notifications de défaut fonctionneront correctement.
+        </p>
+
+    </body>
+    </html>
+    """
+
+    return subject, html
+
+
+def send_test_mail():
+
+    conn = None
+
+    try:
+
+        conn = get_connection()
+        cur = conn.cursor()
+
+        account = get_mail_account(cur)
+
+        if not account:
+            return False, "Aucun compte SMTP actif"
+
+        recipients = get_recipients(cur)
+
+        if not recipients:
+            return False, "Aucun destinataire configuré"
+
+        subject, html = build_test_mail()
+
+        send_mail(
+            account,
+            recipients,
+            subject,
+            html
+        )
+
+        return True, f"Mail envoyé à {', '.join(recipients)}"
+
+    except Exception as e:
+
+        traceback.print_exc()
+
+        return False, str(e)
+
+    finally:
+
+        if conn:
+            conn.close()
+            
