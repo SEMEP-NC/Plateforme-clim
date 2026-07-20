@@ -130,7 +130,7 @@
         </div>
     </div>
     <div class="card mb-4">
-        <div class="card-header">Destinataires</div>
+        <div class="card-header">Destinataires mail</div>
         <div class="card-body">
             <form method="POST" class="row g-2">
                 <div class="col">

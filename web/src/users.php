@@ -6,6 +6,10 @@ require_admin();
 
 $pdo = get_db();
 
+if($_SESSION['user']['role'] !== 'admin'){
+        die("Accès réservé administrateur");
+    }
+
 /*
 |-----------------------------
 | LIST USERS
@@ -16,12 +20,64 @@ $users = $pdo->query("
     FROM users
     ORDER BY id DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
+
+$db=get_db();
+
+    /*SAVE SMTP*/   
+
+    if(isset($_POST['save_smtp'])){
+
+        $stmt=$db->prepare("
+        UPDATE mail_accounts SET
+            smtp_host=?,
+            smtp_port=?,
+            smtp_user=?,
+            smtp_password=?,
+            smtp_secure=?,
+            sender_name=?,
+            sender_email=?,
+            enabled=?
+        WHERE id=1
+        ");
+
+        $stmt->execute([
+            $_POST['smtp_host'],
+            $_POST['smtp_port'],
+            $_POST['smtp_user'],
+            $_POST['smtp_password'],
+            $_POST['smtp_secure'],
+            $_POST['sender_name'],
+            $_POST['sender_email'],
+            isset($_POST['enabled'])?1:0
+        ]);
+        header("Location: users.php");
+        exit;
+    }
+
+    /*ADD DESTINATION*/
+
+    if(isset($_POST['add_recipient'])){
+        $db->prepare("
+            INSERT INTO mail_recipients
+            (name,email)
+            VALUES (?,?)
+        ")->execute([
+            $_POST['name'],
+            $_POST['email']
+        ]);
+        header("Location: users.php");
+        exit;
+    }
+
+    $smtp=$db->query("SELECT * FROM mail_accounts WHERE id=1")->fetch(PDO::FETCH_ASSOC);
+    $recipients=$db->query("SELECT * FROM mail_recipients ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
+    $config=$db->query("SELECT * FROM mail_config WHERE id=1")->fetch(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Gestion utilisateurs</title>
+    <title>Administration</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
@@ -101,41 +157,32 @@ $users = $pdo->query("
                 <!-- =========================
                     CREATE USER
                 ========================= -->
-                <div class="card p-3 mb-4">
-
-                    <h5>Créer un utilisateur</h5>
-
-                    <form method="POST" action="create_user.php" class="row g-2">
-
-                        <div class="col-md-4">
-                            <input type="text" name="username" class="form-control" placeholder="Username" required>
-                        </div>
-
-                        <div class="col-md-4">
-                            <input type="password" name="password" class="form-control" placeholder="Password" required>
-                        </div>
-
-                        <div class="col-md-2">
-                            <select name="role" class="form-control">
-                                <option value="user">User</option>
-                                <option value="admin">Admin</option>
-                            </select>
-                        </div>
-
-                        <div class="col-md-2">
-                            <button class="btn btn-success w-100">Créer</button>
-                        </div>
-
-                    </form>
-
-                </div>
+                                  
+                <form method="POST" action="create_user.php" class="row g-2">
+                    <div class="col">
+                        <input type="text" name="username" class="form-control" placeholder="Username" required>
+                    </div>
+                    <div class="col">
+                        <input type="password" name="password" class="form-control" placeholder="Password" required>
+                    </div>
+                    <div class="col">
+                        <select name="role" class="form-control">
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <button class="btn btn-success w-100">Créer</button>
+                    </div>
+                </form>
+                
 
                 <!-- =========================
                     USERS TABLE
                 ========================= -->
-                <table class="table table-bordered table-striped">
+                <table class="table">
 
-                    <thead class="table-dark">
+                    <thead>
                         <tr>
                             <th>ID</th>
                             <th>Username</th>
@@ -177,6 +224,96 @@ $users = $pdo->query("
 
                 </table>
             </div>
+        </div>
+        <div class="card mb-4">
+            <div class="card-header">
+                <strong>Compte SMTP</strong>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <label>Serveur SMTP</label>
+                            <input class="form-control" name="smtp_host" value="<?=htmlspecialchars($smtp['smtp_host']??'')?>">
+                        </div>
+                        <div class="col-md-4">
+                            <label>Port</label>
+                            <input class="form-control" name="smtp_port" value="<?=htmlspecialchars($smtp['smtp_port']??587)?>">
+                        </div>
+                    </div>
+                    <label class="mt-3">Utilisateur SMTP</label>
+                    <input class="form-control" name="smtp_user" value="<?=htmlspecialchars($smtp['smtp_user']??'')?>">
+
+                    <label class="mt-3">Mot de passe</label>
+                    <input type="password" class="form-control" name="smtp_password" value="<?=htmlspecialchars($smtp['smtp_password']??'')?>">
+
+                    <label class="mt-3">Sécurité</label>
+                    <select class="form-select" name="smtp_secure">
+                        <option value="tls">TLS</option>
+                        <option value="ssl">SSL</option>
+                        <option value="none">Aucune</option>
+                    </select>
+
+                    <label class="mt-3">Nom expéditeur</label>
+                    <input class="form-control" name="sender_name" value="<?=htmlspecialchars($smtp['sender_name']??'')?>">
+
+                    <label class="mt-3">Email expéditeur</label>
+                    <input class="form-control" name="sender_email" value="<?=htmlspecialchars($smtp['sender_email']??'')?>">
+
+                    <div class="form-check mt-3">
+                        <input 
+                        class="form-check-input"
+                        type="checkbox"
+                        name="enabled"
+                        <?=($smtp['enabled']??0)?'checked':''?>
+                        >
+                        <label>Activer les envois</label>
+                    </div>
+                    <br>
+                    <button class="btn btn-success" name="save_smtp">💾 Sauvegarder</button>
+                    <!--<button
+                        type="submit"
+                        name="send_test_mail"
+                        class="btn btn-outline-primary">
+                        Envoyer un mail de test
+                    </button> -->
+                </form>
+            </div>
+        </div>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <strong>Destinataires mail</strong>
+                </div>
+                <div class="card-body">
+                    <form method="POST" class="row g-2">
+                        <div class="col">
+                            <input class="form-control" name="name" placeholder="Nom">
+                        </div>
+                        <div class="col">
+                            <input class="form-control" name="email" placeholder="Email">
+                        </div>
+                        <div class="col">
+                            <button class="btn btn-primary"name="add_recipient">Ajouter</button>
+                        </div>
+                    </form>
+                    <hr>
+                    <table class="table">
+                        <tr>
+                            <th>Nom</th>
+                            <th>Email</th>
+                            <th>Actif</th>
+                        </tr>
+                        <?php foreach($recipients as $r): ?>
+                            <tr>
+                                <td><?=htmlspecialchars($r['name'])?></td>
+                                <td><?=htmlspecialchars($r['email'])?></td>
+                                <td><?= $r['enabled']?'Oui':'Non' ?></td>
+                            </tr>
+                        <?php endforeach; ?>    
+                    </table>
+                </div>
+            </div>
+        </div>
     </main>
     <footer class="text-center py-3 bg-white shadow-sm mt-auto">
         <small>Supervision GREE - SEMEP - Version <?= htmlspecialchars($_ENV['APP_VERSION'] ?? '') ?></small>
