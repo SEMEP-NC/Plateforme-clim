@@ -19,7 +19,7 @@ $user = $_SESSION['user'];
             background: #f5f7fa;
         }
         .logo {
-            height: 70px;
+            height: 50px;
             width: auto;
             object-fit: contain;
         }
@@ -54,7 +54,7 @@ $user = $_SESSION['user'];
                 style="max-height:35px; width:auto;"
                 alt="SEMEP">
 
-
+ 
             <!-- TITRE TOUJOURS CENTRÉ -->
             <div class="text-center">
 
