@@ -56,7 +56,7 @@ La liste des evolutions envisagés
 | Service | Role | Port |
 | --- | --- | --- |
 | `web` | Interface utilisateur PHP/Apache | `8085` |
-| `api` | Endpoint de detection Modbus | `5001` |
+| `api` | Endpoint de detection Modbus | interne |
 | `modbus-hub` | Lectures/ecritures Modbus TCP | `8500` |
 | `scheduler` | Execution des plannings | interne |
 | `db` | Base MariaDB | interne |
@@ -72,142 +72,22 @@ docker compose up -d --build
 Puis ouvrir:
 
 ```text
-http://localhost:8085
+http://<ip>:8085
 ```
 
-Pour consulter les logs:
-
-```bash
-docker compose logs -f web
-docker compose logs -f api
-docker compose logs -f modbus-hub
-docker compose logs -f scheduler
-```
 
 ## Configuration
 
 Les variables principales sont definies dans `.env`.
 
 | Variable | Description | Exemple |
-| `API_BASE_URL` | URL interne de l'API | `http://clim_api:5001` |
-| `HUB_URL` | URL de lecture du hub Modbus | `http://modbus-hub:8500/read` |
-| `HUB_WRITE_URL` | URL d'ecriture du hub Modbus | `http://modbus-hub:8500/write` |
 | `SCHEDULER_INTERVAL` | Intervalle de boucle scheduler en secondes | `60` |
 | `DISCOVERY_INTERVAL` | Intervalle discovery automatique en secondes | `300` |
 
-## Base de donnees
-
-Le schema initial est dans:
-
-```text
-mysql/init.sql
-```
-
-Tables principales:
-
-- `discovery_config`: plage IP, ports et slave IDs a scanner;
-- `discovered_units`: unites detectees automatiquement;
-- `equipments`: equipements ajoutes a la gestion;
-- `schedules`: actions planifiees;
-- `command_logs`: traces d'execution des commandes.
-
-
-## Detection automatique
-
-La detection se configure depuis:
-
-```text
-http://localhost:8085/discovered_units.php
-```
-
-Champs:
-
-- `START IP`: premiere IP a scanner;
-- `END IP`: derniere IP a scanner;
-- `PORTS`: ports Modbus separes par des virgules, par exemple `502`;
-- `SLAVE IDS`: slave IDs Modbus separes par des virgules, par exemple `1,2,3`.
-
-La detection lit les coils de presence UI entre les adresses `120` et `247`, puis lit la puissance sur le registre correspondant.
-
-## Equipements
-
-Apres detection, les unites trouvees peuvent etre ajoutees comme equipements depuis l'interface de detection.
-
-Chaque equipement conserve:
-
-- un nom utilisateur;
-- l'IP de passerelle Modbus;
-- le port Modbus;
-- le slave ID;
-- le numero UI;
-- la puissance detectee.
-
-## Plannings
-
-Les plannings sont geres depuis:
-
-```text
-http://localhost:8085/schedules.php
-```
-
-Un planning peut contenir:
-
-- une action `ON`;
-- une action `OFF`;
-- aucun changement ON/OFF;
-- une temperature;
-- aucun changement de temperature;
-- une repetition hebdomadaire sur un ou plusieurs jours.
-
-Il faut choisir au moins une action ou une temperature.
-
-### Fuseau horaire
-
-L'interface web attend une heure locale `UTC+11`.
-
-Lors de l'enregistrement:
-
-1. l'heure saisie est interpretee en `UTC+11`;
-2. elle est convertie en UTC;
-3. elle est stockee dans `schedules.execution_time`.
-
-Le scheduler compare ensuite avec:
-
-```sql
-UTC_TIMESTAMP()
-```
-
-Cela evite les decalages si MariaDB n'utilise pas le meme fuseau horaire que l'utilisateur.
-
-### Repetition hebdomadaire
-
-La colonne `repeat_days` contient les jours ISO:
-
-| Valeur | Jour |
-| --- | --- |
-| `1` | Lundi |
-| `2` | Mardi |
-| `3` | Mercredi |
-| `4` | Jeudi |
-| `5` | Vendredi |
-| `6` | Samedi |
-| `7` | Dimanche |
-
-Exemple:
-
-```text
-1,3,5
-```
-
-signifie lundi, mercredi et vendredi.
-
-Pour un planning ponctuel, le scheduler met `executed = 1` apres execution reussie.
-
-Pour un planning repete, le scheduler ne met pas fin au planning: il deplace `execution_time` vers la prochaine occurrence hebdomadaire.
 
 ## Hub Modbus
 
-Le hub Modbus expose des endpoints HTTP pour les services internes et pour FUXA.
+Le hub Modbus expose des endpoints HTTP pour les services internes
 
 URL locale:
 
@@ -267,7 +147,7 @@ Payload coils:
 }
 ```
 
-### Lecture GET pour FUXA
+### Lecture GET
 
 Lire un registre:
 
@@ -334,7 +214,7 @@ Payload coil:
 }
 ```
 
-### Ecriture GET pour FUXA
+### Ecriture GET
 
 Ecrire un registre:
 
@@ -382,32 +262,6 @@ Exemple:
 
 ```text
 24 deg C -> 240
-```
-
-## Depannage
-
-Voir l'etat des conteneurs:
-
-```bash
-docker compose ps
-```
-
-Voir les logs du scheduler:
-
-```bash
-docker compose logs scheduler --tail=100
-```
-
-Voir les logs du hub Modbus:
-
-```bash
-docker compose logs modbus-hub --tail=100
-```
-
-Tester le hub:
-
-```text
-http://localhost:8500/health
 ```
 
 
