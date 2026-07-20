@@ -23,96 +23,163 @@ $users = $pdo->query("
     <meta charset="UTF-8">
     <title>Gestion utilisateurs</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 
-<body class="container mt-5">
+<style>
+        body {
+            background:#f5f7fa;
+        }
 
-<h1 class="mb-4 text-center">Gestion des utilisateurs</h1>
+        .logo {
+            max-height:50px;
+            width:auto;
+        }
 
-<a href="index.php" class="btn btn-secondary mb-3">Retour</a>
+        .page-title {
+            font-size:2rem;
+        }
 
-<!-- =========================
-     CREATE USER
-========================= -->
-<div class="card p-3 mb-4">
+        .card {
+            border:none;
+            border-radius:15px;
+            box-shadow:0 4px 15px rgba(0,0,0,.08);
+        }
 
-    <h5>Créer un utilisateur</h5>
+        .sortable {
+            cursor:pointer;
+            user-select:none;
+        }
 
-    <form method="POST" action="create_user.php" class="row g-2">
+        .sortable:hover {
+            background:#eef5ff;
+        }
+    </style>
+<body class="vh-100 d-flex flex-column">
+    <header class="bg-white shadow-sm py-3">
+        <div class="container position-relative">
+            <!-- LOGO GAUCHE -->
+            <img src="images/logo-semep.png"
+                class="logo position-absolute top-50 start-0 translate-middle-y"
+                style="max-height:35px; width:auto;"
+                alt="SEMEP">
 
-        <div class="col-md-4">
-            <input type="text" name="username" class="form-control" placeholder="Username" required>
+            <!-- TITRE CENTRÉ -->
+            <div class="text-center">
+                <h1 class="fw-bold page-title mb-1">
+                    Administration
+                </h1>
+                <small class="text-muted">
+                    Supervision des unités climatisation
+                </small>
+            </div>
+            <!-- LOGO DROIT -->
+            <img src="images/Gree-Electric-logo.png"
+                class="logo position-absolute top-50 end-0 translate-middle-y"
+                alt="GREE">
         </div>
-
-        <div class="col-md-4">
-            <input type="password" name="password" class="form-control" placeholder="Password" required>
-        </div>
-
-        <div class="col-md-2">
-            <select name="role" class="form-control">
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-            </select>
-        </div>
-
-        <div class="col-md-2">
-            <button class="btn btn-success w-100">Créer</button>
-        </div>
-
-    </form>
-
-</div>
-
-<!-- =========================
-     USERS TABLE
-========================= -->
-<table class="table table-bordered table-striped">
-
-    <thead class="table-dark">
-        <tr>
-            <th>ID</th>
-            <th>Username</th>
-            <th>Role</th>
-            <th>Créé le</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-
-    <tbody>
-
-    <?php foreach ($users as $u): ?>
-        <tr>
-            <td><?= $u['id'] ?></td>
-            <td><?= htmlspecialchars($u['username']) ?></td>
-            <td>
-                <span class="badge bg-<?= $u['role'] === 'admin' ? 'danger' : 'secondary' ?>">
-                    <?= $u['role'] ?>
+    </header>
+    <div class="container mt-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <i class="bi bi-person-circle"></i>
+                <?= htmlspecialchars($_SESSION['user']['username']) ?>
+                <span class="badge bg-secondary">
+                    <?= htmlspecialchars($_SESSION['user']['role']) ?>
                 </span>
-            </td>
-            <td><?= $u['created_at'] ?></td>
+            </div>
+            <a href="index.php"class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>Retour tableau de bord</a>
+        </div>
+    </div>
+    <main class="container flex-grow-1 mt-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <strong>Utilisateurs</strong>
+            </div>
+            <div class="card-body">
+                <!-- =========================
+                    CREATE USER
+                ========================= -->
+                <div class="card p-3 mb-4">
 
-            <td class="d-flex gap-2">
+                    <h5>Créer un utilisateur</h5>
 
-                <!-- DELETE -->
-                <form method="POST" action="delete_user.php"
-                      onsubmit="return confirm('Supprimer cet utilisateur ?')">
+                    <form method="POST" action="create_user.php" class="row g-2">
 
-                    <input type="hidden" name="id" value="<?= $u['id'] ?>">
-                    <button class="btn btn-sm btn-danger">Supprimer</button>
+                        <div class="col-md-4">
+                            <input type="text" name="username" class="form-control" placeholder="Username" required>
+                        </div>
 
-                </form>
+                        <div class="col-md-4">
+                            <input type="password" name="password" class="form-control" placeholder="Password" required>
+                        </div>
 
-            </td>
-        </tr>
-    <?php endforeach; ?>
+                        <div class="col-md-2">
+                            <select name="role" class="form-control">
+                                <option value="user">User</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
 
-    </tbody>
+                        <div class="col-md-2">
+                            <button class="btn btn-success w-100">Créer</button>
+                        </div>
 
-</table>
-<footer class="position-fixed bottom-0 start-0 w-100 text-center py-3">
-    <small>
-        Supervision GREE - SEMEP - Version <?= htmlspecialchars($_ENV['APP_VERSION'] ?? '') ?>
-    </small>
-</footer>
+                    </form>
+
+                </div>
+
+                <!-- =========================
+                    USERS TABLE
+                ========================= -->
+                <table class="table table-bordered table-striped">
+
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Créé le</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                    <?php foreach ($users as $u): ?>
+                        <tr>
+                            <td><?= $u['id'] ?></td>
+                            <td><?= htmlspecialchars($u['username']) ?></td>
+                            <td>
+                                <span class="badge bg-<?= $u['role'] === 'admin' ? 'danger' : 'secondary' ?>">
+                                    <?= $u['role'] ?>
+                                </span>
+                            </td>
+                            <td><?= $u['created_at'] ?></td>
+
+                            <td class="d-flex gap-2">
+
+                                <!-- DELETE -->
+                                <form method="POST" action="delete_user.php"
+                                    onsubmit="return confirm('Supprimer cet utilisateur ?')">
+
+                                    <input type="hidden" name="id" value="<?= $u['id'] ?>">
+                                    <button class="btn btn-sm btn-danger">Supprimer</button>
+
+                                </form>
+
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+
+                    </tbody>
+
+                </table>
+            </div>
+    </main>
+    <footer class="text-center py-3 bg-white shadow-sm mt-auto">
+        <small>Supervision GREE - SEMEP - Version <?= htmlspecialchars($_ENV['APP_VERSION'] ?? '') ?></small>
+    </footer>
 </body>
 </html>

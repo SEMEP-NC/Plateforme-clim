@@ -246,7 +246,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                             <th>Nom</th>
                             <th>Unités</th>
                             <th>Commandes</th>
-                            <th></th>
+                            <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                <th></th>
+                            <?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
@@ -258,6 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                     Voir unités
                                 </button>
                             </td>
+                            
                             <td>
                                 <button
                                     type="button"
@@ -268,12 +271,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                     Commande
                                 </button>
                             </td>
-                            <td>
-                                <form method="POST">
-                                    <input type="hidden" name="group_id" value="<?= $group['id'] ?>">
-                                    <button class="btn btn-danger btn-sm" name="delete_group" onclick="return confirm('Supprimer ce groupe ?')">❌</button>
-                                </form>
-                            </td>
+                            <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                <td>
+                                    <form method="POST">
+                                        <input type="hidden" name="group_id" value="<?= $group['id'] ?>">
+                                        <button class="btn btn-danger btn-sm" name="delete_group" onclick="return confirm('Supprimer ce groupe ?')">❌</button>
+                                    </form>
+                                </td>
+                            <?php endif; ?>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>

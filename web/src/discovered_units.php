@@ -1,6 +1,6 @@
 <?php
 
-
+session_start();
 require 'config/db.php';
 
 $db = get_db();
@@ -121,114 +121,187 @@ $units = $db->query("
     <meta charset="UTF-8">
     <title>Clims detectees</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
+<style>
+        body {
+            background:#f5f7fa;
+        }
 
-<body class="container mt-5">
+        .logo {
+            max-height:50px;
+            width:auto;
+        }
 
-<h1>Climatiseurs detectes automatiquement</h1>
+        .page-title {
+            font-size:2rem;
+        }
 
-<a href="index.php" class="btn btn-secondary mb-3">Retour</a>
+        .card {
+            border:none;
+            border-radius:15px;
+            box-shadow:0 4px 15px rgba(0,0,0,.08);
+        }
 
-<?php if ($error_message): ?>
-    <div class="alert alert-danger"><?= htmlspecialchars($error_message) ?></div>
-<?php endif; ?>
+        .sortable {
+            cursor:pointer;
+            user-select:none;
+        }
 
-<?php if ($discovery_result): ?>
-    <div class="alert alert-info">
-        Discovery: <?= htmlspecialchars($discovery_result['status'] ?? 'unknown') ?>,
-        <?= (int)($discovery_result['devices_found'] ?? 0) ?> equipement(s) detecte(s).
+        .sortable:hover {
+            background:#eef5ff;
+        }
+    </style>
+<body class="vh-100 d-flex flex-column">
+    <header class="bg-white shadow-sm py-3">
+        <div class="container position-relative">
+            <!-- LOGO GAUCHE -->
+            <img src="images/logo-semep.png"
+                class="logo position-absolute top-50 start-0 translate-middle-y"
+                style="max-height:35px; width:auto;"
+                alt="SEMEP">
+
+            <!-- TITRE CENTRÉ -->
+            <div class="text-center">
+                <h1 class="fw-bold page-title mb-1">
+                    Découverte des équipements
+                </h1>
+                <small class="text-muted">
+                    Supervision des unités climatisation
+                </small>
+            </div>
+            <!-- LOGO DROIT -->
+            <img src="images/Gree-Electric-logo.png"
+                class="logo position-absolute top-50 end-0 translate-middle-y"
+                alt="GREE">
+        </div>
+    </header>
+    <div class="container mt-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <i class="bi bi-person-circle"></i>
+                <?= htmlspecialchars($_SESSION['user']['username']) ?>
+                <span class="badge bg-secondary">
+                    <?= htmlspecialchars($_SESSION['user']['role']) ?>
+                </span>
+            </div>
+            <a href="index.php"class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>Retour tableau de bord</a>
+        </div>
     </div>
-<?php endif; ?>
+    <main class="container flex-grow-1 mt-4">
 
-<form method="POST">
-    <div class="border rounded p-3 mb-4">
-        <h2 class="h4">Configuration Discovery</h2>
+        <?php if ($error_message): ?>
+            <div class="alert alert-danger"><?= htmlspecialchars($error_message) ?></div>
+        <?php endif; ?>
 
-        <label class="form-label">START IP</label>
-        <input type="text" name="start_ip" value="<?= htmlspecialchars($config['start_ip'] ?? '') ?>" class="form-control mb-2">
+        <?php if ($discovery_result): ?>
+            <div class="alert alert-info">
+                Discovery: <?= htmlspecialchars($discovery_result['status'] ?? 'unknown') ?>,
+                <?= (int)($discovery_result['devices_found'] ?? 0) ?> equipement(s) detecte(s).
+            </div>
+        <?php endif; ?>
 
-        <label class="form-label">END IP</label>
-        <input type="text" name="end_ip" value="<?= htmlspecialchars($config['end_ip'] ?? '') ?>" class="form-control mb-2">
+        <form method="POST">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <strong>Configurations</strong>
+                </div>
+                <div class="card-body">
+                    <div class="border rounded p-3 mb-4">
+                        
+                        <label class="form-label">START IP</label>
+                        <input type="text" name="start_ip" value="<?= htmlspecialchars($config['start_ip'] ?? '') ?>" class="form-control mb-2">
 
-        <label class="form-label">PORTS</label>
-        <input type="text" name="ports" value="<?= htmlspecialchars($config['ports'] ?? '') ?>" class="form-control mb-2">
+                        <label class="form-label">END IP</label>
+                        <input type="text" name="end_ip" value="<?= htmlspecialchars($config['end_ip'] ?? '') ?>" class="form-control mb-2">
 
-        <label class="form-label">SLAVE IDS</label>
-        <input type="text" name="slave_ids" value="<?= htmlspecialchars($config['slave_ids'] ?? '') ?>" class="form-control mb-3">
+                        <label class="form-label">PORTS</label>
+                        <input type="text" name="ports" value="<?= htmlspecialchars($config['ports'] ?? '') ?>" class="form-control mb-2">
 
-        <button type="submit" name="run_discovery" value="1" class="btn btn-warning">Recherche</button>
-    </div>
+                        <label class="form-label">SLAVE IDS</label>
+                        <input type="text" name="slave_ids" value="<?= htmlspecialchars($config['slave_ids'] ?? '') ?>" class="form-control mb-3">
 
-    <div class="form-check mb-2">
-        <input class="form-check-input" type="checkbox" id="select_all" onclick="document.querySelectorAll('input[name=\'selected[]\']').forEach(c => c.checked = this.checked)">
-        <label class="form-check-label" for="select_all">Tout selectionner</label>
-    </div>
+                        <button type="submit" name="run_discovery" value="1" class="btn btn-warning">Recherche</button>
+                    </div>
+                </div> 
+            </div>  
+            <div class="card mb-4">
+                <div class="card-header">
+                    <strong>Unités trouvés</strong>
+                </div>
+                <div class="card-body">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="select_all" onclick="document.querySelectorAll('input[name=\'selected[]\']').forEach(c => c.checked = this.checked)">
+                        <label class="form-check-label" for="select_all">Tout selectionner</label>
+                    </div>
 
-    <table class="table table-bordered align-middle">
-        <thead>
-            <tr>
-                <th></th>
-                <th>Equipement</th>
-                <th>Nom</th>
-                <th>Modele</th>
-                <th>IP</th>
-                <th>Port</th>
-                <th>Slave</th>
-                <th>Derniere vue</th>
-                <th>Online</th>
-                <th>Etat</th>
-            </tr>
-        </thead>
+                    <table class="table table-bordered align-middle">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Equipement</th>
+                                <th>Nom</th>
+                                <th>Modele</th>
+                                <th>IP</th>
+                                <th>Port</th>
+                                <th>Slave</th>
+                                <th>Derniere vue</th>
+                                <th>Online</th>
+                                <th>Etat</th>
+                            </tr>
+                        </thead>
 
-        <tbody>
-        <?php foreach ($units as $u): ?>
-            <tr>
-                <td>
-                    <?php if ($u['equipment_id']): ?>
-                        <span class="badge bg-success">OK</span>
-                    <?php else: ?>
-                        <input type="checkbox" name="selected[]" value="<?= htmlspecialchars($u['device_id']) ?>">
-                    <?php endif; ?>
-                </td>
+                        <tbody>
+                        <?php foreach ($units as $u): ?>
+                            <tr>
+                                <td>
+                                    <?php if ($u['equipment_id']): ?>
+                                        <span class="badge bg-success">OK</span>
+                                    <?php else: ?>
+                                        <input type="checkbox" name="selected[]" value="<?= htmlspecialchars($u['device_id']) ?>">
+                                    <?php endif; ?>
+                                </td>
 
-                <td><?= htmlspecialchars($u['device_id']) ?></td>
+                                <td><?= htmlspecialchars($u['device_id']) ?></td>
 
-                <td>
-                    <?php if ($u['equipment_id']): ?>
-                        <span class="badge bg-success"><?= htmlspecialchars($u['equipment_name']) ?></span>
-                    <?php else: ?>
-                        <input type="text" name="name[<?= htmlspecialchars($u['device_id']) ?>]" value="<?= htmlspecialchars($u['name']) ?>" class="form-control form-control-sm">
-                    <?php endif; ?>
-                </td>
+                                <td>
+                                    <?php if ($u['equipment_id']): ?>
+                                        <span class="badge bg-success"><?= htmlspecialchars($u['equipment_name']) ?></span>
+                                    <?php else: ?>
+                                        <input type="text" name="name[<?= htmlspecialchars($u['device_id']) ?>]" value="<?= htmlspecialchars($u['name']) ?>" class="form-control form-control-sm">
+                                    <?php endif; ?>
+                                </td>
 
-                <td>
-                    <?php
-                    $model = $u['model'];
-                    echo is_numeric($model) ? htmlspecialchars(number_format($model / 10, 1) . ' kW') : htmlspecialchars((string)$model);
-                    ?>
-                </td>
+                                <td>
+                                    <?php
+                                    $model = $u['model'];
+                                    echo is_numeric($model) ? htmlspecialchars(number_format($model / 10, 1) . ' kW') : htmlspecialchars((string)$model);
+                                    ?>
+                                </td>
 
-                <td><?= htmlspecialchars($u['ip']) ?></td>
-                <td><?= htmlspecialchars($u['port']) ?></td>
-                <td><?= htmlspecialchars($u['slave_id']) ?></td>
-                <td><?= htmlspecialchars($u['last_seen']) ?></td>
-                <td><?= $u['online'] ? 'Online' : 'Offline' ?></td>
-                <td><?= $u['equipment_id'] ? 'Ajoute' : 'Nouveau' ?></td>
-            </tr>
-        <?php endforeach; ?>
-        </tbody>
-    </table>
+                                <td><?= htmlspecialchars($u['ip']) ?></td>
+                                <td><?= htmlspecialchars($u['port']) ?></td>
+                                <td><?= htmlspecialchars($u['slave_id']) ?></td>
+                                <td><?= htmlspecialchars($u['last_seen']) ?></td>
+                                <td><?= $u['online'] ? 'Online' : 'Offline' ?></td>
+                                <td><?= $u['equipment_id'] ? 'Ajoute' : 'Nouveau' ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
 
-    <button type="submit" name="save_equipments" value="1" class="btn btn-success">Ajouter les equipements selectionnes</button>
-</form>
+                    <button type="submit" name="save_equipments" value="1" class="btn btn-success">Ajouter les equipements selectionnes</button>
+                </div>
+            </div>
+        </form>
+    </main>
 
-<script>
-setInterval(() => location.reload(), 30000);
-</script>
-<footer class="position-fixed bottom-0 start-0 w-100 text-center py-3">
-    <small>
-        Supervision GREE - SEMEP - Version <?= htmlspecialchars($_ENV['APP_VERSION'] ?? '') ?>
-    </small>
-</footer>
+    <script>
+    setInterval(() => location.reload(), 30000);
+    </script>
+    <footer class="text-center py-3 bg-white shadow-sm mt-auto">
+        <small>Supervision GREE - SEMEP - Version <?= htmlspecialchars($_ENV['APP_VERSION'] ?? '') ?></small>
+    </footer>
 </body>
 </html>

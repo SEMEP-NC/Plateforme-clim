@@ -155,206 +155,216 @@ require_login();
                 FORMULAIRE AJOUT
             ========================= -->
             <td style="vertical-align: top;">
-                <form method="POST" action="save_schedule.php" class="card p-4 mb-5">
-
-                    <h4 class="mb-3">Ajouter un planning</h4>
-
-                    <label class="form-label">Cible</label>
-
-                    <select name="equipment_id" class="form-control mb-3">
-                        <option value="">— Aucun équipement —</option>
-                        <?php foreach ($equipments as $equipment): ?>
-                            <option value="<?= (int)$equipment['id'] ?>">
-                                Équipement : <?= htmlspecialchars($equipment['name']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-
-                    <select name="group_id" class="form-control mb-3">
-                        <option value="">— Aucun groupe —</option>
-                        <?php foreach ($groups as $group): ?>
-                            <option value="<?= (int)$group['id'] ?>">
-                                Groupe : <?= htmlspecialchars($group['name']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-
-
-                    <small class="text-muted">
-                        Choisir soit un équipement, soit un groupe (pas les deux).
-                    </small>
-
-                    <label class="form-label">Action</label>
-                        <select name="action" class="form-control mb-3">
-                            <option value="">Aucun changement</option>
-                            <option value="ON">ON</option>
-                            <option value="OFF">OFF</option>
-                        </select>
-
-                    <label class="form-label">Température (°C)</label>
-                        <select name="temperature" class="form-control mb-3">
-
-                            <option value="">
-                                Aucun changement
-                            </option>
-
-                            <?php for ($t = 16; $t <= 30; $t++): ?>
-
-                                <option value="<?= $t ?>">
-                                    <?= $t ?> °C
-                                </option>
-
-                            <?php endfor; ?>
-
-                        </select>
-
-                    <label class="form-label">Premiere execution (heure locale UTC+11)</label>
-                    <input type="datetime-local" name="execution_time" class="form-control mb-3" required>
-
-                    <label class="form-label">Repeter chaque semaine</label>
-                    <div class="row mb-3">
-                        <?php foreach ($dayLabels as $day => $label): ?>
-                            <div class="col-md-3 col-sm-6">
-                                <div class="form-check">
-                                    <input
-                                        class="form-check-input"
-                                        type="checkbox"
-                                        name="repeat_days[]"
-                                        value="<?= $day ?>"
-                                        id="repeat_day_<?= $day ?>"
-                                    >
-                                    <label class="form-check-label" for="repeat_day_<?= $day ?>">
-                                        <?= htmlspecialchars($label) ?>
-                                    </label>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <strong>Ajouter planning</strong>
                     </div>
+                    <div class="card-body">
+                        <form method="POST" action="save_schedule.php">        
+                            <div>    
+                                <label class="form-label">Cible</label>
 
-                    <button class="btn btn-success">
-                        Ajouter Planning
-                    </button>
+                                <select name="equipment_id" class="form-control mb-3">
+                                    <option value="">— Aucun équipement —</option>
+                                    <?php foreach ($equipments as $equipment): ?>
+                                        <option value="<?= (int)$equipment['id'] ?>">
+                                            Équipement : <?= htmlspecialchars($equipment['name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
 
-                </form>
+                                <select name="group_id" class="form-control mb-3">
+                                    <option value="">— Aucun groupe —</option>
+                                    <?php foreach ($groups as $group): ?>
+                                        <option value="<?= (int)$group['id'] ?>">
+                                            Groupe : <?= htmlspecialchars($group['name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <small class="text-muted">
+                                    Choisir soit un équipement, soit un groupe (pas les deux).
+                                </small>
+                            </div>
+                            <label class="form-label">Action</label>
+                                <select name="action" class="form-control mb-3">
+                                    <option value="">Aucun changement</option>
+                                    <option value="ON">ON</option>
+                                    <option value="OFF">OFF</option>
+                                </select>
+
+                            <label class="form-label">Température (°C)</label>
+                                <select name="temperature" class="form-control mb-3">
+
+                                    <option value="">
+                                        Aucun changement
+                                    </option>
+
+                                    <?php for ($t = 16; $t <= 30; $t++): ?>
+
+                                        <option value="<?= $t ?>">
+                                            <?= $t ?> °C
+                                        </option>
+
+                                    <?php endfor; ?>
+
+                                </select>
+
+                            <label class="form-label">Premiere execution (heure locale UTC+11)</label>
+                            <input type="datetime-local" name="execution_time" class="form-control mb-3" required>
+
+                            <label class="form-label">Repeter chaque semaine</label>
+                            <div class="row mb-3">
+                                <?php foreach ($dayLabels as $day => $label): ?>
+                                    <div class="col-md-3 col-sm-6">
+                                        <div class="form-check">
+                                            <input
+                                                class="form-check-input"
+                                                type="checkbox"
+                                                name="repeat_days[]"
+                                                value="<?= $day ?>"
+                                                id="repeat_day_<?= $day ?>"
+                                            >
+                                            <label class="form-check-label" for="repeat_day_<?= $day ?>">
+                                                <?= htmlspecialchars($label) ?>
+                                            </label>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+
+                            <button class="btn btn-success">
+                                Ajouter Planning
+                            </button>
+
+                        </form>
+                    </div>
+                </div>
             </td>
             <td style="width:20px;"></td>
             <!-- =========================
                 TABLEAU
             ========================= -->
             <td style="vertical-align: top;">
-                <table class="table table-bordered table-striped align-middle">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <strong>Liste plannings</strong>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-bordered table-striped align-middle">
 
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Actif</th>
-                            <th>Équipement</th>
-                            <th>Action</th>
-                            <th>Température</th>
-                            <th>Prochaine execution</th>
-                            <th>Repetition</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
+                            <thead>
+                                <tr>
+                                    <th>Actif</th>
+                                    <th>Équipement</th>
+                                    <th>Action</th>
+                                    <th>Température</th>
+                                    <th>Prochaine execution</th>
+                                    <th>Repetition</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
 
-                    <tbody>
+                            <tbody>
 
-                        <?php foreach ($schedules as $schedule): ?>
-                            <tr>
-                                <td>
-                                    <form method="POST" action="toggle_schedule.php">
-                                        <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
-                                        <button class="btn btn-sm <?= $schedule['enabled'] ? 'btn-success' : 'btn-secondary' ?>">
-                                            <?= $schedule['enabled'] ? 'Actif' : 'Inactif' ?>
-                                        </button>
-                                    </form>
-                                </td>
-                                <td>
-                                    <?php if (!empty($schedule['group_name'])): ?>
-                                        <span class="badge bg-primary">
-                                            Groupe : <?= htmlspecialchars($schedule['group_name']) ?>
-                                        </span>
-                                    <?php elseif (!empty($schedule['equipment_name'])): ?>
-                                        <span class="badge bg-secondary">
-                                            Équipement : <?= htmlspecialchars($schedule['equipment_name']) ?>
-                                        </span>
-                                    <?php else: ?>
-                                        <span class="text-muted">—</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if ($schedule['action'] === 'ON'): ?>
-                                        <span class="badge bg-success">
-                                            ON
-                                        </span>
-                                    <?php elseif ($schedule['action'] === 'OFF'): ?>
-                                        <span class="badge bg-danger">
-                                            OFF
-                                        </span>
-                                    <?php else: ?>
-                                        <span class="badge bg-secondary">
-                                            Aucun changement
-                                        </span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php if ($schedule['temperature'] !== null): ?>
-                                        <?= htmlspecialchars($schedule['temperature']) ?> °C
-                                    <?php else: ?>
-                                        <span class="text-muted">
-                                            Aucun changement
-                                        </span>
-                                    <?php endif; ?>
-                                </td>
-                                <td>
-                                    <?php
-                                        $dt = (new DateTime($schedule['execution_time'], new DateTimeZone('UTC')))
-                                            ->setTimezone(new DateTimeZone('+11:00'));
-                                    ?>
-                                    <?= $dt->format('Y-m-d H:i') ?>
-                                </td>
+                                <?php foreach ($schedules as $schedule): ?>
+                                    <tr>
+                                        <td>
+                                            <form method="POST" action="toggle_schedule.php">
+                                                <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
+                                                <button class="btn btn-sm <?= $schedule['enabled'] ? 'btn-success' : 'btn-secondary' ?>">
+                                                    <?= $schedule['enabled'] ? 'Actif' : 'Inactif' ?>
+                                                </button>
+                                            </form>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($schedule['group_name'])): ?>
+                                                <span class="badge bg-primary">
+                                                    Groupe : <?= htmlspecialchars($schedule['group_name']) ?>
+                                                </span>
+                                            <?php elseif (!empty($schedule['equipment_name'])): ?>
+                                                <span class="badge bg-secondary">
+                                                    Équipement : <?= htmlspecialchars($schedule['equipment_name']) ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="text-muted">—</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if ($schedule['action'] === 'ON'): ?>
+                                                <span class="badge bg-success">
+                                                    ON
+                                                </span>
+                                            <?php elseif ($schedule['action'] === 'OFF'): ?>
+                                                <span class="badge bg-danger">
+                                                    OFF
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="badge bg-secondary">
+                                                    Aucun changement
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if ($schedule['temperature'] !== null): ?>
+                                                <?= htmlspecialchars($schedule['temperature']) ?> °C
+                                            <?php else: ?>
+                                                <span class="text-muted">
+                                                    Aucun changement
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php
+                                                $dt = (new DateTime($schedule['execution_time'], new DateTimeZone('UTC')))
+                                                    ->setTimezone(new DateTimeZone('+11:00'));
+                                            ?>
+                                            <?= $dt->format('Y-m-d H:i') ?>
+                                        </td>
 
-                                <td>
-                                    <?= htmlspecialchars(
-                                        format_repeat_days(
-                                            $schedule['repeat_days'] ?? '',
-                                            $dayLabels
-                                        )
-                                    ) ?>
-                                </td>
-                                <td class="d-flex gap-1">
-                                    <button
-                                        class="btn btn-sm btn-primary editScheduleBtn"
-                                        data-id="<?= $schedule['id'] ?>"
-                                        data-action="<?= htmlspecialchars($schedule['action']) ?>"
-                                        data-temperature="<?= htmlspecialchars($schedule['temperature']) ?>"
-                                        data-execution="<?= htmlspecialchars($schedule['execution_time']) ?>"
-                                        data-repeat="<?= htmlspecialchars($schedule['repeat_days']) ?>"
-                                    >
-                                        Modifier
-                                    </button>
+                                        <td>
+                                            <?= htmlspecialchars(
+                                                format_repeat_days(
+                                                    $schedule['repeat_days'] ?? '',
+                                                    $dayLabels
+                                                )
+                                            ) ?>
+                                        </td>
+                                        <td class="d-flex gap-1">
+                                            <button
+                                                class="btn btn-sm btn-primary editScheduleBtn"
+                                                data-id="<?= $schedule['id'] ?>"
+                                                data-action="<?= htmlspecialchars($schedule['action']) ?>"
+                                                data-temperature="<?= htmlspecialchars($schedule['temperature']) ?>"
+                                                data-execution="<?= htmlspecialchars($schedule['execution_time']) ?>"
+                                                data-repeat="<?= htmlspecialchars($schedule['repeat_days']) ?>"
+                                            >
+                                                Modifier
+                                            </button>
 
-                                    <form method="POST" action="duplicate_schedule.php">
-                                        <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
-                                        <button class="btn btn-sm btn-outline-primary">
-                                            Dupliquer
-                                        </button>
-                                    </form>
+                                            <form method="POST" action="duplicate_schedule.php">
+                                                <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
+                                                <button class="btn btn-sm btn-outline-primary">
+                                                    Dupliquer
+                                                </button>
+                                            </form>
 
-                                    <form method="POST" action="delete_schedule.php">
-                                        <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
-                                        <button class="btn btn-sm btn-danger" onclick="return confirm('Supprimer ce planning ?')">
-                                            Supprimer
-                                        </button>
-                                    </form>
+                                            <form method="POST" action="delete_schedule.php">
+                                                <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
+                                                <button class="btn btn-sm btn-danger" onclick="return confirm('Supprimer ce planning ?')">
+                                                    Supprimer
+                                                </button>
+                                            </form>
 
-                                </td>
-                            </tr>
+                                        </td>
+                                    </tr>
 
-                        <?php endforeach; ?>
+                                <?php endforeach; ?>
 
-                    </tbody>
+                            </tbody>
 
-                </table>
+                        </table>
+                    </div>
+                </div>
             </td>
         </table>
         <div class="modal fade" id="editScheduleModal" tabindex="-1">
