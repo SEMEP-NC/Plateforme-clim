@@ -225,6 +225,10 @@ $units = $db->query("
 <script>
 setInterval(() => location.reload(), 30000);
 </script>
-
+<footer class="position-fixed bottom-0 start-0 w-100 text-center py-3">
+    <small>
+        Supervision GREE - SEMEP - Version <?= htmlspecialchars($_ENV['APP_VERSION'] ?? '') ?>
+    </small>
+</footer>
 </body>
 </html>

@@ -51,7 +51,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adminExists) {
 
 <body class="bg-light">
 
-<div class="container d-flex justify-content-center align-items-center" style="height:100vh;">
+<div class="container d-flex flex-column justify-content-center align-items-center" style="height:80vh;">
+
+    <div>
+    <img src="images/Gree-Electric-logo.png"
+        alt="Logo"
+        class="img-fluid mx-auto mb-3"
+        style="max-height:300px; width:auto;">
+    </div>
 
     <div class="card p-4 shadow" style="width: 380px;">
 
@@ -142,7 +149,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adminExists) {
     </div>
 </div>
 <?php endif; ?>
-
+<footer class="text-center py-3 mt-auto">
+    <small>
+        Supervision GREE - SEMEP - Version <?= htmlspecialchars($_ENV['APP_VERSION'] ?? '') ?>
+    </small>
+</footer>
 </body>
 <script>
 document.querySelector("form").addEventListener("submit", function(e) {

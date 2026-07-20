@@ -153,469 +153,143 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
     <meta charset="UTF-8">
     <title>Équipements</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 <style>
+    body {
+        background:#f5f7fa;
+    }
+
+    .logo {
+        max-height:50px;
+        width:auto;
+    }
+
+    .page-title {
+        font-size:2rem;
+    }
+
+    .card {
+        border:none;
+        border-radius:15px;
+        box-shadow:0 4px 15px rgba(0,0,0,.08);
+    }
+
     .sortable {
-        cursor: pointer;
-        user-select: none;
+        cursor:pointer;
+        user-select:none;
     }
 
     .sortable:hover {
-        background-color: #f0f0f0;
+        background:#eef5ff;
     }
 </style>
-<body class="container mt-5">
-    <div class="text-center mt-4">
-        <h1 class="fw-bold">Équipements</h1>
+<body class="vh-100 d-flex flex-column">
+    <header class="bg-white shadow-sm py-3">
+        <div class="container position-relative">
+            <!-- LOGO GAUCHE -->
+            <img src="images/logo-semep.png"
+                class="logo position-absolute top-50 start-0 translate-middle-y"
+                style="max-height:35px; width:auto;"
+                alt="SEMEP">
+
+            <!-- TITRE CENTRÉ -->
+            <div class="text-center">
+                <h1 class="fw-bold page-title mb-1">
+                    Gestion des Équipements
+                </h1>
+                <small class="text-muted">
+                    Supervision des unités climatisation
+                </small>
+            </div>
+            <!-- LOGO DROIT -->
+            <img src="images/Gree-Electric-logo.png"
+                class="logo position-absolute top-50 end-0 translate-middle-y"
+                alt="GREE">
+        </div>
+    </header>
+    <div class="container mt-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <i class="bi bi-person-circle"></i>
+                <?= htmlspecialchars($_SESSION['user']['username']) ?>
+                <span class="badge bg-secondary">
+                    <?= htmlspecialchars($_SESSION['user']['role']) ?>
+                </span>
+            </div>
+            <a href="index.php"class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>Retour tableau de bord</a>
+        </div>
     </div>
-    <a href="index.php" class="btn btn-secondary mb-3">Retour</a>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <script src="https://cdn.jsdelivr.net/npm/date-fns"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-
-    <!-- ========================= GROUPES ========================= -->
-    <div class="card mb-4">
-        <div class="card-header"><strong>Groupes</strong></div>
-        <div class="card-body">
-            <form method="POST" class="row g-2 mb-3">
-                <div class="col-md-8">
-                    <input type="text" name="group_name" class="form-control" placeholder="Nouveau groupe">
-                </div>
-                <div class="col-md-4">
-                    <button class="btn btn-primary w-100" name="create_group">Ajouter</button>
-                </div>
-            </form>
-
-            <table class="table table-bordered">
-                <thead>
-                    <tr>
-                        <th>Nom</th>
-                        <th>Unités</th>
-                        <th>Commandes</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($groups as $group): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($group['name']) ?></td>
-                        <td>
-                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#groupModal<?= $group['id'] ?>">
-                                Voir unités
-                            </button>
-                        </td>
-                        <td>
-                            <button
-                                type="button"
-                                class="btn btn-warning btn-sm groupCommandButton"
-                                data-id="<?= $group['id'] ?>"
-                                data-name="<?= htmlspecialchars($group['name']) ?>"
-                            >
-                                Commande
-                            </button>
-                        </td>
-                        <td>
-                            <form method="POST">
-                                <input type="hidden" name="group_id" value="<?= $group['id'] ?>">
-                                <button class="btn btn-danger btn-sm" name="delete_group" onclick="return confirm('Supprimer ce groupe ?')">❌</button>
-                            </form>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-     <!-- ========================= MODALS COMMANDE GROUP ========================= -->   
-    <div class="modal fade" id="groupCommandModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <form id="groupCommandForm" class="modal-content">
-                <input type="hidden" id="group_id">
-                <div class="modal-header">
-                    <h5 class="modal-title">Commande groupe</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">               
-                    <table class="table table-bordered align-middle">
-                        <thead>
-                            <tr>
-                                <th width="60"></th>
-                                <th>Paramètre</th>
-                                <th>Valeur</th>
-                            </tr>
-                        </thead>
-                        <tr>
-                            <td><input class="form-check-input" type="checkbox" id="send_power_group"></td>
-                            <td>Marche / Arrêt</td>
-                            <td>
-                                <select id="g_power" class="form-select">
-                                    <option value=""></option>
-                                    <option value="170">Marche</option>
-                                    <option value="85">Arrêt</option>
-                                </select>
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td><input class="form-check-input" type="checkbox" id="send_mode_group"></td>
-                            <td>Mode</td>
-                            <td>
-                                <select id="g_mode" class="form-select">
-                                    <option value=""></option>
-                                    <option value="1">Froid</option>
-                                    <option value="2">Déshumidification</option>
-                                    <option value="3">Ventilation</option>
-                                    <option value="4">Chauffage</option>
-                                    <option value="5">Auto</option>
-                                </select>
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td><input class="form-check-input" type="checkbox" id="send_setpoint_group"></td>
-                            <td>Consigne</td>
-                            <td>
-                                <input id="g_setpoint" type="number" class="form-control" min="16" max="30" step="0.5">
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td><input class="form-check-input" type="checkbox" id="send_fan_group"></td>
-                            <td>Ventilation</td>
-                            <td>
-                                <select id="g_fan" class="form-select">
-                                    <option value=""></option>
-                                    <option value="1">Auto</option>
-                                    <option value="2">Faible</option>
-                                    <option value="3">Moyen</option>
-                                    <option value="4">Fort</option>
-                                </select>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><input class="form-check-input" type="checkbox" id="send_min_setpoint_group"></td>
-                            <td>Limite consigne basse</td>
-                            <td>
-                                <input id="g_min_setpoint" type="number" class="form-control" min="16" max="30" step="0.5">
-                            </td>
-                        </tr>
-
-                    </table>
-                    <div class="card mt-3">
-                        <div class="card-header p-0">
-                            <button
-                                class="btn btn-link text-decoration-none w-100 text-start p-3"
-                                type="button"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#shieldCollapse"
-                                aria-expanded="false"
-                                aria-controls="shieldCollapse">
-
-                                <strong>Protections (Shield)</strong>
-                            </button>
-                        </div>
-
-                        <div class="collapse" id="shieldCollapse">
-                            <div class="card-body">
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="g_shield_energy">
-                                    <label class="form-check-label" for="g_shield_energy">
-                                        Shield Energy Saving
-                                    </label>
-                                </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="g_shield_setpoint">
-                                    <label class="form-check-label" for="g_shield_setpoint">
-                                        Shield Consigne
-                                    </label>
-                                </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="g_shield_mode">
-                                    <label class="form-check-label" for="g_shield_mode">
-                                        Shield Mode
-                                    </label>
-                                </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="g_shield_power">
-                                    <label class="form-check-label" for="g_shield_power">
-                                        Shield Marche / Arrêt
-                                    </label>
-                                </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="g_lock_function">
-                                    <label class="form-check-label" for="g_lock_function">
-                                        Verrouillage télécommande
-                                    </label>
-                                </div>
-
-                            </div>
-                        </div>
+    <main class="container flex-grow-1 mt-4">
+        <!-- ========================= GROUPES ========================= -->
+        <div class="card mb-4">
+            <div class="card-header"><strong>Groupes</strong></div>
+            <div class="card-body">
+                <form method="POST" class="row g-2 mb-3">
+                    <div class="col-md-8">
+                        <input type="text" name="group_name" class="form-control" placeholder="Nouveau groupe">
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-success">Envoyer groupe</button>
-                </div>
-            </form>
-        </div>    
-    </div>
-  
-    <!-- ========================= MODALS GROUP → EQUIP ========================= -->
-    <?php foreach ($groups as $group): ?>
-        <div class="modal fade" id="groupModal<?= $group['id'] ?>" tabindex="-1">
-            <div class="modal-dialog">
-                <form method="POST" class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Unités - <?= htmlspecialchars($group['name']) ?></h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <?php foreach ($equipments as $equipment): ?>
-                        <?php $checked = in_array($equipment['id'], $groupEquipments[$group['id']] ?? []); ?>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="equipments[<?= $group['id'] ?>][]" value="<?= $equipment['id'] ?>" <?= $checked ? 'checked' : '' ?>>
-                            <label class="form-check-label"><?= htmlspecialchars($equipment['name']) ?></label>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" name="save_groups" class="btn btn-success">Valider</button>
+                    <div class="col-md-4">
+                        <button class="btn btn-primary w-100" name="create_group">Ajouter</button>
                     </div>
                 </form>
-            </div>
-        </div>
-    <?php endforeach; ?>
 
-    <!-- ========================= EQUIPMENTS ========================= -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <strong>Unités</strong>
-        </div>
-        <div class="card-body">
-            <form method="POST">
-                <?php if ($_SESSION['user']['role'] === 'admin'): ?>
-                    <div class="d-flex justify-content-between mb-3">
-                        <button type="submit" name="save_all" class="btn btn-success">
-                            💾 Sauvegarder
-                        </button>
-                        <!-- <div class="d-flex gap-2">
-                            <a href="export_equipments_json.php" class="btn btn-info">
-                                📥 Exporter en JSON
-                            </a>
-                        </div> -->
-                    </div>
-                <?php endif; ?>
-
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped align-middle" id="equipmentsTable">
-                        <thead>
-                            <tr>
-                                <th>Localisation
-                                    <div class="dropdown d-inline">
-                                        <button 
-                                            class="btn btn-sm btn-light"
-                                            type="button"
-                                            data-bs-toggle="dropdown">
-                                            🔽
-                                        </button>
-                                        <ul class="dropdown-menu p-2" style="max-height:250px;overflow:auto">
-
-                                            <?php foreach ($localisations as $loc): ?>
-                                                <li>
-                                                    <label class="dropdown-item">
-                                                        <input 
-                                                            type="checkbox"
-                                                            class="form-check-input me-2 localisation-filter"
-                                                            value="<?= htmlspecialchars($loc) ?>">
-                                                        <?= htmlspecialchars($loc) ?>
-                                                    </label>
-                                                </li>
-                                            <?php endforeach; ?>
-                                        </ul>
-                                    </div>
-                                </th>
-                                <th data-sort="name" class="sortable">
-                                    Nom <span>↕</span>
-                                </th>
-
-                                <th data-sort="ui" class="sortable">
-                                    UI <span>↕</span>
-                                </th>
-                                <?php if ($_SESSION['user']['role'] === 'admin'): ?>
-                                    <th>Puissance</th>
-                                    <th>IP</th>
-                                    <th>Slave</th>
-                                <?php endif; ?>
-                                <th data-sort="state" class="sortable">
-                                    État <span>↕</span>
-                                </th>
-
-                                <th data-sort="fault" class="sortable">
-                                    Défaut <span>↕</span>
-                                </th>
-
-                                <th data-sort="temp" class="sortable">
-                                    Temp reprise <span>↕</span>
-                                </th>
-                                <th>Groupes</th>
-                                <th>Commandes</th>
-                                <th>Historique</th>
-                                <?php if ($_SESSION['user']['role'] === 'admin'): ?>
-                                    <th></th>
-                                <?php endif; ?>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($equipments as $equipment): ?>
-                            <tr>
-                                <td data-localisation="<?= htmlspecialchars($equipment['localisation'] ?? '') ?>">
-                                    <?php if ($_SESSION['user']['role'] === 'admin'): ?>
-                                        <input 
-                                            type="text"
-                                            name="localisation[<?= $equipment['id'] ?>]"
-                                            value="<?= htmlspecialchars($equipment['localisation'] ?? '') ?>"
-                                            class="form-control">
-                                    <?php else: ?>
-                                        <?= htmlspecialchars($equipment['localisation'] ?? '') ?>
-                                    <?php endif; ?>
-                                </td>
-                                <td data-sort="<?= htmlspecialchars($equipment['name']) ?>">
-                                    <?php if ($_SESSION['user']['role'] === 'admin'): ?>
-                                        <input 
-                                            type="text"
-                                            name="name[<?= $equipment['id'] ?>]"
-                                            value="<?= htmlspecialchars($equipment['name']) ?>"
-                                            class="form-control"
-                                            oninput="this.parentElement.dataset.sort=this.value">
-                                    <?php else: ?>
-                                        <?= htmlspecialchars($equipment['name']) ?>
-                                    <?php endif; ?>
-                                </td>
-
-                                
-                                <td data-sort="<?= (int)$equipment['UI'] ?>">
-                                    <?= htmlspecialchars($equipment['UI']) ?>
-                                </td>
-                                <?php if ($_SESSION['user']['role'] === 'admin'): ?>
-                                    <td>
-                                        <?= is_numeric($equipment['power'])
-                                            ? number_format($equipment['power']/10, 1) . ' kW'
-                                            : htmlspecialchars($equipment['power']) ?>
-                                    </td>
-                                <?php endif; ?>
-                                <?php if ($_SESSION['user']['role'] === 'admin'): ?>
-                                    <td><?= htmlspecialchars($equipment['ip']) ?></td>
-                                    <td><?= htmlspecialchars($equipment['slave_id']) ?></td>
-                                <?php endif; ?>
-                                <td data-sort="<?= !empty($equipment['state']) ? 1 : 0 ?>">
-                                    <?php if (!empty($equipment['state'])): ?>
-                                        <span class="badge bg-success">ON</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-secondary">OFF</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td data-sort="<?= !empty($equipment['fault']) ? 1 : 0 ?>">
-                                    <?php if (!empty($equipment['fault'])): ?>
-                                        <span class="badge bg-danger blink">DÉFAUT</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-success">NORMAL</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td data-sort="<?= $equipment['return_temp'] ?? -999 ?>">
-                                    <?= $equipment['return_temp'] !== null
-                                        ? number_format($equipment['return_temp'], 1) . ' °C'
-                                        : '-' ?>
-                                </td>
-                                <td>
-                                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#equipModal<?= $equipment['id'] ?>">
-                                        Groupes
-                                    </button>
-                                </td>
-                                <td>
-                                    <button
-                                        type="button"
-                                        class="btn btn-warning btn-sm commandButton"
-                                        data-id="<?= $equipment['id'] ?>"
-                                        data-ui="<?= $equipment['UI'] ?>"
-                                        data-ip="<?= htmlspecialchars($equipment['ip']) ?>"
-                                        data-port="<?= $equipment['port'] ?? 502 ?>"
-                                        data-name="<?= htmlspecialchars($equipment['name']) ?>">
-                                        Commande
-                                    </button>
-                                </td>
-                                <td>
-                                    <button
-                                        type="button"
-                                        class="btn btn-info btn-sm historyButton"
-                                        data-id="<?= $equipment['id'] ?>"
-                                        data-name="<?= htmlspecialchars($equipment['name']) ?>">
-                                        Historique
-                                    </button>
-                                </td>
-                                <?php if ($_SESSION['user']['role'] === 'admin'): ?>
-                                    <td>
-                                        <form method="POST">
-                                            <input type="hidden" name="id" value="<?= $equipment['id'] ?>">
-                                            <button class="btn btn-danger btn-sm" name="delete_equipment" onclick="return confirm('Supprimer cet équipement ?')">❌</button>
-                                        </form>
-                                    </td>
-                                <?php endif; ?>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- ========================= MODALS EQUIP → GROUP ========================= -->
-    <?php foreach ($equipments as $equipment): ?>
-        <div class="modal fade" id="equipModal<?= $equipment['id'] ?>" tabindex="-1">
-            <div class="modal-dialog">
-                <form method="POST" class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Groupes - <?= htmlspecialchars($equipment['name']) ?></h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Unités</th>
+                            <th>Commandes</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
                         <?php foreach ($groups as $group): ?>
-                        <?php $checked = in_array($group['id'], $equipmentGroups[$equipment['id']] ?? []); ?>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="groups[<?= $equipment['id'] ?>][]" value="<?= $group['id'] ?>" <?= $checked ? 'checked' : '' ?>>
-                            <label class="form-check-label"><?= htmlspecialchars($group['name']) ?></label>
-                        </div>
+                        <tr>
+                            <td><?= htmlspecialchars($group['name']) ?></td>
+                            <td>
+                                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#groupModal<?= $group['id'] ?>">
+                                    Voir unités
+                                </button>
+                            </td>
+                            <td>
+                                <button
+                                    type="button"
+                                    class="btn btn-warning btn-sm groupCommandButton"
+                                    data-id="<?= $group['id'] ?>"
+                                    data-name="<?= htmlspecialchars($group['name']) ?>"
+                                >
+                                    Commande
+                                </button>
+                            </td>
+                            <td>
+                                <form method="POST">
+                                    <input type="hidden" name="group_id" value="<?= $group['id'] ?>">
+                                    <button class="btn btn-danger btn-sm" name="delete_group" onclick="return confirm('Supprimer ce groupe ?')">❌</button>
+                                </form>
+                            </td>
+                        </tr>
                         <?php endforeach; ?>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" name="save_equipment_groups" class="btn btn-success">Valider</button>
-                    </div>
-                </form>
+                    </tbody>
+                </table>
             </div>
         </div>
-    <?php endforeach; ?>
-    <!-- ========================= MODALS COMMANDE EQUIP ========================= -->
-    <div class="modal fade" id="commandModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <form id="commandForm">
-                <input type="hidden" id="equipment_id" name="equipment_id">
-                <div class="modal-content">
+        <!-- ========================= MODALS COMMANDE GROUP ========================= -->   
+        <div class="modal fade" id="groupCommandModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <form id="groupCommandForm" class="modal-content">
+                    <input type="hidden" id="group_id">
                     <div class="modal-header">
-                        <h5 class="modal-title">
-                            Commande unité
-                        </h5>
+                        <h5 class="modal-title">Commande groupe</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body">               
                         <table class="table table-bordered align-middle">
                             <thead>
                                 <tr>
@@ -624,146 +298,525 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                     <th>Valeur</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr>
-                                    <td><input class="form-check-input" type="checkbox" name="send_power"></td>
-                                    <td>Marche / Arrêt</td>
-                                    <td>
-                                        <select class="form-select" id="power" name="power">
-                                            <option value="170">Marche</option>
-                                            <option value="85">Arrêt</option>
-                                        </select>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><input class="form-check-input" type="checkbox" name="send_mode"></td>
-                                    <td>Mode</td>
-                                    <td>
-                                        <select class="form-select" id="mode" name="mode">
-                                            <option value="1">Froid</option>
-                                            <option value="2">Déshumidification</option>
-                                            <option value="3">Ventilation</option>
-                                            <option value="4">Chauffage</option>
-                                            <option value="5">Automatique</option>
-                                            <option value="6">Plancher chauffant</option>
-                                            <option value="7">Chauffage rapide</option>
-                                            <option value="8">Heat Supply</option>
-                                        </select>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td><input class="form-check-input" type="checkbox" name="send_setpoint"></td>
-                                    <td>Consigne</td>
-                                    <td><input class="form-control" type="number" min="16" max="30" step="0.5" id="setpoint" name="setpoint"></td>
-                                </tr>
-                                <tr>
-                                    <td><input class="form-check-input" type="checkbox" name="send_fan"> </td>
-                                    <td>Vitesse ventilation</td>
-                                    <td>
-                                        <select class="form-select" id="fan" name="fan">
-                                            <option value="1">Auto</option>
-                                            <option value="2">Faible</option>
-                                            <option value="3">Moyen faible</option>
-                                            <option value="4">Moyen</option>
-                                            <option value="5">Moyen fort</option>
-                                            <option value="6">Fort</option>
-                                            <option value="7">Turbo</option>
-                                        </select>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <input class="form-check-input" type="checkbox" name="send_min_setpoint">
-                                    </td>
-                                    <td>Limite basse consigne</td>
-                                    <td>
-                                        <input
-                                            class="form-control"
-                                            type="number"
-                                            min="10"
-                                            max="30"
-                                            step="0.5"
-                                            id="min_setpoint"
-                                            name="min_setpoint"
-                                        >
-                                    </td>
-                                </tr>
-                            </tbody>
+                            <tr>
+                                <td><input class="form-check-input" type="checkbox" id="send_power_group"></td>
+                                <td>Marche / Arrêt</td>
+                                <td>
+                                    <select id="g_power" class="form-select">
+                                        <option value=""></option>
+                                        <option value="170">Marche</option>
+                                        <option value="85">Arrêt</option>
+                                    </select>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td><input class="form-check-input" type="checkbox" id="send_mode_group"></td>
+                                <td>Mode</td>
+                                <td>
+                                    <select id="g_mode" class="form-select">
+                                        <option value=""></option>
+                                        <option value="1">Froid</option>
+                                        <option value="2">Déshumidification</option>
+                                        <option value="3">Ventilation</option>
+                                        <option value="4">Chauffage</option>
+                                        <option value="5">Auto</option>
+                                    </select>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td><input class="form-check-input" type="checkbox" id="send_setpoint_group"></td>
+                                <td>Consigne</td>
+                                <td>
+                                    <input id="g_setpoint" type="number" class="form-control" min="16" max="30" step="0.5">
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td><input class="form-check-input" type="checkbox" id="send_fan_group"></td>
+                                <td>Ventilation</td>
+                                <td>
+                                    <select id="g_fan" class="form-select">
+                                        <option value=""></option>
+                                        <option value="1">Auto</option>
+                                        <option value="2">Faible</option>
+                                        <option value="3">Moyen</option>
+                                        <option value="4">Fort</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><input class="form-check-input" type="checkbox" id="send_min_setpoint_group"></td>
+                                <td>Limite consigne basse</td>
+                                <td>
+                                    <input id="g_min_setpoint" type="number" class="form-control" min="16" max="30" step="0.5">
+                                </td>
+                            </tr>
+
                         </table>
                         <div class="card mt-3">
-                            <div class="card-header">
-                                <strong>Protections (Shield)</strong>
+                            <div class="card-header p-0">
+                                <button
+                                    class="btn btn-link text-decoration-none w-100 text-start p-3"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#shieldCollapse"
+                                    aria-expanded="false"
+                                    aria-controls="shieldCollapse">
+
+                                    <strong>Protections (Shield)</strong>
+                                </button>
                             </div>
 
-                            <div class="card-body">
+                            <div class="collapse" id="shieldCollapse">
+                                <div class="card-body">
 
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="shield_energy">
-                                    <label class="form-check-label" for="shield_energy">
-                                        Shield Energy Saving
-                                    </label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="g_shield_energy">
+                                        <label class="form-check-label" for="g_shield_energy">
+                                            Shield Energy Saving
+                                        </label>
+                                    </div>
+
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="g_shield_setpoint">
+                                        <label class="form-check-label" for="g_shield_setpoint">
+                                            Shield Consigne
+                                        </label>
+                                    </div>
+
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="g_shield_mode">
+                                        <label class="form-check-label" for="g_shield_mode">
+                                            Shield Mode
+                                        </label>
+                                    </div>
+
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="g_shield_power">
+                                        <label class="form-check-label" for="g_shield_power">
+                                            Shield Marche / Arrêt
+                                        </label>
+                                    </div>
+
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="g_lock_function">
+                                        <label class="form-check-label" for="g_lock_function">
+                                            Verrouillage télécommande
+                                        </label>
+                                    </div>
+
                                 </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="shield_setpoint">
-                                    <label class="form-check-label" for="shield_setpoint">
-                                        Shield Consigne
-                                    </label>
-                                </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="shield_mode">
-                                    <label class="form-check-label" for="shield_mode">
-                                        Shield Mode
-                                    </label>
-                                </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="shield_power">
-                                    <label class="form-check-label" for="shield_power">
-                                        Shield Marche / Arrêt
-                                    </label>
-                                </div>
-
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="lock_function">
-                                    <label class="form-check-label" for="lock_function">
-                                        Verrouillage télécommande
-                                    </label>
-                                </div>
-
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                        <button type="submit" class="btn btn-success" data-id="<?= $equipment['id'] ?>">Envoyer</button>
+                        <button type="submit" class="btn btn-success">Envoyer groupe</button>
                     </div>
-                </div>
-            </form>
+                </form>
+            </div>    
         </div>
-    </div>
-    <!-- ========================= MODALS COURBES ========================= -->
-    <div class="modal fade" id="historyModal" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-
-                <div class="modal-header">
-                    <h5 id="historyTitle"></h5>
-
-                    <button class="btn-close"
-                            data-bs-dismiss="modal"></button>
+    
+        <!-- ========================= MODALS GROUP → EQUIP ========================= -->
+        <?php foreach ($groups as $group): ?>
+            <div class="modal fade" id="groupModal<?= $group['id'] ?>" tabindex="-1">
+                <div class="modal-dialog">
+                    <form method="POST" class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Unités - <?= htmlspecialchars($group['name']) ?></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <?php foreach ($equipments as $equipment): ?>
+                            <?php $checked = in_array($equipment['id'], $groupEquipments[$group['id']] ?? []); ?>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="equipments[<?= $group['id'] ?>][]" value="<?= $equipment['id'] ?>" <?= $checked ? 'checked' : '' ?>>
+                                <label class="form-check-label"><?= htmlspecialchars($equipment['name']) ?></label>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" name="save_groups" class="btn btn-success">Valider</button>
+                        </div>
+                    </form>
                 </div>
+            </div>
+        <?php endforeach; ?>
 
-                <div class="modal-body">
+        <!-- ========================= EQUIPMENTS ========================= -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <strong>Unités</strong>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                        <div class="d-flex justify-content-between mb-3">
+                            <button type="submit" name="save_all" class="btn btn-success">
+                                💾 Sauvegarder
+                            </button>
+                            <!-- <div class="d-flex gap-2">
+                                <a href="export_equipments_json.php" class="btn btn-info">
+                                    📥 Exporter en JSON
+                                </a>
+                            </div> -->
+                        </div>
+                    <?php endif; ?>
 
-                    <canvas id="historyChart" height="650"></canvas>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped align-middle" id="equipmentsTable">
+                            <thead>
+                                <tr>
+                                    <th>Localisation
+                                        <div class="dropdown d-inline">
+                                            <button 
+                                                class="btn btn-sm btn-light"
+                                                type="button"
+                                                data-bs-toggle="dropdown">
+                                                🔽
+                                            </button>
+                                            <ul class="dropdown-menu p-2" style="max-height:250px;overflow:auto">
 
-                </div>
+                                                <?php foreach ($localisations as $loc): ?>
+                                                    <li>
+                                                        <label class="dropdown-item">
+                                                            <input 
+                                                                type="checkbox"
+                                                                class="form-check-input me-2 localisation-filter"
+                                                                value="<?= htmlspecialchars($loc) ?>">
+                                                            <?= htmlspecialchars($loc) ?>
+                                                        </label>
+                                                    </li>
+                                                <?php endforeach; ?>
+                                            </ul>
+                                        </div>
+                                    </th>
+                                    <th data-sort="name" class="sortable">
+                                        Nom <span>↕</span>
+                                    </th>
 
+                                    <th data-sort="ui" class="sortable">
+                                        UI <span>↕</span>
+                                    </th>
+                                    <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                        <th>Puissance</th>
+                                        <th>IP</th>
+                                        <th>Slave</th>
+                                    <?php endif; ?>
+                                    <th data-sort="state" class="sortable">
+                                        État <span>↕</span>
+                                    </th>
+
+                                    <th data-sort="fault" class="sortable">
+                                        Défaut <span>↕</span>
+                                    </th>
+
+                                    <th data-sort="temp" class="sortable">
+                                        Temp reprise <span>↕</span>
+                                    </th>
+                                    <th>Groupes</th>
+                                    <th>Commandes</th>
+                                    <th>Historique</th>
+                                    <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                        <th></th>
+                                    <?php endif; ?>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($equipments as $equipment): ?>
+                                <tr>
+                                    <td data-localisation="<?= htmlspecialchars($equipment['localisation'] ?? '') ?>">
+                                        <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                            <input 
+                                                type="text"
+                                                name="localisation[<?= $equipment['id'] ?>]"
+                                                value="<?= htmlspecialchars($equipment['localisation'] ?? '') ?>"
+                                                class="form-control">
+                                        <?php else: ?>
+                                            <?= htmlspecialchars($equipment['localisation'] ?? '') ?>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td data-sort="<?= htmlspecialchars($equipment['name']) ?>">
+                                        <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                            <input 
+                                                type="text"
+                                                name="name[<?= $equipment['id'] ?>]"
+                                                value="<?= htmlspecialchars($equipment['name']) ?>"
+                                                class="form-control"
+                                                oninput="this.parentElement.dataset.sort=this.value">
+                                        <?php else: ?>
+                                            <?= htmlspecialchars($equipment['name']) ?>
+                                        <?php endif; ?>
+                                    </td>
+
+                                    
+                                    <td data-sort="<?= (int)$equipment['UI'] ?>">
+                                        <?= htmlspecialchars($equipment['UI']) ?>
+                                    </td>
+                                    <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                        <td>
+                                            <?= is_numeric($equipment['power'])
+                                                ? number_format($equipment['power']/10, 1) . ' kW'
+                                                : htmlspecialchars($equipment['power']) ?>
+                                        </td>
+                                    <?php endif; ?>
+                                    <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                        <td><?= htmlspecialchars($equipment['ip']) ?></td>
+                                        <td><?= htmlspecialchars($equipment['slave_id']) ?></td>
+                                    <?php endif; ?>
+                                    <td data-sort="<?= !empty($equipment['state']) ? 1 : 0 ?>">
+                                        <?php if (!empty($equipment['state'])): ?>
+                                            <span class="badge bg-success">ON</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-secondary">OFF</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td data-sort="<?= !empty($equipment['fault']) ? 1 : 0 ?>">
+                                        <?php if (!empty($equipment['fault'])): ?>
+                                            <span class="badge bg-danger blink">DÉFAUT</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-success">NORMAL</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td data-sort="<?= $equipment['return_temp'] ?? -999 ?>">
+                                        <?= $equipment['return_temp'] !== null
+                                            ? number_format($equipment['return_temp'], 1) . ' °C'
+                                            : '-' ?>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#equipModal<?= $equipment['id'] ?>">
+                                            Groupes
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <button
+                                            type="button"
+                                            class="btn btn-warning btn-sm commandButton"
+                                            data-id="<?= $equipment['id'] ?>"
+                                            data-ui="<?= $equipment['UI'] ?>"
+                                            data-ip="<?= htmlspecialchars($equipment['ip']) ?>"
+                                            data-port="<?= $equipment['port'] ?? 502 ?>"
+                                            data-name="<?= htmlspecialchars($equipment['name']) ?>">
+                                            Commande
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <button
+                                            type="button"
+                                            class="btn btn-info btn-sm historyButton"
+                                            data-id="<?= $equipment['id'] ?>"
+                                            data-name="<?= htmlspecialchars($equipment['name']) ?>">
+                                            Historique
+                                        </button>
+                                    </td>
+                                    <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                        <td>
+                                            <form method="POST">
+                                                <input type="hidden" name="id" value="<?= $equipment['id'] ?>">
+                                                <button class="btn btn-danger btn-sm" name="delete_equipment" onclick="return confirm('Supprimer cet équipement ?')">❌</button>
+                                            </form>
+                                        </td>
+                                    <?php endif; ?>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
             </div>
         </div>
-    </div>
+
+        <!-- ========================= MODALS EQUIP → GROUP ========================= -->
+        <?php foreach ($equipments as $equipment): ?>
+            <div class="modal fade" id="equipModal<?= $equipment['id'] ?>" tabindex="-1">
+                <div class="modal-dialog">
+                    <form method="POST" class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Groupes - <?= htmlspecialchars($equipment['name']) ?></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <?php foreach ($groups as $group): ?>
+                            <?php $checked = in_array($group['id'], $equipmentGroups[$equipment['id']] ?? []); ?>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="groups[<?= $equipment['id'] ?>][]" value="<?= $group['id'] ?>" <?= $checked ? 'checked' : '' ?>>
+                                <label class="form-check-label"><?= htmlspecialchars($group['name']) ?></label>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" name="save_equipment_groups" class="btn btn-success">Valider</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        <?php endforeach; ?>
+        <!-- ========================= MODALS COMMANDE EQUIP ========================= -->
+        <div class="modal fade" id="commandModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <form id="commandForm">
+                    <input type="hidden" id="equipment_id" name="equipment_id">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                Commande unité
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <table class="table table-bordered align-middle">
+                                <thead>
+                                    <tr>
+                                        <th width="60"></th>
+                                        <th>Paramètre</th>
+                                        <th>Valeur</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><input class="form-check-input" type="checkbox" name="send_power"></td>
+                                        <td>Marche / Arrêt</td>
+                                        <td>
+                                            <select class="form-select" id="power" name="power">
+                                                <option value="170">Marche</option>
+                                                <option value="85">Arrêt</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><input class="form-check-input" type="checkbox" name="send_mode"></td>
+                                        <td>Mode</td>
+                                        <td>
+                                            <select class="form-select" id="mode" name="mode">
+                                                <option value="1">Froid</option>
+                                                <option value="2">Déshumidification</option>
+                                                <option value="3">Ventilation</option>
+                                                <option value="4">Chauffage</option>
+                                                <option value="5">Automatique</option>
+                                                <option value="6">Plancher chauffant</option>
+                                                <option value="7">Chauffage rapide</option>
+                                                <option value="8">Heat Supply</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><input class="form-check-input" type="checkbox" name="send_setpoint"></td>
+                                        <td>Consigne</td>
+                                        <td><input class="form-control" type="number" min="16" max="30" step="0.5" id="setpoint" name="setpoint"></td>
+                                    </tr>
+                                    <tr>
+                                        <td><input class="form-check-input" type="checkbox" name="send_fan"> </td>
+                                        <td>Vitesse ventilation</td>
+                                        <td>
+                                            <select class="form-select" id="fan" name="fan">
+                                                <option value="1">Auto</option>
+                                                <option value="2">Faible</option>
+                                                <option value="3">Moyen faible</option>
+                                                <option value="4">Moyen</option>
+                                                <option value="5">Moyen fort</option>
+                                                <option value="6">Fort</option>
+                                                <option value="7">Turbo</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <input class="form-check-input" type="checkbox" name="send_min_setpoint">
+                                        </td>
+                                        <td>Limite basse consigne</td>
+                                        <td>
+                                            <input
+                                                class="form-control"
+                                                type="number"
+                                                min="10"
+                                                max="30"
+                                                step="0.5"
+                                                id="min_setpoint"
+                                                name="min_setpoint"
+                                            >
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <strong>Protections (Shield)</strong>
+                                </div>
+
+                                <div class="card-body">
+
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="shield_energy">
+                                        <label class="form-check-label" for="shield_energy">
+                                            Shield Energy Saving
+                                        </label>
+                                    </div>
+
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="shield_setpoint">
+                                        <label class="form-check-label" for="shield_setpoint">
+                                            Shield Consigne
+                                        </label>
+                                    </div>
+
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="shield_mode">
+                                        <label class="form-check-label" for="shield_mode">
+                                            Shield Mode
+                                        </label>
+                                    </div>
+
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="shield_power">
+                                        <label class="form-check-label" for="shield_power">
+                                            Shield Marche / Arrêt
+                                        </label>
+                                    </div>
+
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="lock_function">
+                                        <label class="form-check-label" for="lock_function">
+                                            Verrouillage télécommande
+                                        </label>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-success" data-id="<?= $equipment['id'] ?>">Envoyer</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <!-- ========================= MODALS COURBES ========================= -->
+        <div class="modal fade" id="historyModal" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+
+                    <div class="modal-header">
+                        <h5 id="historyTitle"></h5>
+
+                        <button class="btn-close"
+                                data-bs-dismiss="modal"></button>
+                    </div>
+
+                    <div class="modal-body">
+
+                        <canvas id="historyChart" height="650"></canvas>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const equipModalEl = document.getElementById("commandModal");
@@ -1306,5 +1359,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             });
         });
     </script>
+    <footer class="text-center py-3 bg-white shadow-sm mt-auto">
+        <small>Supervision GREE - SEMEP - Version <?= htmlspecialchars($_ENV['APP_VERSION'] ?? '') ?></small>
+    </footer>
 </body>
 </html>
