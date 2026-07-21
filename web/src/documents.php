@@ -2,12 +2,12 @@
 require 'auth.php';
 session_start();
 require_login();
-
+require "config/db.php";
 require "includes/header.php";
 require "includes/user_menu.php";
 
-require "config/db.php";
 
+$db = get_db();
 
 $sql = "
 SELECT d.*, u.username
@@ -16,7 +16,7 @@ LEFT JOIN users u ON d.uploaded_by=u.id
 ORDER BY created_at DESC
 ";
 
-$stmt=$pdo->query($sql);
+$stmt=$db->query($sql);
 $documents=$stmt->fetchAll();
 
 ?>
