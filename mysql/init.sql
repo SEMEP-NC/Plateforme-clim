@@ -163,3 +163,25 @@ CREATE TABLE mail_config (
     delay_seconds INT DEFAULT 60
 );
 INSERT INTO mail_config(id,enable_alarm,enable_return,delay_seconds) VALUES(1,1,1,60);
+
+CREATE TABLE audit_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    user_id INT NULL,
+    username VARCHAR(100) NULL,
+
+    action VARCHAR(100) NOT NULL,
+    target_type VARCHAR(50) NULL,
+    target_id INT NULL,
+
+    description TEXT NULL,
+
+    ip_address VARCHAR(45) NULL,
+    user_agent VARCHAR(255) NULL,
+
+    INDEX(created_at),
+    INDEX(user_id),
+    INDEX(action)
+);

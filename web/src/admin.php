@@ -21,6 +21,17 @@ $users = $pdo->query("
     ORDER BY id DESC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
+/*
+|-----------------------------
+| Journal
+|-----------------------------
+*/
+$journal = $pdo->query("
+    SELECT *
+    FROM audit_logs
+    ORDER BY id DESC
+")->fetchAll(PDO::FETCH_ASSOC);
+
 $db=get_db();
 
     /*SAVE SMTP*/   
@@ -281,37 +292,87 @@ $db=get_db();
                 </form>
             </div>
         </div>
+        <div class="card mb-4">
+            <div class="card-header">
+                <strong>Destinataires mail</strong>
+            </div>
+            <div class="card-body">
+                <form method="POST" class="row g-2">
+                    <div class="col">
+                        <input class="form-control" name="name" placeholder="Nom">
+                    </div>
+                    <div class="col">
+                        <input class="form-control" name="email" placeholder="Email">
+                    </div>
+                    <div class="col">
+                        <button class="btn btn-primary"name="add_recipient">Ajouter</button>
+                    </div>
+                </form>
+                <hr>
+                <table class="table">
+                    <tr>
+                        <th>Nom</th>
+                        <th>Email</th>
+                        <th>Actif</th>
+                    </tr>
+                    <?php foreach($recipients as $r): ?>
+                        <tr>
+                            <td><?=htmlspecialchars($r['name'])?></td>
+                            <td><?=htmlspecialchars($r['email'])?></td>
+                            <td><?= $r['enabled']?'Oui':'Non' ?></td>
+                        </tr>
+                    <?php endforeach; ?>    
+                </table>
+            </div>
+        </div>
+        <!-- Journal -->
+        <div class="container mt-4">
             <div class="card mb-4">
                 <div class="card-header">
-                    <strong>Destinataires mail</strong>
+                    <strong>Journal</strong>
                 </div>
                 <div class="card-body">
-                    <form method="POST" class="row g-2">
-                        <div class="col">
-                            <input class="form-control" name="name" placeholder="Nom">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <select name="equipment_id" class="form-select">
+                                <option value="">Tous les utilisateurs</option>
+                                <?php foreach($users as $u): ?>
+                                    <option value="<?= htmlspecialchars($users['username']) ?>"></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
-                        <div class="col">
-                            <input class="form-control" name="email" placeholder="Email">
-                        </div>
-                        <div class="col">
-                            <button class="btn btn-primary"name="add_recipient">Ajouter</button>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary">Filtrer</button>
                         </div>
                     </form>
-                    <hr>
-                    <table class="table">
-                        <tr>
-                            <th>Nom</th>
-                            <th>Email</th>
-                            <th>Actif</th>
-                        </tr>
-                        <?php foreach($recipients as $r): ?>
-                            <tr>
-                                <td><?=htmlspecialchars($r['name'])?></td>
-                                <td><?=htmlspecialchars($r['email'])?></td>
-                                <td><?= $r['enabled']?'Oui':'Non' ?></td>
-                            </tr>
-                        <?php endforeach; ?>    
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Utilisateur</th>
+                                    <th>Action</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach($journal as $j): ?>
+                                    <tr>
+                                        <td>
+                                            <?php
+                                                $date = new DateTime($j['created_at'], new DateTimeZone('UTC'));
+                                                $date->setTimezone(new DateTimeZone('Pacific/Noumea'));
+                                                echo $date->format('d/m/Y H:i:s');
+                                            ?>
+                                        </td>
+                                        <td><?= htmlspecialchars($j['user_name']) ?></td>
+                                        <td><?= htmlspecialchars($f['action']) ?></td>
+                                        <td><?= htmlspecialchars($f['description']) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

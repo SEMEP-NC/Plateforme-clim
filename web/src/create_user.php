@@ -28,5 +28,5 @@ $stmt = $pdo->prepare("
 
 $stmt->execute([$username, $hash, $role]);
 
-header("Location: users.php");
+header("Location: admin.php");
 exit;

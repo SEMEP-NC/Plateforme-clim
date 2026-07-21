@@ -3,6 +3,7 @@ require 'auth.php';
 session_start();
 require_login();
 require 'config/db.php';
+require 'lib/audit.php';
 
 $db = get_db();
 
@@ -52,6 +53,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_group'])) {
     $name = trim($_POST['group_name']);
     if ($name !== '') {
         $db->prepare("INSERT INTO groups_hvac(name) VALUES (?)")->execute([$name]);
+        audit(
+            'CREATE_GROUP',
+            "Création du groupe '$name'",
+            'group',
+            $db->lastInsertId()
+        );
     }
     header("Location: equipments.php");
     exit;
@@ -142,6 +149,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) {
     $id = (int)$_POST['id'];
     $db->prepare("DELETE FROM equipments WHERE id=?")->execute([$id]);
+    audit(
+        'DELETE_EQUIPMENT',
+        "Suppression de {$equipment['name']}",
+        'equipment',
+        $id
+    );
     header("Location: equipments.php");
     exit;
 }

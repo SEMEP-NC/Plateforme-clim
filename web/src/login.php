@@ -1,6 +1,7 @@
 <?php
 session_start();
 require 'config/db.php';
+require 'lib/audit.php';
 
 $pdo = get_db();
 
@@ -31,8 +32,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adminExists) {
             'username' => $user['username'],
             'role' => $user['role']
         ];
+        audit(
+            'LOGIN',
+            'Connexion réussie'
+        );
         if($user['role']=='viewer'){
-            header("Location: index.php");
+            header("Location: view.php");
             exit;
         }
         else{
