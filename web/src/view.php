@@ -42,87 +42,30 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     $equipmentGroups[$row['equipment_id']][] = $row['group_id'];
     $groupEquipments[$row['group_id']][] = $row['equipment_id'];
 }
-
+    $page_title = "vue des equipements";
+    require "includes/header.php";
+    require "includes/user_menu.php";
 ?>
+    <style>
+        .page-title {
+            font-size:2rem;
+        }
 
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>Équipements</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-</head>
-<style>
-    body {
-        background:#f5f7fa;
-    }
+        .card {
+            border:none;
+            border-radius:15px;
+            box-shadow:0 4px 15px rgba(0,0,0,.08);
+        }
 
-    .logo {
-        max-height:50px;
-        width:auto;
-    }
+        .sortable {
+            cursor:pointer;
+            user-select:none;
+        }
 
-    .page-title {
-        font-size:2rem;
-    }
-
-    .card {
-        border:none;
-        border-radius:15px;
-        box-shadow:0 4px 15px rgba(0,0,0,.08);
-    }
-
-    .sortable {
-        cursor:pointer;
-        user-select:none;
-    }
-
-    .sortable:hover {
-        background:#eef5ff;
-    }
-</style>
-<body class="vh-100 d-flex flex-column">
-    <header class="bg-white shadow-sm py-3">
-        <div class="container position-relative">
-            <!-- LOGO GAUCHE -->
-            <img src="images/logo-semep.png"
-                class="logo position-absolute top-50 start-0 translate-middle-y"
-                style="max-height:35px; width:auto;"
-                alt="SEMEP">
-
-            <!-- TITRE CENTRÉ -->
-            <div class="text-center">
-                <h1 class="fw-bold page-title mb-1">
-                    Visualisation des Équipements
-                </h1>
-                <small class="text-muted">
-                    Supervision des unités climatisation
-                </small>
-            </div>
-            <!-- LOGO DROIT -->
-            <img src="images/Gree-Electric-logo.png"
-                class="logo position-absolute top-50 end-0 translate-middle-y"
-                alt="GREE">
-        </div>
-    </header>
-    <div class="container mt-3">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <i class="bi bi-person-circle"></i>
-                <?= htmlspecialchars($_SESSION['user']['username']) ?>
-                <span class="badge bg-secondary">
-                    <?= htmlspecialchars($_SESSION['user']['role']) ?>
-                </span>
-            </div>
-            <form method="POST" action="logout.php">
-                <button class="btn btn-outline-danger">
-                    <i class="bi bi-box-arrow-right"></i>
-                    Déconnexion
-                </button>
-            </form>
-        </div>
-    </div>
+        .sortable:hover {
+            background:#eef5ff;
+        }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
@@ -360,8 +303,4 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             });
         });
     </script>
-    <footer class="text-center py-3 bg-white shadow-sm mt-auto">
-        <small>Supervision GREE - SEMEP - Version <?= htmlspecialchars($_ENV['APP_VERSION'] ?? '') ?></small>
-    </footer>
-</body>
-</html>
+<?php require "includes/footer.php"; ?>

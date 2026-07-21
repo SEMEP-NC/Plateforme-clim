@@ -71,8 +71,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_group'])) {
 */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_group'])) {
     $id = (int)$_POST['group_id'];
-    $db->prepare("DELETE FROM equipment_groups WHERE group_id=?")->execute([$id]);
-    $db->prepare("DELETE FROM groups_hvac WHERE id=?")->execute([$id]);
+    // Récupération du nom avant suppression
+    $stmt = $db->prepare("SELECT name FROM groups_hvac WHERE id = ?");
+    $stmt->execute([$id]);
+    $group = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($group) {
+        // Suppression des relations
+        $db->prepare("
+            DELETE FROM equipment_groups 
+            WHERE group_id = ?
+        ")->execute([$id]);
+        // Suppression du groupe
+        $db->prepare("
+            DELETE FROM groups_hvac 
+            WHERE id = ?
+        ")->execute([$id]);
+        // Log audit
+        audit(
+            'DELETE_GROUP',
+            "Suppression du groupe '{$group['name']}'",
+            'group',
+            $id
+        );
+    }
     header("Location: equipments.php");
     exit;
 }
@@ -90,6 +111,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_groups']) && iss
             $db->prepare("INSERT INTO equipment_groups (equipment_id, group_id) VALUES (?, ?)")
                 ->execute([(int)$equipmentId, $groupId]);
         }
+        $stmt = $db->prepare("SELECT name FROM groups_hvac WHERE id=?");
+        $stmt->execute([$groupId]);
+        $group = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        audit(
+            'UPDATE_GROUP',
+            "Modification des unités du groupe '{$group['name']}'",
+            'group',
+            $groupId
+        );
     }
     header("Location: equipments.php");
     exit;
@@ -108,6 +139,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_equipment_groups
             $db->prepare("INSERT INTO equipment_groups (equipment_id, group_id) VALUES (?, ?)")
                 ->execute([$equipmentId, (int)$groupId]);
         }
+        $stmt = $db->prepare("SELECT name FROM equipments WHERE id=?");
+        $stmt->execute([$equipmentId]);
+        $equipment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        audit(
+            'UPDATE_EQUIPMENT_GROUPS',
+            "Modification des groupes de l'unité '{$equipment['name']}'",
+            'equipment',
+            $equipmentId
+        );
     }
     header("Location: equipments.php");
     exit;
@@ -136,7 +177,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
             (int)$id
         ]);
     }
-
+    audit(
+        'MODIF_EQUIPEMENT',
+        'Modification des libellés / localsition equipements'
+    );
     header("Location: equipments.php");
     exit;
 }
@@ -149,96 +193,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) {
     $id = (int)$_POST['id'];
     $db->prepare("DELETE FROM equipments WHERE id=?")->execute([$id]);
+    $stmt = $db->prepare("SELECT name FROM equipments WHERE id=?");
+    $stmt->execute([$id]);
+    $equipment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $db->prepare("DELETE FROM equipments WHERE id=?")->execute([$id]);
+
     audit(
         'DELETE_EQUIPMENT',
-        "Suppression de {$equipment['name']}",
+        "Suppression de '{$equipment['name']}'",
         'equipment',
         $id
     );
     header("Location: equipments.php");
     exit;
 }
+    $page_title = "Gestion des équipements";
+    require "includes/header.php";
+    require "includes/user_menu.php";
 ?>
-
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>Équipements</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-</head>
-<style>
-    body {
-        background:#f5f7fa;
-    }
-
-    .logo {
-        max-height:50px;
-        width:auto;
-    }
-
-    .page-title {
-        font-size:2rem;
-    }
-
-    .card {
-        border:none;
-        border-radius:15px;
-        box-shadow:0 4px 15px rgba(0,0,0,.08);
-    }
-
-    .sortable {
-        cursor:pointer;
-        user-select:none;
-    }
-
-    .sortable:hover {
-        background:#eef5ff;
-    }
-</style>
-<body class="vh-100 d-flex flex-column">
-    <header class="bg-white shadow-sm py-3">
-        <div class="container position-relative">
-            <!-- LOGO GAUCHE -->
-            <img src="images/logo-semep.png"
-                class="logo position-absolute top-50 start-0 translate-middle-y"
-                style="max-height:35px; width:auto;"
-                alt="SEMEP">
-
-            <!-- TITRE CENTRÉ -->
-            <div class="text-center">
-                <h1 class="fw-bold page-title mb-1">
-                    Gestion des Équipements
-                </h1>
-                <small class="text-muted">
-                    Supervision des unités climatisation
-                </small>
-            </div>
-            <!-- LOGO DROIT -->
-            <img src="images/Gree-Electric-logo.png"
-                class="logo position-absolute top-50 end-0 translate-middle-y"
-                alt="GREE">
-        </div>
-    </header>
-    <div class="container mt-3">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <i class="bi bi-person-circle"></i>
-                <?= htmlspecialchars($_SESSION['user']['username']) ?>
-                <span class="badge bg-secondary">
-                    <?= htmlspecialchars($_SESSION['user']['role']) ?>
-                </span>
-            </div>
-            <a href="index.php"class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i>Retour tableau de bord</a>
-        </div>
-    </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
     <script src="https://cdn.jsdelivr.net/npm/date-fns"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <style>
+        .page-title {
+            font-size:2rem;
+        }
+
+        .card {
+            border:none;
+            border-radius:15px;
+            box-shadow:0 4px 15px rgba(0,0,0,.08);
+        }
+
+        .sortable {
+            cursor:pointer;
+            user-select:none;
+        }
+
+        .sortable:hover {
+            background:#eef5ff;
+        }
+    </style>
     <main class="container flex-grow-1 mt-4">
         <!-- ========================= GROUPES ========================= -->
         <div class="card mb-4">
@@ -1377,8 +1375,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             });
         });
     </script>
-    <footer class="text-center py-3 bg-white shadow-sm mt-auto">
-        <small>Supervision GREE - SEMEP - Version <?= htmlspecialchars($_ENV['APP_VERSION'] ?? '') ?></small>
-    </footer>
-</body>
-</html>
+<?php require "includes/footer.php"; ?>

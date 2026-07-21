@@ -113,26 +113,12 @@ $units = $db->query("
        )
     ORDER BY d.last_seen DESC
 ")->fetchAll();
+
+    $page_title = "Decouverte des equipements";
+    require "includes/header.php";
+    require "includes/user_menu.php";
 ?>
-
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>Clims detectees</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-</head>
-<style>
-        body {
-            background:#f5f7fa;
-        }
-
-        .logo {
-            max-height:50px;
-            width:auto;
-        }
-
+    <style>
         .page-title {
             font-size:2rem;
         }
@@ -152,43 +138,6 @@ $units = $db->query("
             background:#eef5ff;
         }
     </style>
-<body class="vh-100 d-flex flex-column">
-    <header class="bg-white shadow-sm py-3">
-        <div class="container position-relative">
-            <!-- LOGO GAUCHE -->
-            <img src="images/logo-semep.png"
-                class="logo position-absolute top-50 start-0 translate-middle-y"
-                style="max-height:35px; width:auto;"
-                alt="SEMEP">
-
-            <!-- TITRE CENTRÉ -->
-            <div class="text-center">
-                <h1 class="fw-bold page-title mb-1">
-                    Découverte des équipements
-                </h1>
-                <small class="text-muted">
-                    Supervision des unités climatisation
-                </small>
-            </div>
-            <!-- LOGO DROIT -->
-            <img src="images/Gree-Electric-logo.png"
-                class="logo position-absolute top-50 end-0 translate-middle-y"
-                alt="GREE">
-        </div>
-    </header>
-    <div class="container mt-3">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <i class="bi bi-person-circle"></i>
-                <?= htmlspecialchars($_SESSION['user']['username']) ?>
-                <span class="badge bg-secondary">
-                    <?= htmlspecialchars($_SESSION['user']['role']) ?>
-                </span>
-            </div>
-            <a href="index.php"class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i>Retour tableau de bord</a>
-        </div>
-    </div>
     <main class="container flex-grow-1 mt-4">
 
         <?php if ($error_message): ?>
@@ -300,8 +249,4 @@ $units = $db->query("
     <script>
     setInterval(() => location.reload(), 30000);
     </script>
-    <footer class="text-center py-3 bg-white shadow-sm mt-auto">
-        <small>Supervision GREE - SEMEP - Version <?= htmlspecialchars($_ENV['APP_VERSION'] ?? '') ?></small>
-    </footer>
-</body>
-</html>
+<?php require "includes/footer.php"; ?>

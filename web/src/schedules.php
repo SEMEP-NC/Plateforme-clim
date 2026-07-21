@@ -77,78 +77,22 @@ require_login();
 
         return $labels ? implode(', ', $labels) : 'Non';
     }
-
+    $page_title = "Planning";
+    require "includes/header.php";
+    require "includes/user_menu.php";
 ?>
+    <style>
+        .page-title {
+            font-size:2rem;
+        }
 
-<!DOCTYPE html>
-<html lang="fr">
-
-<head>
-    <meta charset="UTF-8">
-    <title>Planning</title>
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-</head>
-<style>
-    body {
-        background:#f5f7fa;
-    }
-
-    .logo {
-        max-height:50px;
-        width:auto;
-    }
-
-    .page-title {
-        font-size:2rem;
-    }
-
-    .card {
-        border:none;
-        border-radius:15px;
-        box-shadow:0 4px 15px rgba(0,0,0,.08);
-    }
-</style>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-<body class="vh-100 d-flex flex-column">
-    <header class="bg-white shadow-sm py-3">
-        <div class="container position-relative">
-            <!-- LOGO GAUCHE -->
-            <img src="images/logo-semep.png"
-                class="logo position-absolute top-50 start-0 translate-middle-y"
-                style="max-height:35px; width:auto;"
-                alt="SEMEP">
-
-            <!-- TITRE CENTRÉ -->
-            <div class="text-center">
-                <h1 class="fw-bold page-title mb-1">
-                    Gestion des Plannings
-                </h1>
-                <small class="text-muted">
-                    Supervision des unités climatisation
-                </small>
-            </div>
-            <!-- LOGO DROIT -->
-            <img src="images/Gree-Electric-logo.png"
-                class="logo position-absolute top-50 end-0 translate-middle-y"
-                alt="GREE">
-        </div>
-    </header>
-    <div class="container mt-3">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <i class="bi bi-person-circle"></i>
-                <?= htmlspecialchars($_SESSION['user']['username']) ?>
-                <span class="badge bg-secondary">
-                    <?= htmlspecialchars($_SESSION['user']['role']) ?>
-                </span>
-            </div>
-            <a href="index.php"class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i>Retour tableau de bord</a>
-        </div>
-    </div>
+        .card {
+            border:none;
+            border-radius:15px;
+            box-shadow:0 4px 15px rgba(0,0,0,.08);
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <main class="container flex-grow-1 mt-4">
         <table>
             <!-- =========================
@@ -496,9 +440,4 @@ require_login();
             });
         </script>
     </main>
-    <footer class="text-center py-3 bg-white shadow-sm mt-auto">
-        <small>Supervision GREE - SEMEP - Version <?= htmlspecialchars($_ENV['APP_VERSION'] ?? '') ?></small>
-    </footer>
-</body>
-
-</html>
+<?php require "includes/footer.php"; ?>
