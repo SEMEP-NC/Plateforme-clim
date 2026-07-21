@@ -32,7 +32,9 @@
                 </li>
             </ul>
         </div>
-        <a href="index.php" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left"></i>Retour tableau de bord</a>
+        <?php if($user['role'] !== 'viewer'):?>
+            <a href="index.php" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>Retour tableau de bord</a>
+        <?php endif; ?>
     </div>
 </div>

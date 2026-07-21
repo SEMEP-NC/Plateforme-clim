@@ -3,6 +3,7 @@ require 'auth.php';
 session_start();
 require_login();
 require 'config/db.php';
+$db = get_db();
 
 $user=$_SESSION['user'];
 
@@ -10,7 +11,7 @@ if($user['role'] !== 'admin'){
     die("Accès refusé");
 }
 $id=intval($_GET['id'] ?? 0);
-$stmt=$pdo->prepare(
+$stmt=$db->prepare(
 "SELECT filename FROM documents WHERE id=?"
 );
 $stmt->execute([$id]);
