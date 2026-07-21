@@ -82,6 +82,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 ]);
                 $message="Document ajouté avec succès";
+                header("Location: documents.php");
+                exit;
             }
             else {
                 $message="Impossible de déplacer le fichier";
@@ -89,12 +91,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
-
+$page_title = "Gestion documentaire";
 require "includes/header.php";
 require "includes/user_menu.php";
 ?>
 <div class="container mt-4">
-    <h2><i class="bi bi-upload"></i>Ajouter un document</h2>
+    <h2></i>Ajouter un document</h2>
     <?php if($message): ?>
         <div class="alert alert-info"><?=htmlspecialchars($message)?>
     </div>

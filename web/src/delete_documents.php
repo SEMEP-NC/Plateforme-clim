@@ -26,7 +26,7 @@ if(file_exists($file)){
     unlink($file);
 }
 
-$stmt=$pdo->prepare(
+$stmt=$db->prepare(
 "DELETE FROM documents WHERE id=?"
 );
 $stmt->execute([$id]);

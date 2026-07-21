@@ -42,7 +42,7 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     $equipmentGroups[$row['equipment_id']][] = $row['group_id'];
     $groupEquipments[$row['group_id']][] = $row['equipment_id'];
 }
-    $page_title = "vue des equipements";
+    $page_title = "Vue des equipements";
     require "includes/header.php";
     require "includes/user_menu.php";
 ?>

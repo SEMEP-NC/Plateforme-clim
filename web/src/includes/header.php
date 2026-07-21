@@ -5,6 +5,12 @@
     }
     require_login();
     $user_session = $_SESSION['user'];
+
+
+    if (isset($_SESSION['user']['role']) && $_SESSION['user']['role']=='viewer' && $page_title != "Vue des equipements") {
+        header("Location: login.php");
+        exit;
+    }
 ?>
 
 <!DOCTYPE html>
