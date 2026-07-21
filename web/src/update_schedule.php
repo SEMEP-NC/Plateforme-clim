@@ -1,7 +1,7 @@
 <?php
 
 require 'config/db.php';
-
+require 'lib/audit.php';
 header('Content-Type: application/json; charset=utf-8');
 
 try {
@@ -53,6 +53,9 @@ try {
         "success" => true,
         "id" => $id
     ]);
+    audit(
+        'UPDATE_PLANNING',
+        "Planning mis a jour -  " . $_POST['id']);
     exit;
 
 } catch (Throwable $e) {
@@ -61,5 +64,6 @@ try {
         "success" => false,
         "error" => $e->getMessage()
     ]);
+
     exit;
 }

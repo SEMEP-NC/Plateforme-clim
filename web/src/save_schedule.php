@@ -1,7 +1,7 @@
 <?php
 
 require 'config/db.php';
-
+require 'lib/audit.php';
 $pdo = get_db();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -114,7 +114,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $stmt->execute();
-
+    audit(
+            'ADD_PLANNING',
+            "Planning ajouté sur equipment -  " . $_POST['equipment_id']);
     header('Location: schedules.php');
     exit;
 }

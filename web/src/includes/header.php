@@ -7,10 +7,14 @@
     $user_session = $_SESSION['user'];
 
 
-    if (isset($_SESSION['user']['role']) && $_SESSION['user']['role']=='viewer' && $page_title != "Vue des equipements") {
-        header("Location: login.php");
-        exit;
-    }
+    if (isset($_SESSION['user']['role']) && 
+        $_SESSION['user']['role']=='viewer' && 
+        $page_title != "Vue des equipements" && 
+        $page_title = "Changement de mot de passe"
+        ) {
+            header("Location: login.php");
+            exit;
+        }
 ?>
 
 <!DOCTYPE html>

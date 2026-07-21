@@ -34,8 +34,8 @@ def get_recipients(cur):
     """
     cur.execute("""
         SELECT email
-        FROM users
-        WHERE notify_faults = 1
+        FROM mail_recipients
+        WHERE enabled = 1
           AND email IS NOT NULL
           AND email <> ''
     """)
@@ -302,3 +302,77 @@ def send_test_mail():
         if conn:
             conn.close()
             
+def check_mail_queue():
+
+    conn=None
+
+    try:
+
+        conn=get_connection()
+        cur=conn.cursor()
+
+        cur.execute("""
+            SELECT *
+            FROM mail_queue
+            WHERE processed=0
+            ORDER BY id
+            LIMIT 1
+        """)
+
+        job=cur.fetchone()
+
+        if not job:
+            return
+
+
+        if job["type"]=="TEST":
+
+            account=get_mail_account(cur)
+
+            if not account:
+                print("[MAIL] SMTP absent")
+                return
+
+
+            recipients=get_recipients(cur)
+
+            if not recipients:
+                print("[MAIL] aucun destinataire")
+                return
+
+
+            subject,html=build_test_mail()
+
+
+            send_mail(
+                account,
+                recipients,
+                subject,
+                html
+            )
+
+
+            print(
+                "[MAIL] Test envoyé",
+                flush=True
+            )
+
+
+        cur.execute("""
+            UPDATE mail_queue
+            SET processed=1
+            WHERE id=%s
+        """,(job["id"],))
+
+
+        conn.commit()
+
+
+    except Exception as e:
+
+        print("[MAIL QUEUE ERROR]",e)
+
+    finally:
+
+        if conn:
+            conn.close()

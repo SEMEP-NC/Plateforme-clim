@@ -32,7 +32,7 @@
                 </li>
             </ul>
         </div>
-        <?php if($use_session['role'] !== 'viewer'):?>
+        <?php if($user_session['role'] !== 'viewer' && $page_title !== "Supervision Climatisation"):?>
             <a href="index.php" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i>Retour tableau de bord</a>
         <?php endif; ?>

@@ -10,6 +10,9 @@ $db = get_db();
 if($_SESSION['user']['role'] !== 'admin'){
         die("Accès réservé administrateur");
     }
+$smtp=$db->query("SELECT * FROM mail_accounts WHERE id=1")->fetch(PDO::FETCH_ASSOC);
+$recipients=$db->query("SELECT * FROM mail_recipients ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
+$config=$db->query("SELECT * FROM mail_config WHERE id=1")->fetch(PDO::FETCH_ASSOC);
 
 /*
 |-----------------------------
@@ -27,7 +30,11 @@ $db=get_db();
     /*SAVE SMTP*/   
 
     if(isset($_POST['save_smtp'])){
+        $password=$_POST['smtp_password'];
 
+        if($password==""){
+            $password=$smtp['smtp_password'];
+        }
         $stmt=$db->prepare("
         UPDATE mail_accounts SET
             smtp_host=?,
@@ -69,10 +76,18 @@ $db=get_db();
         header("Location: admin.php");
         exit;
     }
+    /* MAIL TEST */
+    if(isset($_POST['send_test_mail'])){
 
-    $smtp=$db->query("SELECT * FROM mail_accounts WHERE id=1")->fetch(PDO::FETCH_ASSOC);
-    $recipients=$db->query("SELECT * FROM mail_recipients ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
-    $config=$db->query("SELECT * FROM mail_config WHERE id=1")->fetch(PDO::FETCH_ASSOC);
+        $db->prepare("
+            INSERT INTO mail_queue(type)
+            VALUES('TEST')
+        ")->execute();
+
+        header("Location: admin.php");
+        exit;
+    }
+
 
     $page_title = "Administration";
     require "includes/header.php";
@@ -196,7 +211,7 @@ $db=get_db();
                 <input class="form-control" name="smtp_user" value="<?=htmlspecialchars($smtp['smtp_user']??'')?>">
 
                 <label class="mt-3">Mot de passe</label>
-                <input type="password" class="form-control" name="smtp_password" value="<?=htmlspecialchars($smtp['smtp_password']??'')?>">
+                <input type="password" class="form-control" name="smtp_password" placeholder="laisser vide pour conserver">
 
                 <label class="mt-3">Sécurité</label>
                 <select class="form-select" name="smtp_secure">
@@ -222,12 +237,14 @@ $db=get_db();
                 </div>
                 <br>
                 <button class="btn btn-success" name="save_smtp">💾 Sauvegarder</button>
-                <!--<button
+            </form>
+            <form method="POST" class="mt-3">
+                <button
                     type="submit"
                     name="send_test_mail"
                     class="btn btn-outline-primary">
                     Envoyer un mail de test
-                </button> -->
+                </button>
             </form>
         </div>
     </div>

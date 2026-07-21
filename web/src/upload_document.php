@@ -6,6 +6,7 @@ require_login();
 
 require 'config/db.php';
 $db = get_db();
+require 'lib/audit.php';
 
 $user = $_SESSION['user'];
 
@@ -82,6 +83,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 ]);
                 $message="Document ajouté avec succès";
+                audit(
+                        'ADD_DOCUMENT',
+                        "Ajout du document '$title'");
+
                 header("Location: documents.php");
                 exit;
             }

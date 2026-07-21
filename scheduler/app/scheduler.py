@@ -8,6 +8,7 @@ import requests
 from db import get_connection
 from discover import cleanup_offline_devices, discover, save
 from mail_notifier import check_and_send
+from mail_notifier import check_mail_queue
 
 
 INTERVAL = int(os.getenv("SCHEDULER_INTERVAL"))
@@ -765,6 +766,8 @@ def main():
                 "[SCHED] Cycle terminé",
                 flush=True
             )
+            check_mail_queue()
+            update_watchdog()
         except Exception as e:
             print(
                 f"[SCHED ERROR] {e}",

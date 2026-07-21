@@ -200,3 +200,10 @@ CREATE TABLE documents (
 
     FOREIGN KEY (uploaded_by) REFERENCES users(id)
 );
+
+CREATE TABLE mail_queue (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    type VARCHAR(50),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    processed TINYINT DEFAULT 0
+);

@@ -2,7 +2,7 @@
 
 require 'config/db.php';
 $pdo = get_db();
-
+require 'lib/audit.php';
 $id = (int)$_POST['id'];
 
 $stmt = $pdo->prepare("SELECT * FROM schedules WHERE id = ?");
@@ -26,5 +26,7 @@ $stmt->execute([
     $s['execution_time'],
     $s['repeat_days']
 ]);
-
+audit(
+        'DUPLICATE_PLANNING',
+        "Planning dupliqué -  " . $_POST['id']);
 header("Location: schedules.php");
