@@ -31,9 +31,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adminExists) {
             'username' => $user['username'],
             'role' => $user['role']
         ];
-
-        header("Location: index.php");
-        exit;
+        if($user['role']=='viewer'){
+            header("Location: index.php");
+            exit;
+        }
+        else{
+            header("Location: index.php");
+            exit;
+        }
     }
 
     $error = "Identifiants invalides";
