@@ -71,6 +71,7 @@ require "includes/user_menu.php";
                 </div>
             </div>
         </div>
+
         <?php if ($user['role'] === 'admin'): ?>
             <!-- Detection -->
             <div class="col-md-4 col-lg-3">
@@ -99,6 +100,23 @@ require "includes/user_menu.php";
                 </div>
             </div>
         <?php endif; ?>
+        <div class="col-md-4 col-lg-3">
+            <div class="card dashboard-card shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="icon-box text-secondary">
+                        <i class="bi bi-folder2-open"></i>
+                    </div>
+                    <h4 class="mt-3">Documents</h4>
+                    <p class="text-muted">
+                        Notices, procédures et documents
+                    </p>
+                    <a href="documents.php" class="btn btn-secondary">
+                        Ouvrir
+                    </a>
+
+                </div>
+            </div>
+        </div>
     </div>
 </main>
 <?php require "includes/footer.php"; ?>

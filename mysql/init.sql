@@ -185,3 +185,17 @@ CREATE TABLE audit_logs (
     INDEX(user_id),
     INDEX(action)
 );
+
+CREATE TABLE documents (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NULL,
+    filename VARCHAR(255) NOT NULL,
+    original_name VARCHAR(255) NOT NULL,
+    mime_type VARCHAR(100) NOT NULL,
+    file_size INT NOT NULL,
+    uploaded_by INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (uploaded_by) REFERENCES users(id)
+);
