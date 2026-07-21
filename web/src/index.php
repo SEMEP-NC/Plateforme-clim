@@ -162,7 +162,7 @@ $user = $_SESSION['user'];
                             </div>
                             <h4 class="mt-3">Administration</h4>
                             <p class="text-muted">Paramètres système</p>
-                            <a href="users.php" class="btn btn-danger">Gérer</a>
+                            <a href="admin.php" class="btn btn-danger">Gérer</a>
                         </div>
                     </div>
                 </div>

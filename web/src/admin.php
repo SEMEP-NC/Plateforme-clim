@@ -50,7 +50,7 @@ $db=get_db();
             $_POST['sender_email'],
             isset($_POST['enabled'])?1:0
         ]);
-        header("Location: users.php");
+        header("Location: admin.php");
         exit;
     }
 
@@ -65,7 +65,7 @@ $db=get_db();
             $_POST['name'],
             $_POST['email']
         ]);
-        header("Location: users.php");
+        header("Location: admin.php");
         exit;
     }
 
@@ -169,6 +169,7 @@ $db=get_db();
                         <select name="role" class="form-control">
                             <option value="user">User</option>
                             <option value="admin">Admin</option>
+                            <option value="viewer">Visualisation</option>
                         </select>
                     </div>
                     <div class="col">

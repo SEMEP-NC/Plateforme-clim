@@ -13,6 +13,8 @@ Le projet fournit:
 ## Evolution 
 La liste des evolutions envisagés
 - Logs utilisateurs
+- Alarme temperatures
+- etat inter a carte
 - Envoi de mail sur défaut equipement
 - Amelioration de l'outil historique
 - Mise en place d'un affichage sous forme de calendrier du planning
