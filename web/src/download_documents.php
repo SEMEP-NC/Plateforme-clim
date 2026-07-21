@@ -6,7 +6,7 @@ session_start();
 
 require_login();
 
-require 'db.php';
+require 'config/db.php';
 
 
 

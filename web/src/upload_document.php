@@ -4,7 +4,7 @@ require 'auth.php';
 session_start();
 require_login();
 
-require 'db.php';
+require 'config/db.php';
 
 
 $user = $_SESSION['user'];

@@ -6,7 +6,7 @@ require_login();
 require "includes/header.php";
 require "includes/user_menu.php";
 
-require "db.php";
+require "config/db.php";
 
 
 $sql = "
