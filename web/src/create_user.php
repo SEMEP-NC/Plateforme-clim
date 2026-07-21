@@ -15,7 +15,7 @@ if ($username === '' || $password === '') {
     die("Invalid input");
 }
 
-if (!in_array($role, ['user', 'admin'])) {
+if (!in_array($role, ['user', 'admin', 'viewer'])) {
     die("Invalid role");
 }
 
