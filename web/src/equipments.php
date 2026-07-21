@@ -179,7 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
     }
     audit(
         'MODIF_EQUIPEMENT',
-        'Modification des libellés / localsition equipements'
+        'Modification des libellés / localisation equipements'
     );
     header("Location: equipments.php");
     exit;
