@@ -432,57 +432,57 @@ def build_weekly_mail(rows, start_date, end_date):
     )
 
     html = f"""
-    <html>
+<html>
 
-    <body style="font-family:Arial">
+<body style="font-family:Arial">
 
-    <h2>Rapport hebdomadaire Climatisation</h2>
+<h2>Rapport hebdomadaire Climatisation</h2>
 
-    <p>
+<p>
 
-    <b>Période :</b><br>
+<b>Période :</b><br>
 
-    {start_date.strftime("%d/%m/%Y")}
-    au
-    {end_date.strftime("%d/%m/%Y")}
+{start_date.strftime("%d/%m/%Y")}
+au
+{end_date.strftime("%d/%m/%Y")}
 
-    </p>
+</p>
 
-    <table border="1"
-    cellpadding="6"
-    cellspacing="0"
-    style="border-collapse:collapse;">
+<table border="1"
+cellpadding="6"
+cellspacing="0"
+style="border-collapse:collapse;">
 
-    <tr style="background:#f0f0f0;">
+<tr style="background:#f0f0f0;">
 
-    <th>UI</th>
+<th>UI</th>
 
-    <th>Nom</th>
+<th>Nom</th>
 
-    <th>Localisation</th>
+<th>Localisation</th>
 
-    <th>Temps fonctionnement</th>
+<th>Temps fonctionnement</th>
 
-    <th>Défauts</th>
+<th>Défauts</th>
 
-    </tr>
+</tr>
 
-    {''.join(html_rows)}
+{''.join(html_rows)}
 
-    </table>
+</table>
 
-    <br>
+<br>
 
-    <b>Nombre d'unités :</b> {len(rows)}<br>
+<b>Nombre d'unités :</b> {len(rows)}<br>
 
-    <b>Temps total :</b> {total_hours:.1f} h
+<b>Temps total :</b> {total_hours:.1f} h
 
-    </body>
+</body>
 
-    </html>
+</html>
     """
 
-        return subject, html
+    return subject, html
 
 def check_weekly_report():
 
