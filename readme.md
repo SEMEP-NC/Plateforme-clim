@@ -12,11 +12,12 @@ Le projet fournit:
 
 ## Evolution 
 La liste des evolutions envisagés
-- Logs utilisateurs
-- Alarme temperatures
+- Logs utilisateurs (a completer)
+- Alarme temperatures (implanté mais a verifier)
 - Etat inter a carte
 - Amelioration de l'outil historique
 - Mise en place d'un affichage sous forme de calendrier du planning
+- Prise en compte splits et multi splits
 
 ## Architecture
 

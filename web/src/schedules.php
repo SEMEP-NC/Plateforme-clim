@@ -91,8 +91,17 @@ require_login();
             border-radius:15px;
             box-shadow:0 4px 15px rgba(0,0,0,.08);
         }
+        #calendar {
+            background:white;
+            padding:20px;
+            border-radius:15px;
+            width: 900px;
+            max-width: 100%;
+            margin: auto;
+        }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
     <main class="container flex-grow-1 mt-4">
         <table>
             <!-- =========================
@@ -190,123 +199,143 @@ require_login();
             ========================= -->
             <td style="vertical-align: top;">
                 <div class="card mb-4">
-                    <div class="card-header">
-                        <strong>Liste plannings</strong>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <strong>Planning</strong>
+                        <div>
+                            <button 
+                                class="btn btn-sm btn-primary"
+                                id="btnTable">
+                                <i class="bi bi-table"></i>
+                                Tableau
+                            </button>
+                            <button 
+                                class="btn btn-sm btn-outline-primary"
+                                id="btnCalendar">
+                                <i class="bi bi-calendar3"></i>
+                                Calendrier
+                            </button>
+                        </div>
+
                     </div>
                     <div class="card-body">
-                        <table class="table table-bordered table-striped align-middle">
+                        <div id="tableView">
+                            <table class="table table-bordered table-striped align-middle">
 
-                            <thead>
-                                <tr>
-                                    <th>Actif</th>
-                                    <th>Équipement</th>
-                                    <th>Action</th>
-                                    <th>Température</th>
-                                    <th>Prochaine execution</th>
-                                    <th>Repetition</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-
-                                <?php foreach ($schedules as $schedule): ?>
+                                <thead>
                                     <tr>
-                                        <td>
-                                            <form method="POST" action="toggle_schedule.php">
-                                                <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
-                                                <button class="btn btn-sm <?= $schedule['enabled'] ? 'btn-success' : 'btn-secondary' ?>">
-                                                    <?= $schedule['enabled'] ? 'Actif' : 'Inactif' ?>
-                                                </button>
-                                            </form>
-                                        </td>
-                                        <td>
-                                            <?php if (!empty($schedule['group_name'])): ?>
-                                                <span class="badge bg-primary">
-                                                    Groupe : <?= htmlspecialchars($schedule['group_name']) ?>
-                                                </span>
-                                            <?php elseif (!empty($schedule['equipment_name'])): ?>
-                                                <span class="badge bg-secondary">
-                                                    Équipement : <?= htmlspecialchars($schedule['equipment_name']) ?>
-                                                </span>
-                                            <?php else: ?>
-                                                <span class="text-muted">—</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <?php if ($schedule['action'] === 'ON'): ?>
-                                                <span class="badge bg-success">
-                                                    ON
-                                                </span>
-                                            <?php elseif ($schedule['action'] === 'OFF'): ?>
-                                                <span class="badge bg-danger">
-                                                    OFF
-                                                </span>
-                                            <?php else: ?>
-                                                <span class="badge bg-secondary">
-                                                    Aucun changement
-                                                </span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <?php if ($schedule['temperature'] !== null): ?>
-                                                <?= htmlspecialchars($schedule['temperature']) ?> °C
-                                            <?php else: ?>
-                                                <span class="text-muted">
-                                                    Aucun changement
-                                                </span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <?php
-                                                $dt = (new DateTime($schedule['execution_time'], new DateTimeZone('UTC')))
-                                                    ->setTimezone(new DateTimeZone('+11:00'));
-                                            ?>
-                                            <?= $dt->format('Y-m-d H:i') ?>
-                                        </td>
-
-                                        <td>
-                                            <?= htmlspecialchars(
-                                                format_repeat_days(
-                                                    $schedule['repeat_days'] ?? '',
-                                                    $dayLabels
-                                                )
-                                            ) ?>
-                                        </td>
-                                        <td class="d-flex gap-1">
-                                            <button
-                                                class="btn btn-sm btn-primary editScheduleBtn"
-                                                data-id="<?= $schedule['id'] ?>"
-                                                data-action="<?= htmlspecialchars($schedule['action']) ?>"
-                                                data-temperature="<?= htmlspecialchars($schedule['temperature']) ?>"
-                                                data-execution="<?= htmlspecialchars($schedule['execution_time']) ?>"
-                                                data-repeat="<?= htmlspecialchars($schedule['repeat_days']) ?>"
-                                            >
-                                                Modifier
-                                            </button>
-
-                                            <form method="POST" action="duplicate_schedule.php">
-                                                <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
-                                                <button class="btn btn-sm btn-outline-primary">
-                                                    Dupliquer
-                                                </button>
-                                            </form>
-
-                                            <form method="POST" action="delete_schedule.php">
-                                                <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
-                                                <button class="btn btn-sm btn-danger" onclick="return confirm('Supprimer ce planning ?')">
-                                                    Supprimer
-                                                </button>
-                                            </form>
-
-                                        </td>
+                                        <th>Actif</th>
+                                        <th>Équipement</th>
+                                        <th>Action</th>
+                                        <th>Température</th>
+                                        <th>Prochaine execution</th>
+                                        <th>Repetition</th>
+                                        <th>Action</th>
                                     </tr>
+                                </thead>
 
-                                <?php endforeach; ?>
+                                <tbody>
 
-                            </tbody>
+                                    <?php foreach ($schedules as $schedule): ?>
+                                        <tr>
+                                            <td>
+                                                <form method="POST" action="toggle_schedule.php">
+                                                    <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
+                                                    <button class="btn btn-sm <?= $schedule['enabled'] ? 'btn-success' : 'btn-secondary' ?>">
+                                                        <?= $schedule['enabled'] ? 'Actif' : 'Inactif' ?>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                            <td>
+                                                <?php if (!empty($schedule['group_name'])): ?>
+                                                    <span class="badge bg-primary">
+                                                        Groupe : <?= htmlspecialchars($schedule['group_name']) ?>
+                                                    </span>
+                                                <?php elseif (!empty($schedule['equipment_name'])): ?>
+                                                    <span class="badge bg-secondary">
+                                                        Équipement : <?= htmlspecialchars($schedule['equipment_name']) ?>
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="text-muted">—</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?php if ($schedule['action'] === 'ON'): ?>
+                                                    <span class="badge bg-success">
+                                                        ON
+                                                    </span>
+                                                <?php elseif ($schedule['action'] === 'OFF'): ?>
+                                                    <span class="badge bg-danger">
+                                                        OFF
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-secondary">
+                                                        Aucun changement
+                                                    </span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?php if ($schedule['temperature'] !== null): ?>
+                                                    <?= htmlspecialchars($schedule['temperature']) ?> °C
+                                                <?php else: ?>
+                                                    <span class="text-muted">
+                                                        Aucun changement
+                                                    </span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?php
+                                                    $dt = (new DateTime($schedule['execution_time'], new DateTimeZone('UTC')))
+                                                        ->setTimezone(new DateTimeZone('+11:00'));
+                                                ?>
+                                                <?= $dt->format('Y-m-d H:i') ?>
+                                            </td>
 
-                        </table>
+                                            <td>
+                                                <?= htmlspecialchars(
+                                                    format_repeat_days(
+                                                        $schedule['repeat_days'] ?? '',
+                                                        $dayLabels
+                                                    )
+                                                ) ?>
+                                            </td>
+                                            <td class="d-flex gap-1">
+                                                <button
+                                                    class="btn btn-sm btn-primary editScheduleBtn"
+                                                    data-id="<?= $schedule['id'] ?>"
+                                                    data-action="<?= htmlspecialchars($schedule['action']) ?>"
+                                                    data-temperature="<?= htmlspecialchars($schedule['temperature']) ?>"
+                                                    data-execution="<?= htmlspecialchars($schedule['execution_time']) ?>"
+                                                    data-repeat="<?= htmlspecialchars($schedule['repeat_days']) ?>"
+                                                >
+                                                    Modifier
+                                                </button>
+
+                                                <form method="POST" action="duplicate_schedule.php">
+                                                    <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
+                                                    <button class="btn btn-sm btn-outline-primary">
+                                                        Dupliquer
+                                                    </button>
+                                                </form>
+
+                                                <form method="POST" action="delete_schedule.php">
+                                                    <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
+                                                    <button class="btn btn-sm btn-danger" onclick="return confirm('Supprimer ce planning ?')">
+                                                        Supprimer
+                                                    </button>
+                                                </form>
+
+                                            </td>
+                                        </tr>
+
+                                    <?php endforeach; ?>
+
+                                </tbody>
+
+                            </table>
+                        </div>
+                        <div id="calendarView" style="display:none">
+                            <div id="calendar"></div>
+                        </div>
                     </div>
                 </div>
             </td>
@@ -438,6 +467,42 @@ require_login();
                 }
 
             });
+            let calendar;
+
+            document.getElementById("btnCalendar")
+            .addEventListener("click",()=>{
+                document.getElementById("tableView").style.display="none";
+                document.getElementById("calendarView").style.display="block";
+                if(!calendar){
+                    calendar=new FullCalendar.Calendar(
+                        document.getElementById("calendar"),
+                        {
+                            locale:"fr",
+                            timeZone:"Pacific/Noumea",
+                            initialView:"timeGridWeek",
+                            height:700,
+                            headerToolbar:{
+                                left:"prev,next today",
+                                center:"title",
+                                right:"dayGridMonth,timeGridWeek,listWeek"
+                            },
+                            events:"get_schedules_json.php",
+                            eventClick:function(info){
+                                alert(
+                                    "Planning : "+
+                                    info.event.title
+                                );
+                            }
+                        }
+                    );
+                    calendar.render();
+                }
+            });
+            document.getElementById("btnTable")
+            .addEventListener("click",()=>{
+                document.getElementById("calendarView").style.display="none";
+                document.getElementById("tableView").style.display="block";
+            }); 
         </script>
     </main>
 <?php require "includes/footer.php"; ?>
