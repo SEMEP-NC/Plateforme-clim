@@ -21,13 +21,13 @@ CREATE TABLE IF NOT EXISTS equipments (
 );
 CREATE TABLE IF NOT EXISTS settings (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    'key' VARCHAR(100) NOT NULL UNIQUE,
-    'value' INT NOT NULL
+    `key` VARCHAR(100) NOT NULL UNIQUE,
+    `value` INT NOT NULL
 );
 
-INSERT INTO settings('key', 'value')
+INSERT INTO settings(`key`, `value`)
 VALUES ('read_gate_status','0')
-ON DUPLICATE KEY UPDATE value=value;
+ON DUPLICATE KEY UPDATE `value`=VALUES(`value`);
 
 CREATE TABLE IF NOT EXISTS schedules (
     id INT AUTO_INCREMENT PRIMARY KEY,
