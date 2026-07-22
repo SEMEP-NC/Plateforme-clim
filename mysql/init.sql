@@ -149,7 +149,8 @@ CREATE TABLE IF NOT EXISTS mail_accounts (
     sender_email VARCHAR(255),
     enabled TINYINT DEFAULT 1
 );
-INSERT INTO IF NOT EXISTS mail_accounts (
+
+INSERT INTO mail_accounts (
     id,
     smtp_host,
     smtp_port,
