@@ -172,16 +172,24 @@ $db=get_db();
                         <td><?= $u['created_at'] ?></td>
 
                         <td class="d-flex gap-2">
+                            <!-- RESET PASSWORD -->
+                            <form method="POST"
+                                    action="reset_password.php"
+                                    onsubmit="return confirm('Réinitialiser le mot de passe de cet utilisateur ?')">
+                                <input type="hidden" name="id" value="<?= $u['id'] ?>">
+                                <button type="submit" class="btn btn-sm btn-warning">Reset password</button>
 
+                            </form>
+                            <?php if($u['username'] !== 'admin'):?>
                             <!-- DELETE -->
                             <form method="POST" action="delete_user.php"
                                 onsubmit="return confirm('Supprimer cet utilisateur ?')">
 
                                 <input type="hidden" name="id" value="<?= $u['id'] ?>">
-                                <button class="btn btn-sm btn-danger">Supprimer</button>
+                                <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
 
                             </form>
-
+                            <?php endif;?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -288,8 +296,6 @@ $db=get_db();
         <div class="card-body">
             <a href="journal.php"class="btn btn-outline-secondary">
             </i>Journal d'audit</a>
-        </div>
-        <div class="card-body">
             <a href="temperature_alarms.php"class="btn btn-outline-secondary">
             </i>Alarmes température</a>
         </div>

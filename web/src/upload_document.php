@@ -100,37 +100,45 @@ $page_title = "Gestion documentaire";
 require "includes/header.php";
 require "includes/user_menu.php";
 ?>
-<div class="container mt-4">
-    <h2></i>Ajouter un document</h2>
-    <?php if($message): ?>
-        <div class="alert alert-info"><?=htmlspecialchars($message)?>
+<main class="container flex-grow-1 mt-4">
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong>Ajouter un documents</strong>
+        </div>
+        <div class="card-body">
+            <div class="container mt-4">
+                <?php if($message): ?>
+                    <div class="alert alert-info"><?=htmlspecialchars($message)?>
+                </div>
+                <?php endif; ?>
+                <form method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label">Titre</label>
+                        <input class="form-control" name="title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Description</label>
+                        <textarea class="form-control" name="description"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label>Catégorie</label>
+                        <select name="category" class="form-control">
+                            <option>Notice</option>
+                            <option>Procédure</option>
+                            <option>Plan</option>
+                            <option>Rapport</option>
+                            <option>Autre</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>Fichier</label>
+                        <input type="file" class="form-control" name="file" required>
+                    </div>
+                    <button class="btn btn-primary"><i class="bi bi-upload"></i>Envoyer</button>
+                    <a href="documents.php" class="btn btn-secondary">Retour</a>
+                </form>
+            </div>
+        </div>
     </div>
-    <?php endif; ?>
-    <form method="post" enctype="multipart/form-data">
-        <div class="mb-3">
-            <label class="form-label">Titre</label>
-            <input class="form-control" name="title" required>
-        </div>
-        <div class="mb-3">
-            <label>Description</label>
-            <textarea class="form-control" name="description"></textarea>
-        </div>
-        <div class="mb-3">
-            <label>Catégorie</label>
-            <select name="category" class="form-control">
-                <option>Notice</option>
-                <option>Procédure</option>
-                <option>Plan</option>
-                <option>Rapport</option>
-                <option>Autre</option>
-            </select>
-        </div>
-        <div class="mb-3">
-            <label>Fichier</label>
-            <input type="file" class="form-control" name="file" required>
-        </div>
-        <button class="btn btn-primary"><i class="bi bi-upload"></i>Envoyer</button>
-        <a href="documents.php" class="btn btn-secondary">Retour</a>
-    </form>
-</div>
+</main>
 <?php require "includes/footer.php"; ?>
