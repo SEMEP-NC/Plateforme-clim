@@ -1,5 +1,6 @@
 <?php
-
+require 'auth.php';
+session_start();
 require 'config/db.php';
 require 'lib/audit.php';
 $pdo = get_db();
@@ -12,6 +13,6 @@ $pdo->prepare("
     WHERE id = ?
 ")->execute([$id]);
 audit(
-        'DISABLE_PLANNING',
-        "Planning désactivé -  " . $_POST['id']);
+        'TOOGLE_PLANNING',
+        "Toogle planning modifié -  " . $_POST['id']);
 header("Location: schedules.php");

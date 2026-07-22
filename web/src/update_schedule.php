@@ -1,5 +1,6 @@
 <?php
-
+require 'auth.php';
+session_start();
 require 'config/db.php';
 require 'lib/audit.php';
 header('Content-Type: application/json; charset=utf-8');

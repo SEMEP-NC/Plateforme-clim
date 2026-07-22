@@ -1,5 +1,6 @@
 <?php
-
+require 'auth.php';
+session_start();
 require 'config/db.php';
 $pdo = get_db();
 require 'lib/audit.php';
