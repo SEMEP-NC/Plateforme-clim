@@ -7,8 +7,11 @@ import requests
 
 from db import get_connection
 from discover import cleanup_offline_devices, discover, save
-from mail_notifier import check_and_send
-from mail_notifier import check_mail_queue
+from mail_notifier import (
+    check_and_send,
+    check_mail_queue,
+    check_weekly_report
+)
 
 
 INTERVAL = int(os.getenv("SCHEDULER_INTERVAL"))
