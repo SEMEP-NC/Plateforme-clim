@@ -2,7 +2,7 @@
     <div class="d-flex justify-content-between align-items-center">
         <div class="dropdown">
             <button 
-                class="btn btn-light dropdown-toggle d-flex align-items-center gap-2"
+                class="btn btn-outline-secondary dropdown-toggle d-flex align-items-center gap-2"
                 type="button"
                 data-bs-toggle="dropdown">
                 <i class="bi bi-person-circle fs-4"></i>

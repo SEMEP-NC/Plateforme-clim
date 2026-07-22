@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS equipments (
     power INT,
     UI INT NOT NULL,
     enabled TINYINT DEFAULT 1,
+    gate_status TINYINT DEFAULT NULL,
     return_temp DECIMAL(5,1) NULL,
     outside_temp DECIMAL(5,1) NULL,
     setpoint DECIMAL(5,1) NULL,
@@ -18,6 +19,15 @@ CREATE TABLE IF NOT EXISTS equipments (
 
     UNIQUE KEY uniq_UI_ip_port_slave (UI, ip, port, slave_id)
 );
+CREATE TABLE IF NOT EXISTS settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    key VARCHAR(100) NOT NULL UNIQUE,
+    value INT NOT NULL
+);
+
+INSERT INTO settings('key', 'value')
+VALUES ('read_gate_status','0')
+ON DUPLICATE KEY UPDATE value=value;
 
 CREATE TABLE IF NOT EXISTS schedules (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -30,7 +40,6 @@ CREATE TABLE IF NOT EXISTS schedules (
     executed TINYINT DEFAULT 0,
     enabled TINYINT(1) DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-
 );
 
 CREATE TABLE IF NOT EXISTS command_logs (
@@ -99,6 +108,7 @@ WHERE NOT EXISTS (
 CREATE TABLE IF NOT EXISTS equipment_history (
     id INT AUTO_INCREMENT PRIMARY KEY,
     equipment_id INT NOT NULL,
+    gate_status TINYINT DEFAULT NULL,
     created_at DATETIME NOT NULL,
     setpoint DECIMAL(5,1) NULL,
     return_temp DECIMAL(5,1) NULL,
@@ -146,7 +156,7 @@ INSERT INTO mail_accounts (
     sender_email,
     enabled
 )
-VALUES (1,'',587,'','','tls','','',1);
+VALUES (1,'',587,'','','tls','','',0);
 
 
 CREATE TABLE mail_recipients (
@@ -222,7 +232,7 @@ CREATE TABLE equipment_temperature_alarms (
     low_threshold DECIMAL(5,1) NULL,
     delay_seconds INT DEFAULT 300,
     fault_name VARCHAR(255)
-        DEFAULT 'Alarme température reprise',
+        DEFAULT 'Alarme température ambiance',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ON UPDATE CURRENT_TIMESTAMP,

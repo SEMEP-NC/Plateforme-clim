@@ -53,7 +53,6 @@ def update_watchdog():
     with LAST_LOOP_LOCK:
         LAST_LOOP = time.time()
 
-
 def watchdog():
 
     global LAST_LOOP
@@ -516,6 +515,8 @@ def read_coils(ip, port, slave_id, address):
 def collect_telemetry():
     global fault_cache
 
+
+
     conn = None
 
     try:
@@ -579,14 +580,14 @@ def collect_telemetry():
                         "device_id": eq["slave_id"],
                         "type": "register",
                         "address": base,
-                        "count": 15
+                        "count": 16
                     },
                     timeout=1
                 )
 
                 registers = r.json().get("registers", [])
 
-                if len(registers) < 15:
+                if len(registers) < 16:
                     continue
 
                 state = 1 if registers[0] == 170 else 0
@@ -607,6 +608,7 @@ def collect_telemetry():
                     ))
                 setpoint = registers[2] / 10 if registers[2] is not None else None
                 return_temp = registers[14] / 10 if registers[14] is not None else None
+                gate_status = registers[15] if registers[15] is not None else None
                 check_temperature_alarm(cur,eq,return_temp)
                 
                 #
@@ -690,6 +692,7 @@ def collect_telemetry():
                         setpoint=%s,
                         return_temp=%s,
                         outside_temp=%s,
+                        gate_status=%s,
                         fault=%s
                     WHERE id=%s
                 """, (
@@ -697,6 +700,7 @@ def collect_telemetry():
                     setpoint,
                     return_temp,
                     outside_temp,
+                    gate_status,
                     fault,
                     eq["id"]
                 ))
@@ -713,16 +717,18 @@ def collect_telemetry():
                         return_temp,
                         outside_temp,
                         state,
+                        gate_status,
                         fault
                     )
                     VALUES
-                    (%s,NOW(),%s,%s,%s,%s,%s)
+                    (%s,NOW(),%s,%s,%s,%s,%s,%s)
                 """, (
                     eq["id"],
                     setpoint,
                     return_temp,
                     outside_temp,
                     state,
+                    gate_status,
                     fault
                 ))
 
@@ -948,7 +954,7 @@ def cleanup_history():
 def main():
     wait_for_db()
     print(
-        "Scheduler HVAC démarré",
+        "Scheduler Climatisation démarré",
         flush=True
     )
     threading.Thread(

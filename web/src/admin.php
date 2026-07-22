@@ -27,6 +27,15 @@ $users = $pdo->query("
 
 $db=get_db();
 
+$value = isset($_POST['read_gate_status']) ? 1 : 0;
+
+    $stmt = $db->prepare("
+    UPDATE settings
+    SET value=?
+    WHERE `key`='read_gate_status'
+    ");
+    $stmt->execute([$value]);
+
     /*SAVE SMTP*/   
 
     if(isset($_POST['save_smtp'])){
@@ -250,7 +259,7 @@ $db=get_db();
                 <button
                     type="submit"
                     name="send_test_mail"
-                    class="btn btn-outline-primary">
+                    class="btn btn-outline-secondary">
                     Envoyer un mail de test
                 </button>
             </form>
@@ -298,6 +307,27 @@ $db=get_db();
             </i>Journal d'audit</a>
             <a href="temperature_alarms.php"class="btn btn-outline-secondary">
             </i>Alarmes température</a>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <div class="form-check form-switch">
+                    <input
+                        class="form-check-input"
+                        type="checkbox"
+                        id="read_gate_status"
+                        name="read_gate_status"
+                        <?= $settings['read_gate_status'] ? 'checked' : '' ?>>
+                    <label class="form-check-label" for="read_gate_status">
+                        Lecture du contrôle externe
+                    </label>
+                    <button
+                        type="submit"
+                        name="valider_gate_control"
+                        class="btn btn-outline-secondary">
+                        Valider
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </main>

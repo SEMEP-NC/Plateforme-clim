@@ -22,6 +22,15 @@ $equipments = $db->query("
 
 $localisations = [];
 
+$settings_rows = $db->query("
+    SELECT * FROM settings
+")->fetchAll(PDO::FETCH_ASSOC);
+$settings = [];
+
+foreach ($settings_rows as $row) {
+    $settings[$row['key']] = $row['value'];
+}
+
 foreach ($equipments as $equipment) {
     if (!empty($equipment['localisation'])) {
         $localisations[] = $equipment['localisation'];
@@ -42,6 +51,28 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     $equipmentGroups[$row['equipment_id']][] = $row['group_id'];
     $groupEquipments[$row['group_id']][] = $row['equipment_id'];
 }
+
+function getGateStatusLabel($status)
+{
+    return match((int)$status) {
+        0 => "Invalid",
+        1 => "Sans contrôle",
+        2 => "Autorisation",
+        3 => "Interdiction",
+        default => "-"
+    };
+}
+function getGateStatusBadge($status)
+{
+    return match((int)$status) {
+        0 => "secondary",
+        1 => "success",
+        2 => "warning",
+        3 => "danger",
+        default => "dark"
+    };
+}
+
     $page_title = "Vue des equipements";
     require "includes/header.php";
     require "includes/user_menu.php";
@@ -88,7 +119,7 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                                     <th>Localisation
                                         <div class="dropdown d-inline">
                                             <button 
-                                                class="btn btn-sm btn-light"
+                                                class="btn btn-sm"
                                                 type="button"
                                                 data-bs-toggle="dropdown">
                                                 🔽
@@ -123,7 +154,11 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                                     <th data-sort="fault" class="sortable">
                                         Défaut <span>↕</span>
                                     </th>
-
+                                    <?php if (!empty($settings['read_gate_status'])): ?>
+                                        <th data-sort="gate" class="sortable">
+                                            Contrôle externe <span>↕</span>
+                                        </th>
+                                    <?php endif; ?>
                                     <th data-sort="temp" class="sortable">
                                         Temp reprise <span>↕</span>
                                     </th>
@@ -157,6 +192,13 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
                                                 <span class="badge bg-success">NORMAL</span>
                                             <?php endif; ?>
                                         </td>
+                                        <?php if (!empty($settings['read_gate_status'])): ?>
+                                            <td>
+                                                <span class="badge bg-<?= getGateStatusBadge($equipment['gate_status']) ?>">
+                                                    <?= htmlspecialchars(getGateStatusLabel($equipment['gate_status'])) ?>
+                                                </span>
+                                            </td>
+                                        <?php endif; ?>
                                         <td data-sort="<?= $equipment['return_temp'] ?? -999 ?>">
                                             <?= $equipment['return_temp'] !== null
                                                 ? number_format($equipment['return_temp'], 1) . ' °C'
@@ -174,16 +216,6 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     </main>
 
     <script>
-        const equipModalEl = document.getElementById("commandModal");
-        const equipModal = new bootstrap.Modal(equipModalEl);
-
-        const groupModalEl = document.getElementById("groupCommandModal");
-        const groupModal = new bootstrap.Modal(groupModalEl);
-
-        let lastReadRegisters = [];
-        let currentEquipmentId = null;
-        let currentGroupId = null;
-
         /* =========================
         TRI TABLE UNITÉS
         ========================= */

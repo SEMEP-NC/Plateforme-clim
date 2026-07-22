@@ -19,6 +19,9 @@ La liste des evolutions envisagés
 - Mise en place d'un affichage sous forme de calendrier du planning
 - Prise en compte splits et multi splits
 
+## Debug 
+- Plantage scheduler si pas de config mails
+
 ## Architecture
 
 ```text

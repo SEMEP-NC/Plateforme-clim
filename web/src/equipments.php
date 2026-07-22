@@ -21,6 +21,15 @@ $equipments = $db->query("
     SELECT * FROM equipments ORDER BY UI
 ")->fetchAll(PDO::FETCH_ASSOC);
 
+$settings_rows = $db->query("
+    SELECT * FROM settings
+")->fetchAll(PDO::FETCH_ASSOC);
+$settings = [];
+
+foreach ($settings_rows as $row) {
+    $settings[$row['key']] = $row['value'];
+}
+
 $localisations = [];
 
 foreach ($equipments as $equipment) {
@@ -43,7 +52,26 @@ foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
     $equipmentGroups[$row['equipment_id']][] = $row['group_id'];
     $groupEquipments[$row['group_id']][] = $row['equipment_id'];
 }
-
+function getGateStatusLabel($status)
+{
+    return match((int)$status) {
+        0 => "Invalid",
+        1 => "Sans contrôle",
+        2 => "Autorisation",
+        3 => "Interdiction",
+        default => "-"
+    };
+}
+function getGateStatusBadge($status)
+{
+    return match((int)$status) {
+        0 => "secondary",
+        1 => "success",
+        2 => "warning",
+        3 => "danger",
+        default => "dark"
+    };
+}
 /*
 |--------------------------------------------------------------------------
 | CREATE GROUP
@@ -381,7 +409,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                     aria-expanded="false"
                                     aria-controls="shieldCollapse">
 
-                                    <strong>Protections (Shield)</strong>
+                                    <strong>Fonctions sur commande filaire</strong>
                                 </button>
                             </div>
 
@@ -391,28 +419,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="g_shield_energy">
                                         <label class="form-check-label" for="g_shield_energy">
-                                            Shield Energy Saving
+                                            Mode economie d'énergie
                                         </label>
                                     </div>
 
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="g_shield_setpoint">
                                         <label class="form-check-label" for="g_shield_setpoint">
-                                            Shield Consigne
+                                            Interdiction modification Consigne
                                         </label>
                                     </div>
 
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="g_shield_mode">
                                         <label class="form-check-label" for="g_shield_mode">
-                                            Shield Mode
+                                            Interdiction modification Mode
                                         </label>
                                     </div>
 
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="g_shield_power">
                                         <label class="form-check-label" for="g_shield_power">
-                                            Shield Marche / Arrêt
+                                            Interdiction modification Marche / Arrêt
                                         </label>
                                     </div>
 
@@ -489,7 +517,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                     <th>Localisation
                                         <div class="dropdown d-inline">
                                             <button 
-                                                class="btn btn-sm btn-light"
+                                                class="btn btn-sm"
                                                 type="button"
                                                 data-bs-toggle="dropdown">
                                                 🔽
@@ -529,7 +557,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                     <th data-sort="fault" class="sortable">
                                         Défaut <span>↕</span>
                                     </th>
-
+                                    <?php if (!empty($settings['read_gate_status'])): ?>
+                                        <th data-sort="gate" class="sortable">
+                                            Contrôle externe <span>↕</span>
+                                        </th>
+                                    <?php endif; ?>
                                     <th data-sort="temp" class="sortable">
                                         Temp reprise <span>↕</span>
                                     </th>
@@ -597,6 +629,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                             <span class="badge bg-success">NORMAL</span>
                                         <?php endif; ?>
                                     </td>
+                                    <?php if (!empty($settings['read_gate_status'])): ?>
+                                        <td>
+                                            <span class="badge bg-<?= getGateStatusBadge($equipment['gate_status']) ?>">
+                                                <?= htmlspecialchars(getGateStatusLabel($equipment['gate_status'])) ?>
+                                            </span>
+                                        </td>
+                                    <?php endif; ?>
                                     <td data-sort="<?= $equipment['return_temp'] ?? -999 ?>">
                                         <?= $equipment['return_temp'] !== null
                                             ? number_format($equipment['return_temp'], 1) . ' °C'
@@ -760,7 +799,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                             </table>
                             <div class="card mt-3">
                                 <div class="card-header">
-                                    <strong>Protections (Shield)</strong>
+                                    <strong>Fonctions sur commande filaire</strong>
                                 </div>
 
                                 <div class="card-body">
@@ -768,28 +807,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="shield_energy">
                                         <label class="form-check-label" for="shield_energy">
-                                            Shield Energy Saving
+                                            Mode economie d'énergie
                                         </label>
                                     </div>
 
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="shield_setpoint">
                                         <label class="form-check-label" for="shield_setpoint">
-                                            Shield Consigne
+                                            Interdiction modification Consigne
                                         </label>
                                     </div>
 
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="shield_mode">
                                         <label class="form-check-label" for="shield_mode">
-                                            Shield Mode
+                                            Interdiction modification Mode
                                         </label>
                                     </div>
 
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="shield_power">
                                         <label class="form-check-label" for="shield_power">
-                                            Shield Marche / Arrêt
+                                            Interdiction modification Marche / Arrêt
                                         </label>
                                     </div>
 
@@ -1152,7 +1191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                 labels,
                                 datasets: [
                                     {
-                                        label: "Retour",
+                                        label: "T°C Ambiance",
                                         data: retour,
                                         borderColor: "#0d6efd",
                                         tension: 0.35,
@@ -1160,7 +1199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                         yAxisID: "y"
                                     },
                                     {
-                                        label: "Consigne",
+                                        label: "T°C Consigne",
                                         data: consigne,
                                         borderColor: "#198754",
                                         tension: 0.35,
@@ -1168,7 +1207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                         yAxisID: "y"
                                     },
                                     {
-                                        label: "Extérieur",
+                                        label: "T°C Exterieur",
                                         data: ext,
                                         borderColor: "#fd7e14",
                                         tension: 0.35,

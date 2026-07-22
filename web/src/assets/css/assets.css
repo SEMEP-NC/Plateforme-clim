@@ -1,0 +1,204 @@
+/* ================================
+   Mode sombre automatique
+   ================================ */
+
+@media (prefers-color-scheme: dark) {
+
+    body {
+        background-color: #121212;
+        color: #e0e0e0;
+    }
+
+
+    .card {
+
+        background-color: #1e1e1e;
+        color: #e0e0e0;
+
+        border-color: #333;
+
+    }
+
+
+    .card-header {
+
+        background-color: #252525;
+        color: #ffffff;
+
+        border-bottom:1px solid #333;
+
+    }
+
+
+    .table {
+
+        color:#e0e0e0;
+
+    }
+
+
+    .table-striped > tbody > tr:nth-of-type(odd) > * {
+
+        background-color:#1a1a1a;
+
+    }
+
+
+    .table-bordered {
+
+        border-color:#444;
+
+    }
+
+
+    .table-bordered td,
+    .table-bordered th {
+
+        border-color:#444;
+
+    }
+
+
+    .form-control,
+    .form-select {
+
+        background-color:#1e1e1e;
+        color:#ffffff;
+        border-color:#555;
+
+    }
+
+
+    .form-control:focus,
+    .form-select:focus {
+
+        background-color:#222;
+        color:#ffffff;
+        border-color:#0d6efd;
+
+    }
+
+
+    .modal-content {
+
+        background-color:#1e1e1e;
+        color:#ffffff;
+
+    }
+
+
+    .modal-header,
+    .modal-footer {
+
+        border-color:#333;
+
+    }
+
+
+    .dropdown-menu {
+
+        background-color:#1e1e1e;
+
+    }
+
+
+    .dropdown-item {
+
+        color:#e0e0e0;
+
+    }
+
+
+    .dropdown-item:hover {
+
+        background-color:#333;
+        color:#fff;
+
+    }
+
+
+    .text-muted {
+
+        color:#aaa !important;
+
+    }
+
+
+    a {
+
+        color:#66b3ff;
+
+    }
+    .table {
+
+        --bs-table-bg: #1e1e1e;
+        --bs-table-color: #e0e0e0;
+        --bs-table-border-color: #444;
+        --bs-table-striped-bg: #252525;
+        --bs-table-striped-color: #ffffff;
+        --bs-table-hover-bg: #333;
+        --bs-table-hover-color: #ffffff;
+
+        color: var(--bs-table-color);
+        border-color: var(--bs-table-border-color);
+
+    }
+
+
+    .table > :not(caption) > * > * {
+
+        background-color: var(--bs-table-bg);
+        color: var(--bs-table-color);
+        border-color: var(--bs-table-border-color);
+
+    }
+
+
+    .table-striped > tbody > tr:nth-of-type(odd) > * {
+
+        background-color: var(--bs-table-striped-bg);
+        color: var(--bs-table-striped-color);
+
+    }
+
+
+    .table-hover > tbody > tr:hover > * {
+
+        background-color: var(--bs-table-hover-bg);
+        color: var(--bs-table-hover-color);
+
+    }
+
+
+    .table thead th {
+
+        background-color:#252525;
+        color:#ffffff;
+        border-color:#444;
+
+    }
+     .dropdown-menu {
+        background-color: #212529;
+        border-color: #495057;
+    }
+
+    .dropdown-menu .dropdown-item {
+        color: #f8f9fa;
+    }
+
+    .dropdown-menu .dropdown-item:hover {
+        background-color: #343a40;
+        color: white;
+    }
+
+    .dropdown-header {
+        color: #f8f9fa;
+    }
+
+    .dropdown-divider {
+        border-color: #495057;
+    }
+
+
+
+}
