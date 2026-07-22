@@ -21,8 +21,8 @@ CREATE TABLE IF NOT EXISTS equipments (
 );
 CREATE TABLE IF NOT EXISTS settings (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    key VARCHAR(100) NOT NULL UNIQUE,
-    value INT NOT NULL
+    'key' VARCHAR(100) NOT NULL UNIQUE,
+    'value' INT NOT NULL
 );
 
 INSERT INTO settings('key', 'value')
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS groups_hvac (
     name VARCHAR(100) NOT NULL
 );
 
-CREATE TABLE equipment_groups (
+CREATE TABLE IF NOT EXISTS equipment_groups (
     equipment_id INT NOT NULL,
     group_id INT NOT NULL,
     PRIMARY KEY (equipment_id, group_id),
@@ -91,7 +91,7 @@ CREATE TABLE equipment_groups (
         ON DELETE CASCADE
 );
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -118,9 +118,13 @@ CREATE TABLE IF NOT EXISTS equipment_history (
 
     INDEX (equipment_id),
     INDEX (created_at)
+
+    FOREIGN KEY (equipment_id)
+    REFERENCES equipments(id)
+    ON DELETE CASCADE
 );
 
-CREATE TABLE equipment_fault_history (
+CREATE TABLE IF NOT EXISTS equipment_fault_history (
     id INT AUTO_INCREMENT PRIMARY KEY,
     equipment_id INT NOT NULL,
     fault_code INT NOT NULL,
@@ -134,7 +138,7 @@ CREATE TABLE equipment_fault_history (
     INDEX(created_at)
 );
 
-CREATE TABLE mail_accounts (
+CREATE TABLE IF NOT EXISTS mail_accounts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     smtp_host VARCHAR(255) NOT NULL,
     smtp_port INT DEFAULT 587,
@@ -145,7 +149,7 @@ CREATE TABLE mail_accounts (
     sender_email VARCHAR(255),
     enabled TINYINT DEFAULT 1
 );
-INSERT INTO mail_accounts (
+INSERT INTO IF NOT EXISTS mail_accounts (
     id,
     smtp_host,
     smtp_port,
@@ -156,10 +160,11 @@ INSERT INTO mail_accounts (
     sender_email,
     enabled
 )
-VALUES (1,'',587,'','','tls','','',0);
+VALUES (1,'',587,'','','tls','','',0)
+ON DUPLICATE KEY UPDATE id=id;
 
 
-CREATE TABLE mail_recipients (
+CREATE TABLE IF NOT EXISTS mail_recipients (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100),
     email VARCHAR(255) NOT NULL,
@@ -167,15 +172,16 @@ CREATE TABLE mail_recipients (
 );
 
 
-CREATE TABLE mail_config (
+CREATE TABLE IF NOT EXISTS mail_config (
     id INT PRIMARY KEY DEFAULT 1,
     enable_alarm TINYINT DEFAULT 1,
     enable_return TINYINT DEFAULT 1,
     delay_seconds INT DEFAULT 60
 );
-INSERT INTO mail_config(id,enable_alarm,enable_return,delay_seconds) VALUES(1,1,1,60);
+INSERT INTO mail_config(id,enable_alarm,enable_return,delay_seconds) VALUES(1,1,1,60)
+ON DUPLICATE KEY UPDATE id=id;
 
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
 
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -197,7 +203,7 @@ CREATE TABLE audit_logs (
     INDEX(action)
 );
 
-CREATE TABLE documents (
+CREATE TABLE IF NOT EXISTS documents (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     description TEXT NULL,
@@ -209,22 +215,24 @@ CREATE TABLE documents (
     uploaded_by INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    FOREIGN KEY (uploaded_by) REFERENCES users(id)
+    FOREIGN KEY (uploaded_by)
+    REFERENCES users(id)
+    ON DELETE SET NULL
 );
 
-CREATE TABLE mail_queue (
+CREATE TABLE IF NOT EXISTS mail_queue (
     id INT AUTO_INCREMENT PRIMARY KEY,
     type VARCHAR(50),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     processed TINYINT DEFAULT 0
 );
 
-CREATE TABLE weekly_reports (
+CREATE TABLE IF NOT EXISTS weekly_reports (
     week_key VARCHAR(10) PRIMARY KEY,
     sent_at DATETIME NOT NULL
 );
 
-CREATE TABLE equipment_temperature_alarms (
+CREATE TABLE IF NOT EXISTS equipment_temperature_alarms (
     id INT AUTO_INCREMENT PRIMARY KEY,
     equipment_id INT NOT NULL,
     enabled TINYINT(1) DEFAULT 0,
