@@ -928,7 +928,7 @@ def main():
                 "[SCHED] Mail Hebdo",
                 flush=True
             )
-            check_weekly_repport()
+            check_weekly_report()
             update_watchdog()
             print(
                 "[SCHED] Cycle terminé",
