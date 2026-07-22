@@ -14,6 +14,15 @@ $smtp=$db->query("SELECT * FROM mail_accounts WHERE id=1")->fetch(PDO::FETCH_ASS
 $recipients=$db->query("SELECT * FROM mail_recipients ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
 $config=$db->query("SELECT * FROM mail_config WHERE id=1")->fetch(PDO::FETCH_ASSOC);
 
+$settings_rows = $db->query("
+    SELECT * FROM settings
+")->fetchAll(PDO::FETCH_ASSOC);
+$settings = [];
+
+foreach ($settings_rows as $row) {
+    $settings[$row['key']] = $row['value'];
+}
+
 /*
 |-----------------------------
 | LIST USERS

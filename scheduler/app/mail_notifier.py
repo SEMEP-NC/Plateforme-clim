@@ -621,83 +621,83 @@ def check_weekly_report():
 
         for row in data:
 
-        total_seconds = row["runtime_seconds"] or 0
+            total_seconds = row["runtime_seconds"] or 0
 
-
-        #
-        # lecture du compteur début semaine
-        #
-
-        cur.execute("""
-            SELECT runtime_start
-
-            FROM equipment_runtime_weekly
-
-            WHERE equipment_id=%s
-
-            AND week_key=%s
-
-        """,(
-            row["id"],
-            week_key
-        ))
-
-        old = cur.fetchone()
-
-
-        if old:
-
-            week_seconds = (
-                total_seconds
-                -
-                old["runtime_start"]
-            )
-
-        else:
 
             #
-            # première génération du suivi
+            # lecture du compteur début semaine
             #
-
-            week_seconds = 0
 
             cur.execute("""
-                INSERT INTO equipment_runtime_weekly
-                (
-                    equipment_id,
-                    week_key,
-                    runtime_start,
-                    runtime_end
-                )
-                VALUES
-                (
-                    %s,%s,%s,%s
-                )
+                SELECT runtime_start
 
-            """,
-            (
+                FROM equipment_runtime_weekly
+
+                WHERE equipment_id=%s
+
+                AND week_key=%s
+
+            """,(
                 row["id"],
-                week_key,
-                total_seconds,
-                total_seconds
+                week_key
             ))
 
+            old = cur.fetchone()
 
-        rows.append({
 
-            "UI": row["UI"],
+            if old:
 
-            "name": row["name"],
+                week_seconds = (
+                    total_seconds
+                    -
+                    old["runtime_start"]
+                )
 
-            "localisation": row["localisation"],
+            else:
 
-            "hours_week": week_seconds / 3600,
+                #
+                # première génération du suivi
+                #
 
-            "hours_total": total_seconds / 3600,
+                week_seconds = 0
 
-            "faults": row["faults"] or 0
+                cur.execute("""
+                    INSERT INTO equipment_runtime_weekly
+                    (
+                        equipment_id,
+                        week_key,
+                        runtime_start,
+                        runtime_end
+                    )
+                    VALUES
+                    (
+                        %s,%s,%s,%s
+                    )
 
-        })
+                """,
+                (
+                    row["id"],
+                    week_key,
+                    total_seconds,
+                    total_seconds
+                ))
+
+
+            rows.append({
+
+                "UI": row["UI"],
+
+                "name": row["name"],
+
+                "localisation": row["localisation"],
+
+                "hours_week": week_seconds / 3600,
+
+                "hours_total": total_seconds / 3600,
+
+                "faults": row["faults"] or 0
+
+            })
         subject, html = build_weekly_mail(
             rows,
             start_date,
