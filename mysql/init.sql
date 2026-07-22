@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS equipment_history (
     fault TINYINT DEFAULT 0,
 
     INDEX (equipment_id),
-    INDEX (created_at)
+    INDEX (created_at),
 
     FOREIGN KEY (equipment_id)
     REFERENCES equipments(id)
