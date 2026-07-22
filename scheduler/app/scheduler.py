@@ -18,6 +18,7 @@ INTERVAL = int(os.getenv("SCHEDULER_INTERVAL"))
 DISCOVERY_INTERVAL = int(os.getenv("DISCOVERY_INTERVAL"))
 HUB_WRITE_URL = os.getenv("HUB_WRITE_URL")
 LOCAL_TZ = timezone(timedelta(hours=11))
+RUNTIME_INCREMENT = INTERVAL
 
 last_discovery = 0
 LAST_LOOP = time.time()
@@ -589,6 +590,21 @@ def collect_telemetry():
                     continue
 
                 state = 1 if registers[0] == 170 else 0
+                #
+                # Compteur temps de fonctionnement
+                #
+
+                if state == 1:
+
+                    cur.execute("""
+                        UPDATE equipments
+                        SET runtime_seconds = runtime_seconds + %s
+                        WHERE id=%s
+                    """,
+                    (
+                        RUNTIME_INCREMENT,
+                        eq["id"]
+                    ))
                 setpoint = registers[2] / 10 if registers[2] is not None else None
                 return_temp = registers[14] / 10 if registers[14] is not None else None
                 check_temperature_alarm(cur,eq,return_temp)
@@ -891,6 +907,44 @@ def create_temperature_fault(cur,equipment,fault_name,active):
         active
     ))
 
+def cleanup_history():
+
+    conn = None
+
+    try:
+
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            DELETE FROM equipment_history
+            WHERE created_at < NOW() - INTERVAL 90 DAY
+        """)
+
+        deleted = cur.rowcount
+
+        conn.commit()
+
+        if deleted:
+            print(
+                f"[DB] Historique supprimé : {deleted} lignes",
+                flush=True
+            )
+
+
+    except Exception as e:
+
+        print(
+            f"[DB CLEANUP ERROR] {e}",
+            flush=True
+        )
+
+
+    finally:
+
+        if conn:
+            conn.close()
+
 def main():
     wait_for_db()
     print(
@@ -938,6 +992,12 @@ def main():
                 flush=True
             )
             check_mail_queue()
+            update_watchdog()
+            print(
+                "[SCHED] Clean history",
+                flush=True
+            )
+            cleanup_history()
             update_watchdog()
         except Exception as e:
             import traceback

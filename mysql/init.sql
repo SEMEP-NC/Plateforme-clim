@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS equipments (
     setpoint DECIMAL(5,1) NULL,
     state TINYINT(1) DEFAULT 0,
     fault TINYINT(1) DEFAULT 0,
+    runtime_seconds BIGINT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     UNIQUE KEY uniq_UI_ip_port_slave (UI, ip, port, slave_id)
@@ -226,6 +227,23 @@ CREATE TABLE equipment_temperature_alarms (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY unique_equipment_alarm (equipment_id),
+    FOREIGN KEY (equipment_id)
+        REFERENCES equipments(id)
+        ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS equipment_runtime_weekly (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    equipment_id INT NOT NULL,
+    week_key VARCHAR(10) NOT NULL,
+    runtime_start BIGINT DEFAULT 0,
+    runtime_end BIGINT DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_equipment_week (
+        equipment_id,
+        week_key
+    ),
+
     FOREIGN KEY (equipment_id)
         REFERENCES equipments(id)
         ON DELETE CASCADE

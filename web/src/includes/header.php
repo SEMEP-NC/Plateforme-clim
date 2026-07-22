@@ -21,9 +21,11 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="images/favicon-gree.ico?v=2" type="image/x-icon">
 <title><?= $page_title ?? 'Supervision Climatisation' ?></title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
 <style>
 body {
     background:#f5f7fa;

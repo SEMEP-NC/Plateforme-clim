@@ -407,53 +407,82 @@ def check_mail_queue():
 
 def build_weekly_mail(rows, start_date, end_date):
 
-    total_hours = 0
+    total_week = 0
+
 
     html_rows = []
 
+
     for row in rows:
 
-        total_hours += row["hours"]
+        total_week += row["hours_week"]
+
 
         html_rows.append(f"""
+
         <tr>
+
             <td>{row['UI']}</td>
+
             <td>{row['name']}</td>
+
             <td>{row['localisation'] or ''}</td>
-            <td>{row['hours']:.1f} h</td>
+
+            <td>{row['hours_week']:.1f} h</td>
+
+            <td>{row['hours_total']:.1f} h</td>
+
             <td>{row['faults']}</td>
+
         </tr>
+
         """)
 
+
     subject = (
+
         "[Climatisation] Rapport hebdomadaire "
+
         f"{start_date.strftime('%d/%m/%Y')} - "
+
         f"{end_date.strftime('%d/%m/%Y')}"
+
     )
 
-    html = f"""
+
+    html=f"""
+
 <html>
 
 <body style="font-family:Arial">
 
-<h2>Rapport hebdomadaire Climatisation</h2>
+
+<h2>
+Rapport hebdomadaire Climatisation
+</h2>
+
 
 <p>
 
-<b>Période :</b><br>
+<b>Période :</b>
 
 {start_date.strftime("%d/%m/%Y")}
+
 au
+
 {end_date.strftime("%d/%m/%Y")}
 
 </p>
+
+
 
 <table border="1"
 cellpadding="6"
 cellspacing="0"
 style="border-collapse:collapse;">
 
-<tr style="background:#f0f0f0;">
+
+<tr style="background:#f0f0f0">
 
 <th>UI</th>
 
@@ -461,29 +490,43 @@ style="border-collapse:collapse;">
 
 <th>Localisation</th>
 
-<th>Temps fonctionnement</th>
+<th>Temps semaine</th>
+
+<th>Temps total</th>
 
 <th>Défauts</th>
 
 </tr>
 
+
 {''.join(html_rows)}
+
 
 </table>
 
+
 <br>
 
-<b>Nombre d'unités :</b> {len(rows)}<br>
 
-<b>Temps total :</b> {total_hours:.1f} h
+<b>Nombre d'unités :</b>
+{len(rows)}
+
+<br>
+
+
+<b>Temps total semaine :</b>
+{total_week:.1f} h
+
 
 </body>
 
 </html>
-    """
+
+"""
+
 
     return subject, html
-
+    
 def check_weekly_report():
 
     conn = None
@@ -539,14 +582,10 @@ def check_weekly_report():
             SELECT
 
                 e.id,
-
                 e.UI,
-
                 e.name,
-
                 e.localisation,
-
-                SUM(h.state) AS running,
+                e.runtime_seconds,
 
                 (
                     SELECT COUNT(*)
@@ -560,24 +599,11 @@ def check_weekly_report():
 
             FROM equipments e
 
-            LEFT JOIN equipment_history h
-
-                ON h.equipment_id=e.id
-
-            AND DATE(h.created_at)
-                BETWEEN %s AND %s
-
-            GROUP BY
-                e.id,
-                e.UI,
-                e.name,
-                e.localisation
+            WHERE e.enabled=1
 
             ORDER BY e.UI
-        """, (
 
-            start_date,
-            end_date,
+        """, (
 
             start_date,
             end_date
@@ -595,24 +621,83 @@ def check_weekly_report():
 
         for row in data:
 
-            running = row["running"] or 0
+        total_seconds = row["runtime_seconds"] or 0
 
-            hours = running * SAMPLE_MINUTES / 60
 
-            rows.append({
+        #
+        # lecture du compteur début semaine
+        #
 
-                "UI": row["UI"],
+        cur.execute("""
+            SELECT runtime_start
 
-                "name": row["name"],
+            FROM equipment_runtime_weekly
 
-                "localisation": row["localisation"],
+            WHERE equipment_id=%s
 
-                "hours": hours,
+            AND week_key=%s
 
-                "faults": row["faults"] or 0
+        """,(
+            row["id"],
+            week_key
+        ))
 
-            })
+        old = cur.fetchone()
 
+
+        if old:
+
+            week_seconds = (
+                total_seconds
+                -
+                old["runtime_start"]
+            )
+
+        else:
+
+            #
+            # première génération du suivi
+            #
+
+            week_seconds = 0
+
+            cur.execute("""
+                INSERT INTO equipment_runtime_weekly
+                (
+                    equipment_id,
+                    week_key,
+                    runtime_start,
+                    runtime_end
+                )
+                VALUES
+                (
+                    %s,%s,%s,%s
+                )
+
+            """,
+            (
+                row["id"],
+                week_key,
+                total_seconds,
+                total_seconds
+            ))
+
+
+        rows.append({
+
+            "UI": row["UI"],
+
+            "name": row["name"],
+
+            "localisation": row["localisation"],
+
+            "hours_week": week_seconds / 3600,
+
+            "hours_total": total_seconds / 3600,
+
+            "faults": row["faults"] or 0
+
+        })
         subject, html = build_weekly_mail(
             rows,
             start_date,

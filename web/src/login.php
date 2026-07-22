@@ -54,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adminExists) {
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="images/favicon-gree.ico?v=2" type="image/x-icon">
     <title>Login</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
