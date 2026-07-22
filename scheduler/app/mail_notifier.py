@@ -4,6 +4,9 @@ import traceback
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from db import get_connection
+from datetime import timedelta, timezone
+
+LOCAL_TZ = timezone(timedelta(hours=11))
 
 def get_mail_account(cur):
     """
@@ -72,51 +75,75 @@ def build_mail(faults):
     """
     Création du contenu mail HTML
     """
-    active_faults = []
-    cleared_faults = []
+
+    rows = []
+
+    active_count = 0
+    cleared_count = 0
+
     for fault in faults:
-        item = f"""
+
+        if fault["active"]:
+            status = '<span style="color:#d9534f;font-weight:bold;">Actif</span>'
+            active_count += 1
+        else:
+            status = '<span style="color:#28a745;font-weight:bold;">Inactif</span>'
+            cleared_count += 1
+
+        created = fault["created_at"]
+
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+
+        created = created.astimezone(LOCAL_TZ)
+
+        created = created.strftime("%d/%m/%Y %H:%M:%S")
+
+        rows.append(f"""
         <tr>
             <td>{fault['UI']}</td>
             <td>{fault['name']}</td>
             <td>{fault['localisation'] or ''}</td>
-            <td>{fault['fault_code']}</td>
             <td>{fault['fault_name']}</td>
-            <td>{fault['created_at']}</td>
+            <td>{status}</td>
+            <td>{created}</td>
         </tr>
-        """
-        if fault["active"]:
-            active_faults.append(item)
-        else:
-            cleared_faults.append(item)
-    if active_faults and cleared_faults:
-        subject = "[HVAC] Défauts et retours à la normale"
-    elif active_faults:
-        subject = "[HVAC] Défaut équipement"
+        """)
+
+    if active_count and cleared_count:
+        subject = "[Climatisation] Défauts et retours à la normale"
+    elif active_count:
+        subject = "[Climatisation] Défaut équipement"
     else:
-        subject = "[HVAC] Retour à la normale"
+        subject = "[Climatisation] Retour à la normale"
+
     html = f"""
 <html>
-    <body>
-        <h2>Supervision HVAC</h2>
-        <h3>Evènements</h3>
-        <table border="1"
-            cellpadding="6"
-            cellspacing="0">
-            <tr>
-                <th>UI</th>
-                <th>Nom</th>
-                <th>Localisation</th>
-                <th>Code</th>
-                <th>Défaut</th>
-                <th>Date</th>
-            </tr>
-            {''.join(active_faults)}
-            {''.join(cleared_faults)}
-        </table>
-    </body>
+<body style="font-family:Arial,sans-serif;">
+
+<h2>Supervision Climatisation</h2>
+
+<p>
+<b>{active_count}</b> défaut(s) actif(s) -
+<b>{cleared_count}</b> retour(s) à la normale
+</p>
+
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;">
+    <tr style="background:#f2f2f2;">
+        <th>UI</th>
+        <th>Nom</th>
+        <th>Localisation</th>
+        <th>Défaut</th>
+        <th>État</th>
+        <th>Date (UTC+11)</th>
+    </tr>
+    {''.join(rows)}
+</table>
+
+</body>
 </html>
 """
+
     return subject, html
 
 def send_mail(account, recipients, subject, html):
@@ -230,13 +257,13 @@ def check_and_send():
             
 def build_test_mail():
 
-    subject = "[HVAC] Test de configuration SMTP"
+    subject = "Test de configuration SMTP"
 
     html = """
     <html>
     <body style="font-family:Arial,sans-serif">
 
-        <h2>Supervision HVAC</h2>
+        <h2>Supervision Climatisation GREE</h2>
 
         <p>Ce message confirme que la configuration SMTP est correcte.</p>
 
@@ -371,6 +398,265 @@ def check_mail_queue():
     except Exception as e:
 
         print("[MAIL QUEUE ERROR]",e)
+
+    finally:
+
+        if conn:
+            conn.close()
+
+
+def build_weekly_mail(rows, start_date, end_date):
+
+    total_hours = 0
+
+    html_rows = []
+
+    for row in rows:
+
+        total_hours += row["hours"]
+
+        html_rows.append(f"""
+        <tr>
+            <td>{row['UI']}</td>
+            <td>{row['name']}</td>
+            <td>{row['localisation'] or ''}</td>
+            <td>{row['hours']:.1f} h</td>
+            <td>{row['faults']}</td>
+        </tr>
+        """)
+
+    subject = (
+        "[Climatisation] Rapport hebdomadaire "
+        f"{start_date.strftime('%d/%m/%Y')} - "
+        f"{end_date.strftime('%d/%m/%Y')}"
+    )
+
+    html = f"""
+    <html>
+
+    <body style="font-family:Arial">
+
+    <h2>Rapport hebdomadaire Climatisation</h2>
+
+    <p>
+
+    <b>Période :</b><br>
+
+    {start_date.strftime("%d/%m/%Y")}
+    au
+    {end_date.strftime("%d/%m/%Y")}
+
+    </p>
+
+    <table border="1"
+    cellpadding="6"
+    cellspacing="0"
+    style="border-collapse:collapse;">
+
+    <tr style="background:#f0f0f0;">
+
+    <th>UI</th>
+
+    <th>Nom</th>
+
+    <th>Localisation</th>
+
+    <th>Temps fonctionnement</th>
+
+    <th>Défauts</th>
+
+    </tr>
+
+    {''.join(html_rows)}
+
+    </table>
+
+    <br>
+
+    <b>Nombre d'unités :</b> {len(rows)}<br>
+
+    <b>Temps total :</b> {total_hours:.1f} h
+
+    </body>
+
+    </html>
+    """
+
+        return subject, html
+
+def check_weekly_report():
+
+    conn = None
+
+    try:
+
+        now = datetime.now(LOCAL_TZ)
+
+        #
+        # Envoi uniquement lundi entre 07h00 et 07h09
+        #
+        if now.weekday() != 0:
+            return
+
+        if now.hour != 7:
+            return
+
+        conn = get_connection()
+        cur = conn.cursor()
+
+        week_key = now.strftime("%Y-%W")
+
+        #
+        # Déjà envoyé ?
+        #
+        cur.execute("""
+            SELECT week_key
+            FROM weekly_reports
+            WHERE week_key=%s
+        """, (week_key,))
+
+        if cur.fetchone():
+            return
+
+        account = get_mail_account(cur)
+
+        if not account:
+            return
+
+        recipients = get_recipients(cur)
+
+        if not recipients:
+            return
+
+        #
+        # semaine précédente
+        #
+        end_date = now.date() - timedelta(days=1)
+
+        start_date = end_date - timedelta(days=6)
+
+        cur.execute("""
+            SELECT
+
+                e.id,
+
+                e.UI,
+
+                e.name,
+
+                e.localisation,
+
+                SUM(h.state) AS running,
+
+                (
+                    SELECT COUNT(*)
+                    FROM equipment_fault_history f
+                    WHERE
+                        f.equipment_id=e.id
+                        AND DATE(f.created_at)
+                        BETWEEN %s AND %s
+                        AND f.active=1
+                ) faults
+
+            FROM equipments e
+
+            LEFT JOIN equipment_history h
+
+                ON h.equipment_id=e.id
+
+            AND DATE(h.created_at)
+                BETWEEN %s AND %s
+
+            GROUP BY
+                e.id,
+                e.UI,
+                e.name,
+                e.localisation
+
+            ORDER BY e.UI
+        """, (
+
+            start_date,
+            end_date,
+
+            start_date,
+            end_date
+
+        ))
+
+        data = cur.fetchall()
+
+        rows = []
+
+        #
+        # nombre de minutes entre deux acquisitions
+        #
+        SAMPLE_MINUTES = INTERVAL / 60
+
+        for row in data:
+
+            running = row["running"] or 0
+
+            hours = running * SAMPLE_MINUTES / 60
+
+            rows.append({
+
+                "UI": row["UI"],
+
+                "name": row["name"],
+
+                "localisation": row["localisation"],
+
+                "hours": hours,
+
+                "faults": row["faults"] or 0
+
+            })
+
+        subject, html = build_weekly_mail(
+            rows,
+            start_date,
+            end_date
+        )
+
+        send_mail(
+            account,
+            recipients,
+            subject,
+            html
+        )
+
+        cur.execute("""
+            INSERT INTO weekly_reports
+            (
+                week_key,
+                sent_at
+            )
+            VALUES
+            (
+                %s,
+                NOW()
+            )
+        """, (
+            week_key,
+        ))
+
+        conn.commit()
+
+        print(
+            "[MAIL] Rapport hebdomadaire envoyé",
+            flush=True
+        )
+
+    except Exception as e:
+
+        print(
+            "[MAIL WEEKLY]",
+            e,
+            flush=True
+        )
+
+        traceback.print_exc()
 
     finally:
 

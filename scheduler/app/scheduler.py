@@ -41,6 +41,7 @@ FAULTS = {
 }
 
 fault_cache = {}
+temperature_alarm_cache = {}
 
 def update_watchdog():
     global LAST_LOOP
@@ -85,7 +86,7 @@ def wait_for_db():
                 password=password,
                 database=database,
             )
-            conn.close()
+            
             print("DB ready", flush=True)
             return
 
@@ -196,7 +197,7 @@ def process_planning():
     conn = None
     try:
         conn = get_connection()
-        cur = conn.cursor()
+        cur = conn.cursor(pymysql.cursors.DictCursor)
 
         cur.execute("""
             SELECT
@@ -218,7 +219,6 @@ def process_planning():
 
         if not schedules:
             print("Aucun planning à exécuter", flush=True)
-            conn.close()
             return
 
         print(f"{len(schedules)} planning(s) à exécuter", flush=True)
@@ -463,9 +463,11 @@ def process_planning():
         )
 
     finally:
-
         if conn:
-            conn.close()
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 
 def run_discovery_if_needed():
@@ -586,7 +588,8 @@ def collect_telemetry():
                 state = 1 if registers[0] == 170 else 0
                 setpoint = registers[2] / 10 if registers[2] is not None else None
                 return_temp = registers[14] / 10 if registers[14] is not None else None
-
+                check_temperature_alarm(cur,eq,return_temp)
+                
                 #
                 # Lecture défauts
                 #
@@ -721,10 +724,169 @@ def collect_telemetry():
         )
 
     finally:
-
         if conn:
-            conn.close()
+            try:
+                conn.close()
+            except Exception:
+                pass
 
+def check_temperature_alarm(cur,equipment,return_temp):
+
+    if return_temp is None:
+        return
+
+
+    cur.execute("""
+        SELECT
+            high_threshold,
+            low_threshold,
+            delay_seconds,
+            fault_name
+        FROM equipment_temperature_alarms
+        WHERE equipment_id=%s
+        AND enabled=1
+    """, (
+        equipment["id"],
+    ))
+
+
+    alarm = cur.fetchone()
+
+
+    if not alarm:
+        return
+
+
+    now = datetime.now()
+
+
+    state = temperature_alarm_cache.setdefault(
+        equipment["id"],
+        {
+            "high_since": None,
+            "low_since": None,
+            "active_high": False,
+            "active_low": False
+        }
+    )
+
+
+    #
+    # Température haute
+    #
+
+    if (
+        alarm["high_threshold"]
+        and return_temp >= alarm["high_threshold"]
+    ):
+
+        if state["high_since"] is None:
+            state["high_since"] = now
+
+
+        elapsed = (
+            now - state["high_since"]
+        ).total_seconds()
+
+
+        if (
+            elapsed >= alarm["delay_seconds"]
+            and not state["active_high"]
+        ):
+
+            create_temperature_fault(
+                cur,
+                equipment,
+                alarm["fault_name"],
+                True
+            )
+
+            state["active_high"] = True
+
+
+    else:
+
+        state["high_since"] = None
+
+
+        if state["active_high"]:
+
+            create_temperature_fault(
+                cur,
+                equipment,
+                alarm["fault_name"],
+                False
+            )
+
+            state["active_high"] = False
+
+
+
+    #
+    # Température basse
+    #
+
+    if (
+        alarm["low_threshold"]
+        and return_temp <= alarm["low_threshold"]
+    ):
+
+        if state["low_since"] is None:
+            state["low_since"] = now
+
+
+        elapsed = (
+            now - state["low_since"]
+        ).total_seconds()
+
+
+        if (
+            elapsed >= alarm["delay_seconds"]
+            and not state["active_low"]
+        ):
+
+            create_temperature_fault(
+                cur,
+                equipment,
+                alarm["fault_name"],
+                True
+            )
+
+            state["active_low"] = True
+
+
+    else:
+
+        state["low_since"] = None
+
+def create_temperature_fault(cur,equipment,fault_name,active):
+
+    cur.execute("""
+        INSERT INTO equipment_fault_history
+        (
+            equipment_id,
+            fault_code,
+            fault_name,
+            active,
+            created_at,
+            mail_sent
+        )
+        VALUES
+        (
+            %s,
+            %s,
+            %s,
+            %s,
+            NOW(),
+            0
+        )
+    """,
+    (
+        equipment["id"],
+        900,
+        fault_name,
+        active
+    ))
 
 def main():
     wait_for_db()
@@ -756,12 +918,18 @@ def main():
             )
             collect_telemetry()
             update_watchdog()
-            #print(
-            #    "[SCHED] Mail",
-            #    flush=True
-            #)
-            #check_and_send()
-            #update_watchdog()
+            print(
+                "[SCHED] Mail défaut",
+                flush=True
+            )
+            check_and_send()
+            update_watchdog()
+            print(
+                "[SCHED] Mail Hebdo",
+                flush=True
+            )
+            check_weekly_repport()
+            update_watchdog()
             print(
                 "[SCHED] Cycle terminé",
                 flush=True
@@ -769,10 +937,12 @@ def main():
             check_mail_queue()
             update_watchdog()
         except Exception as e:
+            import traceback
             print(
                 f"[SCHED ERROR] {e}",
                 flush=True
             )
+            traceback.print_exc()
         update_watchdog()
         time.sleep(INTERVAL)
        

@@ -283,11 +283,15 @@ $db=get_db();
     </div>
     <div class="card mb-4">
         <div class="card-header">
-            <strong>Maintenance</strong>
+            <strong>Fonction avancées</strong>
         </div>
         <div class="card-body">
             <a href="journal.php"class="btn btn-outline-secondary">
             </i>Journal d'audit</a>
+        </div>
+        <div class="card-body">
+            <a href="temperature_alarms.php"class="btn btn-outline-secondary">
+            </i>Alarmes température</a>
         </div>
     </div>
 </main>

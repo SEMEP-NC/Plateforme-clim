@@ -207,3 +207,26 @@ CREATE TABLE mail_queue (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     processed TINYINT DEFAULT 0
 );
+
+CREATE TABLE weekly_reports (
+    week_key VARCHAR(10) PRIMARY KEY,
+    sent_at DATETIME NOT NULL
+);
+
+CREATE TABLE equipment_temperature_alarms (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    equipment_id INT NOT NULL,
+    enabled TINYINT(1) DEFAULT 0,
+    high_threshold DECIMAL(5,1) NULL,
+    low_threshold DECIMAL(5,1) NULL,
+    delay_seconds INT DEFAULT 300,
+    fault_name VARCHAR(255)
+        DEFAULT 'Alarme température reprise',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_equipment_alarm (equipment_id),
+    FOREIGN KEY (equipment_id)
+        REFERENCES equipments(id)
+        ON DELETE CASCADE
+);
