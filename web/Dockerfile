@@ -13,6 +13,7 @@ RUN a2enmod rewrite
 WORKDIR /var/www/html
 
 COPY entrypoint.sh /entrypoint.sh
+COPY php/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 
 RUN chmod +x /entrypoint.sh
 

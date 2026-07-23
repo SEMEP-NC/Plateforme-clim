@@ -18,12 +18,28 @@ if ($user['role'] !== 'admin') {
 $message = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $file = $_FILES['file'] ?? null;
+    if (!$file) {
+        $message = "Aucun fichier reçu.";
+    } else {
+        switch ($file['error']) {
+            case UPLOAD_ERR_OK:
+                break;
+            case UPLOAD_ERR_INI_SIZE:
+            case UPLOAD_ERR_FORM_SIZE:
+                $message = "Le fichier dépasse la taille maximale autorisée.";
+                break;
+            case UPLOAD_ERR_NO_FILE:
+                $message = "Aucun fichier sélectionné.";
+                break;
+            default:
+                $message = "Erreur lors du téléversement.";
+        }
+    }
     $title = trim($_POST['title']);
     $description = trim($_POST['description']);
     $category = trim($_POST['category']);
-    if (!isset($_FILES['file']) || $_FILES['file']['error'] !== 0) {
-        $message = "Erreur lors de l'envoi du fichier";
-    } else {
+    if (empty($message)) {
         $file = $_FILES['file'];
         $allowed = [
             'application/pdf',
@@ -34,9 +50,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ];
         if (!in_array($file['type'], $allowed)) {
             $message = "Type de fichier non autorisé";
-        }
-        elseif ($file['size'] > 20 * 1024 * 1024) {
-            $message = "Fichier trop volumineux (20 Mo maximum)";
         }
         else {
             $upload_dir = "documents/uploads/";
