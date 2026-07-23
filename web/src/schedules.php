@@ -91,14 +91,6 @@ require_login();
             border-radius:15px;
             box-shadow:0 4px 15px rgba(0,0,0,.08);
         }
-        #calendar {
-            background:white;
-            padding:20px;
-            border-radius:15px;
-            width: 900px;
-            max-width: 100%;
-            margin: auto;
-        }
     </style>
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>

@@ -13,10 +13,8 @@ Le projet fournit:
 ## Evolution 
 La liste des evolutions envisagés
 - Logs utilisateurs (a completer)
-- Alarme temperatures (implanté mais a verifier)
-- Etat inter a carte
 - Amelioration de l'outil historique
-- Mise en place d'un affichage sous forme de calendrier du planning
+- Mise en place d'un affichage sous forme de calendrier du planning (a ameliorer)
 - Prise en compte splits et multi splits
 
 ## Debug 

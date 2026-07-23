@@ -132,212 +132,229 @@ $value = isset($_POST['read_gate_status']) ? 1 : 0;
     }
 </style>
 <main class="container flex-grow-1 mt-4">
-    <div class="card mb-4">
-        <div class="card-header">
-            <strong>Utilisateurs</strong>
+    <div class="row g-4">
+        <div class="col-12 col-xl-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <strong>Utilisateurs</strong>
+                </div>
+                <div class="card-body">
+                    <!-- =========================
+                        CREATE USER
+                    ========================= -->
+                                        
+                    <form method="POST" action="create_user.php" class="row g-2">
+                        <div class="col">
+                            <input type="text" name="username" class="form-control" placeholder="Username" required>
+                        </div>
+                        <div class="col">
+                            <input type="password" name="password" class="form-control" placeholder="Password" required>
+                        </div>
+                        <div class="col">
+                            <select name="role" class="form-control">
+                                <option value="user">User</option>
+                                <option value="admin">Admin</option>
+                                <option value="viewer">Visualisation</option>
+                            </select>
+                        </div>
+                        <div class="col">
+                            <button class="btn btn-success w-100">Créer</button>
+                        </div>
+                    </form>
+                    
+
+                    <!-- =========================
+                        USERS TABLE
+                    ========================= -->
+                    <table class="table">
+
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Créé le</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                        <?php foreach ($users as $u): ?>
+                            <tr>
+                                <td><?= $u['id'] ?></td>
+                                <td><?= htmlspecialchars($u['username']) ?></td>
+                                <td>
+                                    <span class="badge bg-<?= $u['role'] === 'admin' ? 'danger' : 'secondary' ?>">
+                                        <?= $u['role'] ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <?= !empty($u['created_at']) 
+                                        ? date('d/m/Y', strtotime($u['created_at'])) 
+                                        : '-' 
+                                    ?>
+                                </td>
+
+                                <td class="d-flex gap-2">
+                                    <!-- RESET PASSWORD -->
+                                    <form method="POST"
+                                            action="reset_password.php"
+                                            onsubmit="return confirm('Réinitialiser le mot de passe de cet utilisateur ?')">
+                                        <input type="hidden" name="id" value="<?= $u['id'] ?>">
+                                        <button type="submit" class="btn btn-sm btn-warning">Reset password</button>
+
+                                    </form>
+                                    <?php if($u['username'] !== 'admin'):?>
+                                    <!-- DELETE -->
+                                    <form method="POST" action="delete_user.php"
+                                        onsubmit="return confirm('Supprimer cet utilisateur ?')">
+
+                                        <input type="hidden" name="id" value="<?= $u['id'] ?>">
+                                        <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
+
+                                    </form>
+                                    <?php endif;?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+
+                        </tbody>
+
+                    </table>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            <!-- =========================
-                CREATE USER
-            ========================= -->
-                                
-            <form method="POST" action="create_user.php" class="row g-2">
-                <div class="col">
-                    <input type="text" name="username" class="form-control" placeholder="Username" required>
+        <div class="col-12 col-xl-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <strong>Fonction avancées</strong>
                 </div>
-                <div class="col">
-                    <input type="password" name="password" class="form-control" placeholder="Password" required>
+                <div class="card-body">
+                    <a href="journal.php"class="btn btn-outline-secondary">
+                    </i>Journal d'audit</a>
+                    <a href="temperature_alarms.php"class="btn btn-outline-secondary">
+                    </i>Alarmes température</a>
                 </div>
-                <div class="col">
-                    <select name="role" class="form-control">
-                        <option value="user">User</option>
-                        <option value="admin">Admin</option>
-                        <option value="viewer">Visualisation</option>
-                    </select>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="form-check form-switch">
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                id="read_gate_status"
+                                name="read_gate_status"
+                                <?= $settings['read_gate_status'] ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="read_gate_status">
+                                Lecture du contrôle externe
+                            </label>
+                            <button
+                                type="submit"
+                                name="valider_gate_control"
+                                class="btn btn-outline-secondary">
+                                Valider
+                            </button>
+                        </div>
+                    </form>
                 </div>
-                <div class="col">
-                    <button class="btn btn-success w-100">Créer</button>
-                </div>
-            </form>
-            
-
-            <!-- =========================
-                USERS TABLE
-            ========================= -->
-            <table class="table">
-
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Username</th>
-                        <th>Role</th>
-                        <th>Créé le</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-
-                <?php foreach ($users as $u): ?>
-                    <tr>
-                        <td><?= $u['id'] ?></td>
-                        <td><?= htmlspecialchars($u['username']) ?></td>
-                        <td>
-                            <span class="badge bg-<?= $u['role'] === 'admin' ? 'danger' : 'secondary' ?>">
-                                <?= $u['role'] ?>
-                            </span>
-                        </td>
-                        <td><?= $u['created_at'] ?></td>
-
-                        <td class="d-flex gap-2">
-                            <!-- RESET PASSWORD -->
-                            <form method="POST"
-                                    action="reset_password.php"
-                                    onsubmit="return confirm('Réinitialiser le mot de passe de cet utilisateur ?')">
-                                <input type="hidden" name="id" value="<?= $u['id'] ?>">
-                                <button type="submit" class="btn btn-sm btn-warning">Reset password</button>
-
-                            </form>
-                            <?php if($u['username'] !== 'admin'):?>
-                            <!-- DELETE -->
-                            <form method="POST" action="delete_user.php"
-                                onsubmit="return confirm('Supprimer cet utilisateur ?')">
-
-                                <input type="hidden" name="id" value="<?= $u['id'] ?>">
-                                <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
-
-                            </form>
-                            <?php endif;?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-
-                </tbody>
-
-            </table>
+            </div>
         </div>
     </div>
-    <div class="card mb-4">
-        <div class="card-header">
-            <strong>Compte SMTP</strong>
+    <div class="row g-4">
+        <div class="col-12 col-xl-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <strong>Compte SMTP</strong>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <label>Serveur SMTP</label>
+                                <input class="form-control" name="smtp_host" value="<?=htmlspecialchars($smtp['smtp_host']??'')?>">
+                            </div>
+                            <div class="col-md-4">
+                                <label>Port</label>
+                                <input class="form-control" name="smtp_port" value="<?=htmlspecialchars($smtp['smtp_port']??587)?>">
+                            </div>
+                        </div>
+                        <label class="mt-3">Utilisateur SMTP</label>
+                        <input class="form-control" name="smtp_user" value="<?=htmlspecialchars($smtp['smtp_user']??'')?>">
+
+                        <label class="mt-3">Mot de passe</label>
+                        <input type="password" class="form-control" name="smtp_password" placeholder="laisser vide pour conserver">
+
+                        <label class="mt-3">Sécurité</label>
+                        <select class="form-select" name="smtp_secure">
+                            <option value="tls">TLS</option>
+                            <option value="ssl">SSL</option>
+                            <option value="none">Aucune</option>
+                        </select>
+
+                        <label class="mt-3">Nom expéditeur</label>
+                        <input class="form-control" name="sender_name" value="<?=htmlspecialchars($smtp['sender_name']??'')?>">
+
+                        <label class="mt-3">Email expéditeur</label>
+                        <input class="form-control" name="sender_email" value="<?=htmlspecialchars($smtp['sender_email']??'')?>">
+
+                        <div class="form-check mt-3">
+                            <input 
+                            class="form-check-input"
+                            type="checkbox"
+                            name="enabled"
+                            <?=($smtp['enabled']??0)?'checked':''?>
+                            >
+                            <label>Activer les envois</label>
+                        </div>
+                        <br>
+                        <button class="btn btn-success" name="save_smtp">💾 Sauvegarder</button>
+                    </form>
+                    <form method="POST" class="mt-3">
+                        <button
+                            type="submit"
+                            name="send_test_mail"
+                            class="btn btn-outline-secondary">
+                            Envoyer un mail de test
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            <form method="POST">
-                <div class="row">
-                    <div class="col-md-8">
-                        <label>Serveur SMTP</label>
-                        <input class="form-control" name="smtp_host" value="<?=htmlspecialchars($smtp['smtp_host']??'')?>">
+        <div class="col-12 col-xl-6">
+            <div class="card mb-4">
+            <div class="card-header">
+                <strong>Destinataires mail</strong>
+            </div>
+            <div class="card-body">
+                <form method="POST" class="row g-2">
+                    <div class="col">
+                        <input class="form-control" name="name" placeholder="Nom">
                     </div>
-                    <div class="col-md-4">
-                        <label>Port</label>
-                        <input class="form-control" name="smtp_port" value="<?=htmlspecialchars($smtp['smtp_port']??587)?>">
+                    <div class="col">
+                        <input class="form-control" name="email" placeholder="Email">
                     </div>
-                </div>
-                <label class="mt-3">Utilisateur SMTP</label>
-                <input class="form-control" name="smtp_user" value="<?=htmlspecialchars($smtp['smtp_user']??'')?>">
-
-                <label class="mt-3">Mot de passe</label>
-                <input type="password" class="form-control" name="smtp_password" placeholder="laisser vide pour conserver">
-
-                <label class="mt-3">Sécurité</label>
-                <select class="form-select" name="smtp_secure">
-                    <option value="tls">TLS</option>
-                    <option value="ssl">SSL</option>
-                    <option value="none">Aucune</option>
-                </select>
-
-                <label class="mt-3">Nom expéditeur</label>
-                <input class="form-control" name="sender_name" value="<?=htmlspecialchars($smtp['sender_name']??'')?>">
-
-                <label class="mt-3">Email expéditeur</label>
-                <input class="form-control" name="sender_email" value="<?=htmlspecialchars($smtp['sender_email']??'')?>">
-
-                <div class="form-check mt-3">
-                    <input 
-                    class="form-check-input"
-                    type="checkbox"
-                    name="enabled"
-                    <?=($smtp['enabled']??0)?'checked':''?>
-                    >
-                    <label>Activer les envois</label>
-                </div>
-                <br>
-                <button class="btn btn-success" name="save_smtp">💾 Sauvegarder</button>
-            </form>
-            <form method="POST" class="mt-3">
-                <button
-                    type="submit"
-                    name="send_test_mail"
-                    class="btn btn-outline-secondary">
-                    Envoyer un mail de test
-                </button>
-            </form>
-        </div>
-    </div>
-    <div class="card mb-4">
-        <div class="card-header">
-            <strong>Destinataires mail</strong>
-        </div>
-        <div class="card-body">
-            <form method="POST" class="row g-2">
-                <div class="col">
-                    <input class="form-control" name="name" placeholder="Nom">
-                </div>
-                <div class="col">
-                    <input class="form-control" name="email" placeholder="Email">
-                </div>
-                <div class="col">
-                    <button class="btn btn-primary"name="add_recipient">Ajouter</button>
-                </div>
-            </form>
-            <hr>
-            <table class="table">
-                <tr>
-                    <th>Nom</th>
-                    <th>Email</th>
-                    <th>Actif</th>
-                </tr>
-                <?php foreach($recipients as $r): ?>
+                    <div class="col">
+                        <button class="btn btn-primary"name="add_recipient">Ajouter</button>
+                    </div>
+                </form>
+                <hr>
+                <table class="table">
                     <tr>
-                        <td><?=htmlspecialchars($r['name'])?></td>
-                        <td><?=htmlspecialchars($r['email'])?></td>
-                        <td><?= $r['enabled']?'Oui':'Non' ?></td>
+                        <th>Nom</th>
+                        <th>Email</th>
+                        <th>Actif</th>
                     </tr>
-                <?php endforeach; ?>    
-            </table>
+                    <?php foreach($recipients as $r): ?>
+                        <tr>
+                            <td><?=htmlspecialchars($r['name'])?></td>
+                            <td><?=htmlspecialchars($r['email'])?></td>
+                            <td><?= $r['enabled']?'Oui':'Non' ?></td>
+                        </tr>
+                    <?php endforeach; ?>    
+                </table>
+            </div>
+            </div>
         </div>
-    </div>
-    <div class="card mb-4">
-        <div class="card-header">
-            <strong>Fonction avancées</strong>
-        </div>
-        <div class="card-body">
-            <a href="journal.php"class="btn btn-outline-secondary">
-            </i>Journal d'audit</a>
-            <a href="temperature_alarms.php"class="btn btn-outline-secondary">
-            </i>Alarmes température</a>
-        </div>
-        <div class="card-body">
-            <form method="POST">
-                <div class="form-check form-switch">
-                    <input
-                        class="form-check-input"
-                        type="checkbox"
-                        id="read_gate_status"
-                        name="read_gate_status"
-                        <?= $settings['read_gate_status'] ? 'checked' : '' ?>>
-                    <label class="form-check-label" for="read_gate_status">
-                        Lecture du contrôle externe
-                    </label>
-                    <button
-                        type="submit"
-                        name="valider_gate_control"
-                        class="btn btn-outline-secondary">
-                        Valider
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+     </div>
 </main>
 <?php require "includes/footer.php"; ?>

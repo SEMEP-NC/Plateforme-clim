@@ -199,6 +199,142 @@
         border-color: #495057;
     }
 
+/* ================================
+       FullCalendar mode sombre
+       ================================ */
 
+    #calendar {
+
+        --fc-page-bg-color: #1e1e1e;
+        --fc-neutral-bg-color: #252525;
+        --fc-border-color: #444;
+
+        --fc-today-bg-color: rgba(255,255,255,0.08);
+
+        --fc-list-event-hover-bg-color: #333;
+        --fc-highlight-color: rgba(255,255,255,0.1);
+
+        background-color:#1e1e1e;
+        color:#e0e0e0;
+
+    }
+
+
+    .fc {
+
+        color:#e0e0e0;
+
+    }
+
+
+    /* Titre mois/semaine */
+
+    .fc .fc-toolbar-title {
+
+        color:#ffffff;
+
+    }
+
+
+    /* En-têtes jours */
+
+    .fc .fc-col-header-cell {
+
+        background-color:#252525;
+
+        border-color:#444;
+
+    }
+
+
+    .fc .fc-col-header-cell-cushion {
+
+        color:#ffffff;
+
+    }
+
+
+    /* Numéros des jours */
+
+    .fc .fc-daygrid-day-number {
+
+        color:#e0e0e0;
+
+    }
+
+
+    /* Cellules */
+
+    .fc .fc-daygrid-day {
+
+        background-color:#1e1e1e;
+
+        border-color:#444;
+
+    }
+
+
+    /* Boutons navigation */
+
+    .fc .fc-button {
+
+        background-color:#343a40;
+
+        border-color:#495057;
+
+        color:#ffffff;
+
+    }
+
+
+    .fc .fc-button:hover,
+    .fc .fc-button-active {
+
+        background-color:#495057;
+
+        border-color:#6c757d;
+
+    }
+
+
+    /* Vue liste */
+
+    .fc .fc-list {
+
+        border-color:#444;
+
+    }
+
+
+    .fc .fc-list-day-cushion {
+
+        background-color:#252525;
+
+        color:#ffffff;
+
+    }
+
+
+    .fc .fc-list-event:hover td {
+
+        background-color:#333;
+
+    }
+
+
+    /* Heure sur vue semaine */
+
+    .fc .fc-timegrid-slot-label {
+
+        color:#cccccc;
+
+    }
+
+
+    .fc .fc-timegrid-axis {
+
+        color:#cccccc;
+
+    }
 
 }

@@ -22,5 +22,5 @@ if ($_SESSION['user']['id'] == $id) {
 $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
 $stmt->execute([$id]);
 
-header("Location: users.php");
+header("Location: admin.php");
 exit;

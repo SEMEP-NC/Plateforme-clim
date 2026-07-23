@@ -149,11 +149,11 @@ foreach($stmt as $row){
 
 
     /*
-       Génération 8 semaines
+       Génération 52 semaines
     */
 
 
-    for($i=0;$i<56;$i++){
+    for($i=0;$i<364;$i++){
 
 
         $date=clone $start;
