@@ -197,15 +197,32 @@ def health():
 @app.post("/write")
 async def write_unified(payload: WritePayload):
     job = payload.dict()
+
     log.info("[WRITE API] enqueue payload=%s", job)
+
+    loop = asyncio.get_running_loop()
+    future = loop.create_future()
+
+    # Le worker utilisera ce Future pour renvoyer le résultat réel
+    job["future"] = future
+
     await write_queue.put(job)
 
-    return {"success": True, "queued": True}
+    try:
+        return await asyncio.wait_for(future, timeout=10)
+    except asyncio.TimeoutError:
+        log.error("[WRITE API] timeout waiting for worker")
+        return {
+            "success": False,
+            "error": "Write timeout"
+        }
 
 
 async def write_worker():
     while True:
         job = await write_queue.get()
+
+        future = job["future"]
 
         try:
             ip = job["ip"]
@@ -220,10 +237,20 @@ async def write_worker():
                 client = get_client(ip, port)
 
                 if not ensure_connected(client, ip, port):
+                    if not future.done():
+                        future.set_result({
+                            "success": False,
+                            "error": f"Cannot connect to {ip}:{port}"
+                        })
                     continue
 
                 if mode == "coil":
-                    result = client.write_coil(address, bool(value), device_id=device_id)
+                    result = client.write_coil(
+                        address,
+                        bool(value),
+                        device_id=device_id
+                    )
+
                 elif mode == "coils":
                     safe_values = [bool(v) for v in values]
 
@@ -232,8 +259,10 @@ async def write_worker():
                         safe_values,
                         device_id=device_id
                     )
+
                 elif mode == "register":
-                      # CAS MULTI REGISTRES
+
+                    # Plusieurs registres
                     if values is not None:
                         safe_values = [
                             int(v) if v is not None else 0
@@ -246,7 +275,7 @@ async def write_worker():
                             device_id=device_id
                         )
 
-                    # CAS SINGLE REGISTER (compat legacy)
+                    # Un seul registre
                     else:
                         safe_value = 0 if value is None else int(value)
 
@@ -255,17 +284,45 @@ async def write_worker():
                             [safe_value],
                             device_id=device_id
                         )
+
                 else:
                     log.error("[WRITE] invalid type %s", mode)
+
+                    if not future.done():
+                        future.set_result({
+                            "success": False,
+                            "error": f"Invalid type '{mode}'"
+                        })
+
                     continue
 
                 if result.isError():
-                    log.error("[WRITE ERROR] Modbus exception: %s", result)
+                    log.error("[WRITE ERROR] %s", result)
+
+                    if not future.done():
+                        future.set_result({
+                            "success": False,
+                            "error": str(result)
+                        })
+
                 else:
-                    log.info("[WRITE SUCCESS] OK")
+                    log.info("[WRITE SUCCESS] %s:%s addr=%s",
+                             ip, port, address)
+
+                    if not future.done():
+                        future.set_result({
+                            "success": True
+                        })
 
         except Exception as e:
             log.exception("[WRITE WORKER EXCEPTION] %s", e)
+
+            if not future.done():
+                future.set_result({
+                    "success": False,
+                    "error": str(e)
+                })
+
         finally:
             write_queue.task_done()
 

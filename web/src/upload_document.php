@@ -1,7 +1,6 @@
 <?php
 
 require 'auth.php';
-session_start();
 require_login();
 
 require 'config/db.php';
@@ -18,6 +17,7 @@ if ($user['role'] !== 'admin') {
 $message = "";
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf();
     $file = $_FILES['file'] ?? null;
     if (!$file) {
         $message = "Aucun fichier reçu.";
@@ -36,75 +36,102 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $message = "Erreur lors du téléversement.";
         }
     }
-    $title = trim($_POST['title']);
-    $description = trim($_POST['description']);
-    $category = trim($_POST['category']);
+    $title = mb_substr(trim($_POST['title'] ?? ''),0,100);
+    $description = mb_substr(
+        trim($_POST['description'] ?? ''),
+        0,
+        1000
+    );
+    $category = mb_substr(
+        trim($_POST['category'] ?? ''),
+        0,
+        50
+    );
     if (empty($message)) {
         $file = $_FILES['file'];
-        $allowed = [
-            'application/pdf',
-            'image/jpeg',
-            'image/png',
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        $allowed_types = [
+            'application/pdf' => 'pdf',
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
         ];
-        if (!in_array($file['type'], $allowed)) {
-            $message = "Type de fichier non autorisé";
+        // Taille maximale 20 Mo
+        if ($file['size'] > 20 * 1024 * 1024) {
+            $message = "Fichier trop volumineux (20 Mo maximum).";
         }
         else {
-            $upload_dir = "documents/uploads/";
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir,0755,true);
-            }
-            // Nom sécurisé
-            $extension = pathinfo(
-                $file['name'],
-                PATHINFO_EXTENSION
-            );
-            $filename = uniqid("doc_").".".$extension;
-            $destination = $upload_dir.$filename;
-            if (move_uploaded_file(
-                $file['tmp_name'],
-                $destination
-            )) {
-                $sql="
-                INSERT INTO documents
-                (
-                    title,
-                    description,
-                    category,
-                    filename,
-                    original_name,
-                    mime_type,
-                    file_size,
-                    uploaded_by
-                )
-                VALUES
-                (?,?,?,?,?,?,?,?)
-                ";
-                $stmt=$db->prepare($sql);
-                $stmt->execute([
-
-                    $title,
-                    $description,
-                    $category,
-                    $filename,
-                    $file['name'],
-                    $file['type'],
-                    $file['size'],
-                    $user['id']
-
-                ]);
-                $message="Document ajouté avec succès";
-                audit(
-                        'ADD_DOCUMENT',
-                        "Ajout du document '$title'");
-
-                header("Location: documents.php");
-                exit;
+            // Analyse réelle du fichier
+            if (!is_uploaded_file($file['tmp_name'])) {
+                $message = "Fichier uploadé invalide.";
             }
             else {
-                $message="Impossible de déplacer le fichier";
+                $finfo = new finfo(FILEINFO_MIME_TYPE);
+                $mime = $finfo->file($file['tmp_name']);
+                if (!array_key_exists($mime, $allowed_types)) {
+                    $message = "Type de fichier non autorisé.";
+                }
+                else {
+                    // Extension imposée par le serveur
+                    $extension = $allowed_types[$mime];
+                    $upload_dir = "/var/www/storage/documents/";
+                    if (!is_dir($upload_dir)) {
+                        if (!mkdir($upload_dir,0750,true)) {
+                            $message = "Impossible de créer le dossier de stockage.";
+                        }
+                    }
+                    if (empty($message)) {
+                        // Nom aléatoire sécurisé
+                        $filename = bin2hex(random_bytes(20))
+                                . "."
+                                . $extension;
+                        $destination = $upload_dir . $filename;
+                        if (move_uploaded_file(
+                            $file['tmp_name'],
+                            $destination
+                        )) {
+                            chmod($destination,0640);
+                            $stmt=$db->prepare(
+                            "
+                            INSERT INTO documents
+                            (
+                                title,
+                                description,
+                                category,
+                                filename,
+                                original_name,
+                                mime_type,
+                                file_size,
+                                uploaded_by
+                            )
+                            VALUES
+                            (?,?,?,?,?,?,?,?)
+                            "
+                            );
+                            $stmt->execute([
+                                $title,
+                                $description,
+                                $category,
+                                $filename,
+                                mb_substr(
+                                    basename($file['name']),
+                                    0,
+                                    255
+                                ),
+                                $mime,
+                                $file['size'],
+                                $user['id']
+                            ]);
+                            audit(
+                                'ADD_DOCUMENT',
+                                "Ajout du document '$title'"
+                            );
+                            header("Location: documents.php");
+                            exit;
+                        }
+                        else {
+                            $message = "Impossible de déplacer le fichier.";
+                        }
+                    }
+                }
             }
         }
     }
@@ -116,7 +143,7 @@ require "includes/user_menu.php";
 <main class="container flex-grow-1 mt-4">
     <div class="card mb-4">
         <div class="card-header">
-            <strong>Ajouter un documents</strong>
+            <strong>Ajouter un document</strong>
         </div>
         <div class="card-body">
             <div class="container mt-4">
@@ -125,6 +152,7 @@ require "includes/user_menu.php";
                 </div>
                 <?php endif; ?>
                 <form method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                     <div class="mb-3">
                         <label class="form-label">Titre</label>
                         <input class="form-control" name="title" required>
@@ -145,7 +173,7 @@ require "includes/user_menu.php";
                     </div>
                     <div class="mb-3">
                         <label>Fichier</label>
-                        <input type="file" class="form-control" name="file" required>
+                        <input type="file" class="form-control" name="file" accept=".pdf,.jpg,.jpeg,.png" required>
                     </div>
                     <button class="btn btn-primary"><i class="bi bi-upload"></i>Envoyer</button>
                     <a href="documents.php" class="btn btn-secondary">Retour</a>

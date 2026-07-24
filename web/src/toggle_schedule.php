@@ -1,10 +1,10 @@
 <?php
 require 'auth.php';
-session_start();
+require_login();
 require 'config/db.php';
 require 'lib/audit.php';
 $pdo = get_db();
-
+verify_csrf();
 $id = (int)$_POST['id'];
 
 $pdo->prepare("

@@ -1,11 +1,11 @@
 <?php
 require 'config/db.php';
-session_start();
-
+require 'auth.php';
+require_admin();
 $pdo = get_db();
 
 $id = (int)($_POST['id'] ?? 0);
-
+verify_csrf();
 if ($id <= 0) {
     die("Invalid ID");
 }

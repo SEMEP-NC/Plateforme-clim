@@ -1,6 +1,5 @@
 <?php
 require 'auth.php';
-session_start();
 require_login();
 require 'config/db.php';
 require 'lib/audit.php';
@@ -78,6 +77,7 @@ function getGateStatusBadge($status)
 |--------------------------------------------------------------------------
 */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_group'])) {
+    verify_csrf();
     $name = trim($_POST['group_name']);
     if ($name !== '') {
         $db->prepare("INSERT INTO groups_hvac(name) VALUES (?)")->execute([$name]);
@@ -98,6 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_group'])) {
 |--------------------------------------------------------------------------
 */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_group'])) {
+    verify_csrf();
     $id = (int)$_POST['group_id'];
     // Récupération du nom avant suppression
     $stmt = $db->prepare("SELECT name FROM groups_hvac WHERE id = ?");
@@ -132,6 +133,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_group'])) {
 |--------------------------------------------------------------------------
 */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_groups']) && isset($_POST['equipments'])) {
+    verify_csrf();
     foreach ($_POST['equipments'] as $groupId => $equipmentIds) {
         $groupId = (int)$groupId;
         $db->prepare("DELETE FROM equipment_groups WHERE group_id = ?")->execute([$groupId]);
@@ -160,6 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_groups']) && iss
 |--------------------------------------------------------------------------
 */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_equipment_groups']) && isset($_POST['groups'])) {
+    verify_csrf();
     foreach ($_POST['groups'] as $equipmentId => $groupIds) {
         $equipmentId = (int)$equipmentId;
         $db->prepare("DELETE FROM equipment_groups WHERE equipment_id = ?")->execute([$equipmentId]);
@@ -188,6 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_equipment_groups
 |--------------------------------------------------------------------------
 */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
+    verify_csrf();
 
     $stmt = $db->prepare("
         UPDATE equipments 
@@ -219,6 +223,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_all'])) {
 |--------------------------------------------------------------------------
 */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) {
+    verify_csrf();
     $id = (int)$_POST['id'];
     $db->prepare("DELETE FROM equipments WHERE id=?")->execute([$id]);
     $stmt = $db->prepare("SELECT name FROM equipments WHERE id=?");
@@ -271,6 +276,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             <div class="card-header"><strong>Groupes</strong></div>
             <div class="card-body">
                 <form method="POST" class="row g-2 mb-3">
+                    <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                     <div class="col-md-8">
                         <input type="text" name="group_name" class="form-control" placeholder="Nouveau groupe">
                     </div>
@@ -313,6 +319,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                             <?php if ($_SESSION['user']['role'] === 'admin'): ?>
                                 <td>
                                     <form method="POST">
+                                        <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                                         <input type="hidden" name="group_id" value="<?= $group['id'] ?>">
                                         <button class="btn btn-danger btn-sm" name="delete_group" onclick="return confirm('Supprimer ce groupe ?')">❌</button>
                                     </form>
@@ -328,6 +335,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
         <div class="modal fade" id="groupCommandModal" tabindex="-1">
             <div class="modal-dialog modal-lg">
                 <form id="groupCommandForm" class="modal-content">
+                    <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                     <input type="hidden" id="group_id">
                     <div class="modal-header">
                         <h5 class="modal-title">Commande groupe</h5>
@@ -468,6 +476,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             <div class="modal fade" id="groupModal<?= $group['id'] ?>" tabindex="-1">
                 <div class="modal-dialog">
                     <form method="POST" class="modal-content">
+                        <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                         <div class="modal-header">
                             <h5 class="modal-title">Unités - <?= htmlspecialchars($group['name']) ?></h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -497,6 +506,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             </div>
             <div class="card-body">
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                     <?php if ($_SESSION['user']['role'] === 'admin'): ?>
                         <div class="d-flex justify-content-between mb-3">
                             <button type="submit" name="save_all" class="btn btn-success">
@@ -670,6 +680,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                     <?php if ($_SESSION['user']['role'] === 'admin'): ?>
                                         <td>
                                             <form method="POST">
+                                                <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                                                 <input type="hidden" name="id" value="<?= $equipment['id'] ?>">
                                                 <button class="btn btn-danger btn-sm" name="delete_equipment" onclick="return confirm('Supprimer cet équipement ?')">❌</button>
                                             </form>
@@ -689,6 +700,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             <div class="modal fade" id="equipModal<?= $equipment['id'] ?>" tabindex="-1">
                 <div class="modal-dialog">
                     <form method="POST" class="modal-content">
+                        <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                         <div class="modal-header">
                             <h5 class="modal-title">Groupes - <?= htmlspecialchars($equipment['name']) ?></h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -714,6 +726,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
         <div class="modal fade" id="commandModal" tabindex="-1">
             <div class="modal-dialog modal-lg">
                 <form id="commandForm">
+                    <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                     <input type="hidden" id="equipment_id" name="equipment_id">
                     <div class="modal-content">
                         <div class="modal-header">

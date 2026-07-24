@@ -1,4 +1,6 @@
 <?php
+require 'auth.php';
+require_login();
 require 'config/db.php';
 $pdo = get_db();
 $events = [];

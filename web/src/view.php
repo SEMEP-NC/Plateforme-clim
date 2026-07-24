@@ -1,6 +1,5 @@
 <?php
 require 'auth.php';
-session_start();
 require_login();
 require 'config/db.php';
 
@@ -111,105 +110,105 @@ function getGateStatusBadge($status)
                 <strong>Unités</strong>
             </div>
             <div class="card-body">
-                <form method="POST">
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-striped align-middle" id="equipmentsTable">
-                            <thead>
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped align-middle" id="equipmentsTable">
+                        <thead>
+                            <tr>
+                                <th>Localisation
+                                    <div class="dropdown d-inline">
+                                        <button 
+                                            class="btn btn-sm"
+                                            type="button"
+                                            data-bs-toggle="dropdown">
+                                            🔽
+                                        </button>
+                                        <ul class="dropdown-menu p-2" style="max-height:250px;overflow:auto">
+                                            <?php foreach ($localisations as $loc): ?>
+                                                <li>
+                                                    <label class="dropdown-item">
+                                                        <input 
+                                                            type="checkbox"
+                                                            class="form-check-input me-2 localisation-filter"
+                                                            value="<?= htmlspecialchars($loc) ?>">
+                                                        <?= htmlspecialchars($loc) ?>
+                                                    </label>
+                                                </li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    </div>
+                                </th>
+                                <th data-sort="name" class="sortable">
+                                    Nom <span>↕</span>
+                                </th>
+
+                                <th data-sort="ui" class="sortable">
+                                    UI <span>↕</span>
+                                </th>
+                                
+                                <th data-sort="state" class="sortable">
+                                    État <span>↕</span>
+                                </th>
+
+                                <th data-sort="fault" class="sortable">
+                                    Défaut <span>↕</span>
+                                </th>
+                                <?php if (!empty($settings['read_gate_status'])): ?>
+                                    <th data-sort="gate" class="sortable">
+                                        Contrôle externe <span>↕</span>
+                                    </th>
+                                <?php endif; ?>
+                                <th data-sort="temp" class="sortable">
+                                    Temp reprise <span>↕</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($equipments as $equipment): ?>
                                 <tr>
-                                    <th>Localisation
-                                        <div class="dropdown d-inline">
-                                            <button 
-                                                class="btn btn-sm"
-                                                type="button"
-                                                data-bs-toggle="dropdown">
-                                                🔽
-                                            </button>
-                                            <ul class="dropdown-menu p-2" style="max-height:250px;overflow:auto">
-                                                <?php foreach ($localisations as $loc): ?>
-                                                    <li>
-                                                        <label class="dropdown-item">
-                                                            <input 
-                                                                type="checkbox"
-                                                                class="form-check-input me-2 localisation-filter"
-                                                                value="<?= htmlspecialchars($loc) ?>">
-                                                            <?= htmlspecialchars($loc) ?>
-                                                        </label>
-                                                    </li>
-                                                <?php endforeach; ?>
-                                            </ul>
-                                        </div>
-                                    </th>
-                                    <th data-sort="name" class="sortable">
-                                        Nom <span>↕</span>
-                                    </th>
+                                    <td data-localisation="<?= htmlspecialchars($equipment['localisation'] ?? '') ?>">
+                                        <?= htmlspecialchars($equipment['localisation'] ?? '') ?>
+                                    </td>
+                                    <td data-sort="<?= htmlspecialchars($equipment['name']) ?>">
+                                        <?= htmlspecialchars($equipment['name']) ?>
+                                    </td>
 
-                                    <th data-sort="ui" class="sortable">
-                                        UI <span>↕</span>
-                                    </th>
                                     
-                                    <th data-sort="state" class="sortable">
-                                        État <span>↕</span>
-                                    </th>
-
-                                    <th data-sort="fault" class="sortable">
-                                        Défaut <span>↕</span>
-                                    </th>
-                                    <?php if (!empty($settings['read_gate_status'])): ?>
-                                        <th data-sort="gate" class="sortable">
-                                            Contrôle externe <span>↕</span>
-                                        </th>
-                                    <?php endif; ?>
-                                    <th data-sort="temp" class="sortable">
-                                        Temp reprise <span>↕</span>
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($equipments as $equipment): ?>
-                                    <tr>
-                                        <td data-localisation="<?= htmlspecialchars($equipment['localisation'] ?? '') ?>">
-                                            <?= htmlspecialchars($equipment['localisation'] ?? '') ?>
-                                        </td>
-                                        <td data-sort="<?= htmlspecialchars($equipment['name']) ?>">
-                                            <?= htmlspecialchars($equipment['name']) ?>
-                                        </td>
-
-                                        
-                                        <td data-sort="<?= (int)$equipment['UI'] ?>">
-                                            <?= htmlspecialchars($equipment['UI']) ?>
-                                        </td>
-                                        <td data-sort="<?= !empty($equipment['state']) ? 1 : 0 ?>">
-                                            <?php if (!empty($equipment['state'])): ?>
-                                                <span class="badge bg-success">ON</span>
-                                            <?php else: ?>
-                                                <span class="badge bg-secondary">OFF</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td data-sort="<?= !empty($equipment['fault']) ? 1 : 0 ?>">
-                                            <?php if (!empty($equipment['fault'])): ?>
-                                                <span class="badge bg-danger blink">DÉFAUT</span>
-                                            <?php else: ?>
-                                                <span class="badge bg-success">NORMAL</span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <?php if (!empty($settings['read_gate_status'])): ?>
-                                            <td>
-                                                <span class="badge bg-<?= getGateStatusBadge($equipment['gate_status']) ?>">
-                                                    <?= htmlspecialchars(getGateStatusLabel($equipment['gate_status'])) ?>
-                                                </span>
-                                            </td>
+                                    <td data-sort="<?= (int)$equipment['UI'] ?>">
+                                        <?= htmlspecialchars($equipment['UI']) ?>
+                                    </td>
+                                    <td data-sort="<?= !empty($equipment['state']) ? 1 : 0 ?>">
+                                        <?php if (!empty($equipment['state'])): ?>
+                                            <span class="badge bg-success">ON</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-secondary">OFF</span>
                                         <?php endif; ?>
-                                        <td data-sort="<?= $equipment['return_temp'] ?? -999 ?>">
-                                            <?= $equipment['return_temp'] !== null
-                                                ? number_format($equipment['return_temp'], 1) . ' °C'
-                                                : '-' ?>
+                                    </td>
+                                    <td data-sort="<?= !empty($equipment['fault']) ? 1 : 0 ?>">
+                                        <?php if (!empty($equipment['fault'])): ?>
+                                            <span class="badge bg-danger blink">DÉFAUT</span>
+                                        <?php else: ?>
+                                            <span class="badge bg-success">NORMAL</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <?php if (!empty($settings['read_gate_status'])): ?>
+                                        <td>
+                                            <span class="badge bg-<?= getGateStatusBadge($equipment['gate_status']) ?>">
+                                                <?= htmlspecialchars(getGateStatusLabel($equipment['gate_status'])) ?>
+                                            </span>
                                         </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </form>
+                                    <?php endif; ?>
+                                    <td data-sort="<?= $equipment['return_temp'] ?? -999 ?>">
+                                        <?= $equipment['return_temp'] !== null
+                                            ? number_format($equipment['return_temp'], 1) . ' °C'
+                                            : '-' ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                
             </div>
         </div>
 

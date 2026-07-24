@@ -1,7 +1,6 @@
 <?php
 
 require 'auth.php';
-session_start();
 require_admin();
 require 'config/db.php';
 
@@ -60,6 +59,7 @@ require "includes/user_menu.php";
                     <?php foreach($equipments as $e): ?>
                         <tr>
                             <form method="post" action="save_temperature_alarm.php">
+                                <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                                 <input type="hidden" name="equipment_id" value="<?= $e['id'] ?>">
                                 <td>UI<?= $e['UI'] ?></td>
                                 <td><?= htmlspecialchars($e['name']) ?></td>

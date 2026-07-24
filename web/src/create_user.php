@@ -2,7 +2,7 @@
 
 require 'config/db.php';
 require 'auth.php';
-session_start();
+
 require_admin();
 
 $pdo = get_db();

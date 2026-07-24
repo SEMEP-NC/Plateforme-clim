@@ -1,11 +1,11 @@
 <?php
 require 'auth.php';
-session_start();
+
 require_login();
 require 'config/db.php';
 $db = get_db();
 require 'lib/audit.php';
-$user=$_SESSION['user'];
+$user=current_user();
 
 if($user['role'] !== 'admin'){
     die("Accès refusé");

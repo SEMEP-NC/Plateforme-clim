@@ -1,12 +1,12 @@
 <?php
 require 'auth.php';
-session_start();
+require_login();
 require 'config/db.php';
 require 'lib/audit.php';
 $pdo = get_db();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
+    verify_csrf();
     $id = (int)$_POST['id'];
 
     $stmt = $pdo->prepare("DELETE FROM schedules WHERE id = ?");

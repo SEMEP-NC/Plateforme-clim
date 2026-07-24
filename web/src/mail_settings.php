@@ -1,7 +1,6 @@
 <?php
 
     require 'auth.php';
-    session_start();
     require_login();
 
     require 'config/db.php';
@@ -16,7 +15,7 @@
     /*SAVE SMTP*/
 
     if(isset($_POST['save_smtp'])){
-
+        verify_csrf();
         $stmt=$db->prepare("
         UPDATE mail_accounts SET
             smtp_host=?,
@@ -47,6 +46,7 @@
     /*ADD DESTINATION*/
 
     if(isset($_POST['add_recipient'])){
+        verify_csrf();
         $db->prepare("
             INSERT INTO mail_recipients
             (name,email)
@@ -80,6 +80,7 @@
         </div>
         <div class="card-body">
             <form method="POST">
+                <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                 <div class="row">
                     <div class="col-md-8">
                         <label>Serveur SMTP</label>
@@ -133,6 +134,7 @@
         <div class="card-header">Destinataires mail</div>
         <div class="card-body">
             <form method="POST" class="row g-2">
+                <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                 <div class="col">
                     <input class="form-control" name="name" placeholder="Nom">
                 </div>

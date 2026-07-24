@@ -1,6 +1,6 @@
 <?php
-
-session_start();
+require 'auth.php';
+require_login();
 require 'config/db.php';
 
 $db = get_db();
@@ -8,6 +8,7 @@ $discovery_result = null;
 $error_message = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf();
     $start_ip = trim($_POST['start_ip'] ?? '');
     $end_ip = trim($_POST['end_ip'] ?? '');
     $ports = trim($_POST['ports'] ?? '');
@@ -152,6 +153,7 @@ $units = $db->query("
         <?php endif; ?>
 
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
             <div class="card mb-4">
                 <div class="card-header">
                     <strong>Configurations</strong>

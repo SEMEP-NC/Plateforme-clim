@@ -1,6 +1,5 @@
 <?php
 require 'auth.php';
-session_start();
 require_login();
 
 $user = $_SESSION['user'];

@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install -y \
 RUN a2enmod rewrite
 
 WORKDIR /var/www/html
+RUN mkdir -p /var/www/storage/documents \
+    && chown -R www-data:www-data /var/www/storage
 
 COPY entrypoint.sh /entrypoint.sh
 COPY php/uploads.ini /usr/local/etc/php/conf.d/uploads.ini

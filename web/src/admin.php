@@ -1,7 +1,6 @@
 <?php
 require 'config/db.php';
 require 'auth.php';
-session_start();
 require_admin();
 
 $pdo = get_db();
@@ -48,6 +47,7 @@ $value = isset($_POST['read_gate_status']) ? 1 : 0;
     /*SAVE SMTP*/   
 
     if(isset($_POST['save_smtp'])){
+        verify_csrf();
         $password=$_POST['smtp_password'];
 
         if($password==""){
@@ -83,6 +83,7 @@ $value = isset($_POST['read_gate_status']) ? 1 : 0;
     /*ADD DESTINATION*/
 
     if(isset($_POST['add_recipient'])){
+        verify_csrf();
         $db->prepare("
             INSERT INTO mail_recipients
             (name,email)
@@ -96,7 +97,7 @@ $value = isset($_POST['read_gate_status']) ? 1 : 0;
     }
     /* MAIL TEST */
     if(isset($_POST['send_test_mail'])){
-
+        verify_csrf();
         $db->prepare("
             INSERT INTO mail_queue(type)
             VALUES('TEST')
@@ -144,6 +145,7 @@ $value = isset($_POST['read_gate_status']) ? 1 : 0;
                     ========================= -->
                                         
                     <form method="POST" action="create_user.php" class="row g-2">
+                        <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                         <div class="col">
                             <input type="text" name="username" class="form-control" placeholder="Username" required>
                         </div>
@@ -201,6 +203,7 @@ $value = isset($_POST['read_gate_status']) ? 1 : 0;
                                     <form method="POST"
                                             action="reset_password.php"
                                             onsubmit="return confirm('Réinitialiser le mot de passe de cet utilisateur ?')">
+                                            <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                                         <input type="hidden" name="id" value="<?= $u['id'] ?>">
                                         <button type="submit" class="btn btn-sm btn-warning">Reset password</button>
 
@@ -209,7 +212,7 @@ $value = isset($_POST['read_gate_status']) ? 1 : 0;
                                     <!-- DELETE -->
                                     <form method="POST" action="delete_user.php"
                                         onsubmit="return confirm('Supprimer cet utilisateur ?')">
-
+                                        <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                                         <input type="hidden" name="id" value="<?= $u['id'] ?>">
                                         <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
 
@@ -268,6 +271,7 @@ $value = isset($_POST['read_gate_status']) ? 1 : 0;
                 </div>
                 <div class="card-body">
                     <form method="POST">
+                        <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                         <div class="row">
                             <div class="col-md-8">
                                 <label>Serveur SMTP</label>
@@ -327,6 +331,7 @@ $value = isset($_POST['read_gate_status']) ? 1 : 0;
             </div>
             <div class="card-body">
                 <form method="POST" class="row g-2">
+                    <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                     <div class="col">
                         <input class="form-control" name="name" placeholder="Nom">
                     </div>

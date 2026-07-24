@@ -1,11 +1,11 @@
 <?php
 require 'auth.php';
-session_start();
 require_admin();
 require 'config/db.php';
 require 'lib/audit.php';
 $db = get_db();
 $id = intval($_POST['id'] ?? 0);
+verify_csrf();
 if(!$id){
     die("Utilisateur invalide");
 }

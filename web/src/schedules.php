@@ -1,6 +1,5 @@
 <?php
 require 'auth.php';
-session_start();
 require_login();
 
     require 'config/db.php';
@@ -105,7 +104,8 @@ require_login();
                         <strong>Ajouter planning</strong>
                     </div>
                     <div class="card-body">
-                        <form method="POST" action="save_schedule.php">        
+                        <form method="POST" action="save_schedule.php"> 
+                            <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">       
                             <div>    
                                 <label class="form-label">Cible</label>
 
@@ -337,7 +337,7 @@ require_login();
         <div class="modal fade" id="editScheduleModal" tabindex="-1">
             <div class="modal-dialog">
                 <form method="POST" action="update_schedule.php" class="modal-content">
-
+                    <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                     <div class="modal-header">
                         <h5 class="modal-title">Modifier planning</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>

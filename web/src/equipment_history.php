@@ -1,4 +1,7 @@
 <?php
+require 'auth.php';
+require_login();
+
 require "config/db.php";
 
 header('Content-Type: application/json');

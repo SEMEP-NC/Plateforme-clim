@@ -1,5 +1,6 @@
 <?php
-
+require 'auth.php';
+require_login();
 require '../config/db.php';
 
 function log_modbus($msg, $data = null) {
@@ -160,7 +161,7 @@ if ($action === 'write') {
     $requestBody = [
         "ip" => $eq['ip'],
         "port" => $port,
-        "device_id" => $eq['slave_id'],
+        "slave" => $eq['slave_id'],
         "type" => "register",
         "address" => $address,
         "count" => 5,
@@ -205,7 +206,7 @@ if ($action === 'write') {
     $requestBody = [
         "ip"=>$eq['ip'],
         "port"=>$port,
-        "device_id"=>$eq['slave_id'],
+        "slave"=>$eq['slave_id'],
         "type"=>"coils",
         "address"=>$coilAddress,
         "count"=>5,

@@ -1,13 +1,14 @@
 <?php
 require 'auth.php';
-session_start();
+
+require_login();
 require 'config/db.php';
 require 'lib/audit.php';
 header('Content-Type: application/json; charset=utf-8');
 
 try {
     $pdo = get_db();
-
+    verify_csrf();
     $id = (int)($_POST['id'] ?? 0);
     $action = $_POST['action'] ?: null;
 

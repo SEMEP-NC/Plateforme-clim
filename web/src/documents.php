@@ -1,6 +1,5 @@
 <?php
 require 'auth.php';
-session_start();
 require_login();
 require "config/db.php";
 $page_title = "Gestion documentaire";

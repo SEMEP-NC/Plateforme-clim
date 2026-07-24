@@ -1,6 +1,5 @@
 <?php
 require 'auth.php';
-session_start();
 require_login();
 require 'config/db.php';
 $db = get_db();
@@ -8,6 +7,7 @@ $userId = $_SESSION['user']['id'];
 $error = null;
 $success = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf();
     $old = $_POST['old_password'] ?? '';
     $new = $_POST['new_password'] ?? '';
     $confirm = $_POST['confirm_password'] ?? '';
@@ -66,6 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                  <?php endif; ?>
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                     <label>Ancien mot de passe</label>
                     <input type="password" name="old_password" class="form-control mb-3" required>
                     <label>Nouveau mot de passe</label>

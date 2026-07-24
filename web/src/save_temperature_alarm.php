@@ -1,16 +1,13 @@
 <?php
 
 require 'auth.php';
-
-session_start();
-
 require_admin();
 
 require 'config/db.php';
 
 
 $db=get_db();
-
+verify_csrf();
 
 
 $equipment_id=intval($_POST['equipment_id']);

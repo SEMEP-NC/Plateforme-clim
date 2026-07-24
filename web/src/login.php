@@ -26,12 +26,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adminExists) {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($user && password_verify($password, $user['password_hash'])) {
-
+        session_regenerate_id(true);
         $_SESSION['user'] = [
             'id' => $user['id'],
             'username' => $user['username'],
             'role' => $user['role']
         ];
+        $_SESSION['LAST_ACTIVITY']=time();
         audit(
             'LOGIN',
             'Connexion réussie'

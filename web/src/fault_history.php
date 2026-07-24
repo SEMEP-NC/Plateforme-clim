@@ -1,5 +1,7 @@
 <?php
-    session_start();
+    require 'auth.php';
+    require_login();
+
     require_once "config/db.php";
     $db = get_db();
 
