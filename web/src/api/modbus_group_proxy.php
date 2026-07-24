@@ -72,7 +72,7 @@ if ($action === 'write_group') {
         $requestBody = [
             "ip" => $eq['ip'],
             "port" => 502,
-            "device_id" => $eq['slave_id'],
+            "slave" => $eq['slave_id'],
             "type" => "register",
             "address" => $address,
             "count" => 5,
@@ -101,7 +101,7 @@ if ($action === 'write_group') {
             $requestBody = [
                 "ip" => $eq['ip'],
                 "port" => 502,
-                "device_id" => $eq['slave_id'],
+                "slave" => $eq['slave_id'],
                 "type" => "coils",
                 "address" => $coilAddress,
                 "count" => 5,

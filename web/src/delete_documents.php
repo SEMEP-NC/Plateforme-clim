@@ -19,8 +19,7 @@ $doc=$stmt->fetch();
 if(!$doc){
     die("Document introuvable");
 }
-$file =
-"documents/uploads/".$doc['filename'];
+$file = "/var/www/storage/documents/" . $doc['filename'];
 
 if(file_exists($file)){
     unlink($file);

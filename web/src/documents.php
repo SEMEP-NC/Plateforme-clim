@@ -89,7 +89,7 @@ $categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
                     <div class="col-md-4">
                         <div class="card shadow-sm h-100">
                             <?php
-                            $file = "documents/uploads/".$doc['filename'];
+                            $download_url = "download_document.php?id=" . $doc['id'];
                             $extension = strtolower(
                                 pathinfo($doc['filename'], PATHINFO_EXTENSION)
                             );
@@ -108,8 +108,12 @@ $categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
                                         <p class="mt-3 small">Ajouté par :<?=$doc['username']?>
                                         <br>Date :<?=date('d/m/Y',strtotime($doc['created_at']))?>
                                         </p>
-                                        <a class="btn btn-success" href="<?=$file?>" target="_blank">
-                                        <i class="bi bi-eye"></i>Visualiser</a>
+                                        <a class="btn btn-success"
+                                        href="<?=$download_url?>"
+                                        target="_blank">
+                                            <i class="bi bi-eye"></i>
+                                            Visualiser
+                                        </a>
                                         <?php if($_SESSION['user']['role']=='admin'): ?>
                                             <a class="btn btn-danger"
                                             href="delete_documents.php?id=<?=$doc['id']?>"
@@ -122,27 +126,20 @@ $categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
                                     <div class="document-preview">
                                         <?php if($extension === 'pdf'): ?>
                                             <iframe
-                                                src="<?=$file?>"
+                                                src="<?=$download_url?>"
                                                 width="100%"
                                                 height="180"
                                                 style="border:0">
                                             </iframe>
                                         <?php elseif(in_array($extension,['jpg','jpeg','png'])): ?>
                                             <img 
-                                            src="<?=$file?>"
+                                            src="<?=$download_url?>"
                                             class="img-fluid"
                                             style="
                                                 height:180px;
                                                 width:100%;
                                                 object-fit:cover;
                                             ">
-                                        <?php elseif(in_array($extension,['doc','docx'])): ?>
-                                            <div class="text-center p-5">
-                                                <i class="bi bi-file-earmark-word text-primary"
-                                                style="font-size:60px">
-                                                </i>
-                                            </div>
-                                        <?php else: ?>
                                             <div class="text-center p-5">
                                                 <i class="bi bi-file-earmark text-secondary"
                                                 style="font-size:60px">

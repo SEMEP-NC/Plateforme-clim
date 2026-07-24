@@ -13,6 +13,8 @@ services:
         condition: service_healthy
       api:
         condition: service_started
+      migrations:
+        condition: service_completed_successfully 
     environment:
       DB_HOST: ${DB_HOST}
       DB_NAME: ${DB_NAME}
@@ -80,6 +82,8 @@ services:
         condition: service_healthy
       modbus-hub:
         condition: service_started
+      migrations:
+        condition: service_completed_successfully
 
   modbus-hub:
     build: ./modbus-hub
@@ -87,6 +91,28 @@ services:
     #ports:
     #  - "${MODBUS_PORT}:8500"
     restart: always
+  migrations:
+    image: mariadb:11
+    container_name: clim_migrations
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    environment:
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+
+    volumes:
+      - ./mysql/migrations:/migrations
+      - ./mysql/migrate.sh:/migrate.sh
+
+    entrypoint:
+      - bash
+      - /migrate.sh
+
+    restart: "no"
 
 volumes:
   db_data:

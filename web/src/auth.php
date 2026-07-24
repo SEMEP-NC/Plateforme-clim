@@ -53,7 +53,7 @@ function csrf_token(){
 }
 
 function verify_csrf(){
-    if(empty($_POST['csrf']) || empty($_SESSION['csrf']) ||!hash_equals($_SESSION['csrf'],$_POST['csrf'])){
+    if(empty($_POST['csrf_token']) || empty($_SESSION['csrf']) ||!hash_equals($_SESSION['csrf'],$_POST['csrf_token'])){
         http_response_code(403);
         die("Token CSRF invalide");
     }
