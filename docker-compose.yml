@@ -84,8 +84,8 @@ services:
   modbus-hub:
     build: ./modbus-hub
     container_name: modbus_hub
-    ports:
-      - "${MODBUS_PORT}:8500"
+    #ports:
+    #  - "${MODBUS_PORT}:8500"
     restart: always
 
 volumes:
