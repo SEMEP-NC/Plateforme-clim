@@ -35,14 +35,18 @@ $users = $pdo->query("
 
 $db=get_db();
 
-$value = isset($_POST['read_gate_status']) ? 1 : 0;
-
+if(isset($_POST['valider_gate_control'])){
+    verify_csrf();
+    $value = isset($_POST['read_gate_status']) ? 1 : 0;
     $stmt = $db->prepare("
-    UPDATE settings
-    SET value=?
-    WHERE `key`='read_gate_status'
+        UPDATE settings
+        SET value=?
+        WHERE `key`='read_gate_status'
     ");
     $stmt->execute([$value]);
+    header("Location: admin.php");
+    exit;
+}
 
     /*SAVE SMTP*/   
 
@@ -134,6 +138,7 @@ $value = isset($_POST['read_gate_status']) ? 1 : 0;
 </style>
 <main class="container flex-grow-1 mt-4">
     <div class="row g-4">
+        <!-- Utilisateurs -->
         <div class="col-12 col-xl-6">
             <div class="card mb-4">
                 <div class="card-header">
@@ -228,6 +233,7 @@ $value = isset($_POST['read_gate_status']) ? 1 : 0;
                 </div>
             </div>
         </div>
+        <!-- Fonctions avancés -->
         <div class="col-12 col-xl-6">
             <div class="card mb-4">
                 <div class="card-header">
@@ -236,27 +242,27 @@ $value = isset($_POST['read_gate_status']) ? 1 : 0;
                 <div class="card-body">
                     <a href="journal.php"class="btn btn-outline-secondary">
                     </i>Journal d'audit</a>
+                </div>
+                <div class="card-body">    
                     <a href="temperature_alarms.php"class="btn btn-outline-secondary">
                     </i>Alarmes température</a>
                 </div>
                 <div class="card-body">
-                    <form method="POST">
+                    <form method="POST" id="gateControlForm">
+                        <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                         <div class="form-check form-switch">
-                            <input
-                                class="form-check-input"
-                                type="checkbox"
-                                id="read_gate_status"
-                                name="read_gate_status"
-                                <?= $settings['read_gate_status'] ? 'checked' : '' ?>>
-                            <label class="form-check-label" for="read_gate_status">
-                                Lecture du contrôle externe
-                            </label>
-                            <button
-                                type="submit"
-                                name="valider_gate_control"
-                                class="btn btn-outline-secondary">
-                                Valider
-                            </button>
+                            <input type="hidden" name="valider_gate_control" value="1">
+                            <div class="form-check form-switch">
+                                <input
+                                    class="form-check-input"
+                                    type="checkbox"
+                                    id="read_gate_status"
+                                    name="read_gate_status"
+                                    <?= $settings['read_gate_status'] ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="read_gate_status">
+                                    Lecture du contrôle externe
+                                </label>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -264,6 +270,7 @@ $value = isset($_POST['read_gate_status']) ? 1 : 0;
         </div>
     </div>
     <div class="row g-4">
+        <!-- Compte SMTP -->
         <div class="col-12 col-xl-6">
             <div class="card mb-4">
                 <div class="card-header">
@@ -324,6 +331,7 @@ $value = isset($_POST['read_gate_status']) ? 1 : 0;
                 </div>
             </div>
         </div>
+        <!-- Destinataire mail -->
         <div class="col-12 col-xl-6">
             <div class="card mb-4">
             <div class="card-header">
@@ -362,4 +370,9 @@ $value = isset($_POST['read_gate_status']) ? 1 : 0;
         </div>
      </div>
 </main>
+<script>
+document.getElementById('read_gate_status').addEventListener('change', function(){
+        document.getElementById('gateControlForm').submit();
+    });
+</script>
 <?php require "includes/footer.php"; ?>

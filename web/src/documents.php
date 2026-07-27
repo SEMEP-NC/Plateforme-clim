@@ -115,10 +115,24 @@ $categories = $stmt->fetchAll(PDO::FETCH_COLUMN);
                                             Visualiser
                                         </a>
                                         <?php if($_SESSION['user']['role']=='admin'): ?>
-                                            <a class="btn btn-danger"
-                                            href="delete_documents.php?id=<?=$doc['id']?>"
-                                            onclick="return confirm('Supprimer ce document ?')">
-                                            <i class="bi bi-trash"></i>Supprimer</a>
+                                            <form method="POST" action="delete_documents.php" 
+                                                onsubmit="return confirm('Supprimer ce document ?');"
+                                                style="display:inline">
+                                                <input 
+                                                    type="hidden" 
+                                                    name="csrf_token" 
+                                                    value="<?= csrf_token() ?>">
+                                                <input 
+                                                    type="hidden" 
+                                                    name="id" 
+                                                    value="<?= $doc['id'] ?>">
+                                                <button 
+                                                    type="submit" 
+                                                    class="btn btn-danger btn-sm">
+                                                    🗑️ Supprimer
+                                                </button>
+
+                                            </form>
                                         <?php endif; ?>
                                     </div>
                                 </div>

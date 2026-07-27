@@ -4,7 +4,7 @@ require 'config/db.php';
 $pdo = get_db();
 require 'lib/audit.php';
 $id = (int)$_POST['id'];
-
+verify_csrf();
 $stmt = $pdo->prepare("SELECT * FROM schedules WHERE id = ?");
 $stmt->execute([$id]);
 $s = $stmt->fetch(PDO::FETCH_ASSOC);

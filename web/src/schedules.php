@@ -16,6 +16,8 @@ require_login();
         7 => 'Dimanche',
     ];
 
+
+
     /*
     |--------------------------------------------------------------------------
     | SCHEDULE LIST
@@ -26,7 +28,9 @@ require_login();
         SELECT
             schedules.*,
             equipments.name AS equipment_name,
-            groups_hvac.name AS group_name
+            groups_hvac.name AS group_name,
+            equipments.id AS id_equipement,
+            groups_hvac.id AS id_group
         FROM schedules
         LEFT JOIN equipments
             ON equipments.id = schedules.equipment_id
@@ -35,6 +39,21 @@ require_login();
         ORDER BY schedules.execution_time ASC
     ")->fetchAll(PDO::FETCH_ASSOC);
 
+    $equipmentFilters = [];
+    foreach ($schedules as $schedule) {
+        if (!empty($schedule['group_name'])) {
+            $filter_id = "group_" . $schedule['group_id'];
+            $label = "Groupe : " . $schedule['group_name'];
+        } elseif (!empty($schedule['equipment_name'])) {
+            $filter_id = "equipment_" . $schedule['equipment_id'];
+            $label = "Équipement : " . $schedule['equipment_name'];
+        } else {
+            continue;
+        }
+        $equipmentFilters[$filter_id] = $label;
+    }
+
+asort($equipmentFilters);
     /*
     |--------------------------------------------------------------------------
     | EQUIPMENTS LIST
@@ -213,25 +232,58 @@ require_login();
                         <div id="tableView">
                             <div class="table-responsive">
                                 <table class="table table-bordered table-striped align-middle">
-
                                     <thead>
                                         <tr>
                                             <th>Actif</th>
-                                            <th>Équipement</th>
+                                            <th>
+                                                Équipement
+                                                <div class="dropdown d-inline">
+                                                    <button
+                                                        class="btn btn-sm"
+                                                        type="button"
+                                                        data-bs-toggle="dropdown">
+                                                        🔽
+                                                    </button>
+                                                    <ul class="dropdown-menu p-2" style="max-height:250px; overflow:auto">
+                                                        <?php foreach ($equipmentFilters as $filter_id => $label): ?>
+                                                            <li>
+                                                                <label class="dropdown-item">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        class="form-check-input me-2 equipment-filter"
+                                                                        value="<?= htmlspecialchars($filter_id) ?>">
+                                                                    
+                                                                    <?= htmlspecialchars($label) ?>
+                                                                </label>
+                                                            </li>
+                                                        <?php endforeach; ?>
+
+                                                    </ul>
+                                                </div>
+                                            </th>
                                             <th>Action</th>
-                                            <th>Température</th>
-                                            <th>Prochaine execution</th>
+                                            <th>Consigne</th>
+                                            <th>Date début</th>
                                             <th>Repetition</th>
                                             <th>Action</th>
                                         </tr>
                                     </thead>
-
                                     <tbody>
-
                                         <?php foreach ($schedules as $schedule): ?>
-                                            <tr>
+                                            <?php
+                                                if (!empty($schedule['group_name'])) {
+                                                    $filter_id = "group_" . $schedule['group_id'];
+                                                } elseif (!empty($schedule['equipment_name'])) {
+                                                    $filter_id = "equipment_" . $schedule['equipment_id'];
+                                                } else {
+                                                    $filter_id = "";
+                                                }
+                                            ?>
+                                            <tr data-equipment="<?= htmlspecialchars($filter_id) ?>">
+
                                                 <td>
                                                     <form method="POST" action="toggle_schedule.php">
+                                                        <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                                                         <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
                                                         <button class="btn btn-sm <?= $schedule['enabled'] ? 'btn-success' : 'btn-secondary' ?>">
                                                             <?= $schedule['enabled'] ? 'Actif' : 'Inactif' ?>
@@ -292,38 +344,46 @@ require_login();
                                                     ) ?>
                                                 </td>
                                                 <td class="d-flex gap-1">
+                                                    <!-- Modifier -->
                                                     <button
                                                         class="btn btn-sm btn-primary editScheduleBtn"
+                                                        title="Modifier"
                                                         data-id="<?= $schedule['id'] ?>"
-                                                        data-action="<?= htmlspecialchars($schedule['action']) ?>"
-                                                        data-temperature="<?= htmlspecialchars($schedule['temperature']) ?>"
-                                                        data-execution="<?= htmlspecialchars($schedule['execution_time']) ?>"
-                                                        data-repeat="<?= htmlspecialchars($schedule['repeat_days']) ?>"
+                                                        data-action="<?= htmlspecialchars($schedule['action'] ?? '') ?>"
+                                                        data-temperature="<?= htmlspecialchars($schedule['temperature'] ?? '') ?>"
+                                                        data-execution="<?= htmlspecialchars($schedule['execution_time'] ?? '') ?>"
+                                                        data-repeat="<?= htmlspecialchars($schedule['repeat_days'] ?? '') ?>"
                                                     >
-                                                        Modifier
+                                                        <i class="bi bi-pencil-square"></i>
                                                     </button>
 
+                                                    <!-- Dupliquer -->
                                                     <form method="POST" action="duplicate_schedule.php">
+                                                        <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                                                         <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
-                                                        <button class="btn btn-sm btn-outline-primary">
-                                                            Dupliquer
+                                                        <button 
+                                                            class="btn btn-sm btn-outline-primary"
+                                                            title="Dupliquer">
+                                                            <i class="bi bi-files"></i>
                                                         </button>
                                                     </form>
 
+                                                    <!-- Supprimer -->
                                                     <form method="POST" action="delete_schedule.php">
+                                                        <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                                                         <input type="hidden" name="id" value="<?= $schedule['id'] ?>">
-                                                        <button class="btn btn-sm btn-danger" onclick="return confirm('Supprimer ce planning ?')">
-                                                            Supprimer
+                                                        <button 
+                                                            class="btn btn-sm btn-danger"
+                                                            title="Supprimer"
+                                                            onclick="return confirm('Supprimer ce planning ?')">
+                                                            <i class="bi bi-trash"></i>
                                                         </button>
                                                     </form>
-
                                                 </td>
                                             </tr>
 
                                         <?php endforeach; ?>
-
                                     </tbody>
-
                                 </table>
                             </div>
                         </div>
@@ -461,12 +521,29 @@ require_login();
                 }
 
             });
+            function updateViewButtons(active) {
+                const btnTable = document.getElementById("btnTable");
+                const btnCalendar = document.getElementById("btnCalendar");
+                if (active === "table") {
+                    btnTable.classList.remove("btn-outline-primary");
+                    btnTable.classList.add("btn-primary");
+                    btnCalendar.classList.remove("btn-primary");
+                    btnCalendar.classList.add("btn-outline-primary");
+                } else {
+                    btnCalendar.classList.remove("btn-outline-primary");
+                    btnCalendar.classList.add("btn-primary");
+                    btnTable.classList.remove("btn-primary");
+                    btnTable.classList.add("btn-outline-primary");
+                }
+            }
+
             let calendar;
 
             document.getElementById("btnCalendar")
             .addEventListener("click",()=>{
                 document.getElementById("tableView").style.display="none";
                 document.getElementById("calendarView").style.display="block";
+                updateViewButtons("calendar");
                 if(!calendar){
                     calendar=new FullCalendar.Calendar(
                         document.getElementById("calendar"),
@@ -496,7 +573,32 @@ require_login();
             .addEventListener("click",()=>{
                 document.getElementById("calendarView").style.display="none";
                 document.getElementById("tableView").style.display="block";
+                updateViewButtons("table");
             }); 
+
+            document.querySelectorAll('.equipment-filter')
+                .forEach(cb => {
+                cb.addEventListener('change', applyScheduleEquipmentFilter);
+            });
+
+            function applyScheduleEquipmentFilter(){
+                const selected = Array.from(
+                    document.querySelectorAll('.equipment-filter:checked')
+                ).map(cb => cb.value);
+
+                document.querySelectorAll('#tableView tbody tr')
+                .forEach(row => {
+                    const equipment = row.dataset.equipment;
+                    if(selected.length === 0){
+                        row.style.display = "";
+                        return;
+                    }
+                    row.style.display =
+                        selected.includes(equipment)
+                            ? ""
+                            : "none";
+                });
+            }                           
         </script>
     </main>
 <?php require "includes/footer.php"; ?>

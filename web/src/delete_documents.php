@@ -1,7 +1,7 @@
 <?php
 require 'auth.php';
 
-require_login();
+require_admin();
 require 'config/db.php';
 $db = get_db();
 require 'lib/audit.php';
@@ -10,7 +10,18 @@ $user=current_user();
 if($user['role'] !== 'admin'){
     die("Accès refusé");
 }
-$id=intval($_GET['id'] ?? 0);
+if($_SERVER['REQUEST_METHOD'] !== 'POST'){
+    http_response_code(405);
+    exit("Méthode non autorisée");
+}
+
+verify_csrf();
+
+if(empty($_POST['id']) || !is_numeric($_POST['id'])){
+    exit("ID invalide");
+}
+$id = (int)$_POST['id'];
+
 $stmt=$db->prepare(
 "SELECT title, filename FROM documents WHERE id=?"
 );

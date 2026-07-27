@@ -1,7 +1,7 @@
 <?php
 
 require 'auth.php';
-session_start();
+
 require_login();
 require 'config/db.php';
 $db = get_db();

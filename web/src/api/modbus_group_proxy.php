@@ -1,5 +1,5 @@
 <?php
-require 'auth.php';
+require '../auth.php';
 require_login();
 require '../config/db.php';
 $action = $_GET['action'] ?? null;

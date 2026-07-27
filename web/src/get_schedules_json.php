@@ -63,6 +63,10 @@ foreach($stmt as $row){
     if (empty($row["repeat_days"])) {
         $date = new DateTime(
             $row["execution_time"],
+            new DateTimeZone('UTC')
+        );
+
+        $date->setTimezone(
             new DateTimeZone('Pacific/Noumea')
         );
         $events[] = [

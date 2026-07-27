@@ -482,13 +482,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
-                            <?php foreach ($equipments as $equipment): ?>
-                            <?php $checked = in_array($equipment['id'], $groupEquipments[$group['id']] ?? []); ?>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="equipments[<?= $group['id'] ?>][]" value="<?= $equipment['id'] ?>" <?= $checked ? 'checked' : '' ?>>
-                                <label class="form-check-label"><?= htmlspecialchars($equipment['name']) ?></label>
+                            <!-- Filtre localisation -->
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    Filtrer par localisation
+                                </label>
+                                <select 
+                                    class="form-select group-localisation-filter"
+                                    data-group="<?= $group['id'] ?>">
+                                    <option value="">Toutes les localisations</option>
+                                    <?php foreach ($localisations as $loc): ?>
+                                        <option value="<?= htmlspecialchars($loc) ?>">
+                                            <?= htmlspecialchars($loc) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
-                            <?php endforeach; ?>
+                            <!-- Liste équipements -->
+                            <div 
+                                class="group-equipment-list"
+                                data-group="<?= $group['id'] ?>">
+                                <?php foreach ($equipments as $equipment): ?>
+                                    <?php 
+                                    $checked = in_array(
+                                        $equipment['id'], 
+                                        $groupEquipments[$group['id']] ?? []
+                                    ); 
+                                    ?>
+                                    <div 
+                                        class="form-check group-equipment-item"
+                                        data-localisation="<?= htmlspecialchars($equipment['localisation'] ?? '') ?>">
+                                        <input 
+                                            class="form-check-input"
+                                            type="checkbox"
+                                            name="equipments[<?= $group['id'] ?>][]"
+                                            value="<?= $equipment['id'] ?>"
+                                            <?= $checked ? 'checked' : '' ?>>
+                                        <label class="form-check-label">
+                                            <?= htmlspecialchars($equipment['name']) ?>
+                                            <small class="text-muted">
+                                                (<?= htmlspecialchars($equipment['localisation']) ?>)
+                                            </small>
+                                        </label>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
@@ -573,9 +611,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                         </th>
                                     <?php endif; ?>
                                     <th data-sort="temp" class="sortable">
-                                        Temp reprise <span>↕</span>
+                                        Temp ambiance <span>↕</span>
                                     </th>
-                                    <th>Groupes</th>
+                                    <th>
+                                        Groupes
+                                        <div class="dropdown d-inline">
+                                            <button 
+                                                class="btn btn-sm"
+                                                type="button"
+                                                data-bs-toggle="dropdown">
+                                                🔽
+                                            </button>
+                                            <ul class="dropdown-menu p-2" style="max-height:250px;overflow:auto">
+                                                <li>
+                                                    <label class="dropdown-item">
+                                                        <input 
+                                                            type="radio"
+                                                            name="group-filter"
+                                                            class="form-check-input me-2 group-filter"
+                                                            value=""
+                                                            checked>
+                                                        Tous
+                                                    </label>
+                                                </li>
+                                                <?php foreach ($groups as $group): ?>
+                                                    <li>
+                                                        <label class="dropdown-item">
+                                                            <input 
+                                                                type="radio"
+                                                                name="group-filter"
+                                                                class="form-check-input me-2 group-filter"
+                                                                value="<?= $group['id'] ?>">
+                                                            <?= htmlspecialchars($group['name']) ?>
+                                                        </label>
+                                                    </li>
+                                                <?php endforeach; ?>
+                                            </ul>
+                                        </div>
+                                    </th>
                                     <th>Commandes</th>
                                     <th>Historique</th>
                                     <?php if ($_SESSION['user']['role'] === 'admin'): ?>
@@ -585,7 +658,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                             </thead>
                             <tbody>
                                 <?php foreach ($equipments as $equipment): ?>
-                                <tr>
+                                <?php
+                                    $equipmentGroups = [];
+                                    foreach ($groupEquipments as $groupId => $equipIds) {
+                                        if(in_array($equipment['id'], $equipIds)){
+                                            $equipmentGroups[] = $groupId;
+                                        }
+                                    }
+                                ?>
+                                <tr data-groups="<?= implode(',', $equipmentGroups) ?>">
                                     <td data-localisation="<?= htmlspecialchars($equipment['localisation'] ?? '') ?>">
                                         <?php if ($_SESSION['user']['role'] === 'admin'): ?>
                                             <input 
@@ -896,6 +977,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
         let lastReadRegisters = [];
         let currentEquipmentId = null;
         let currentGroupId = null;
+
+        document.querySelectorAll('.group-localisation-filter')
+            .forEach(select => {
+                select.addEventListener('change', function(){
+                    const localisation = this.value;
+                    const groupId = this.dataset.group;
+                    document
+                        .querySelectorAll(
+                            '.group-equipment-list[data-group="' + groupId + '"] .group-equipment-item'
+                        )
+                        .forEach(item => {
+                            const itemLoc = item.dataset.localisation;
+                            if(localisation === "" || itemLoc === localisation){
+                                item.style.display = "";
+                            }
+                            else{
+                                item.style.display = "none";
+                            }
+                        });
+                });
+            });
 
         /* =========================
         EQUIPMENT : OPEN + READ
@@ -1426,5 +1528,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                     });
             });
         });
+
+        document.querySelectorAll('.group-filter')
+        .forEach(filter => {
+            filter.addEventListener('change', function(){
+                const selectedGroup = this.value;
+                document
+                .querySelectorAll('#equipmentsTable tbody tr')
+                .forEach(row => {
+                    if(selectedGroup === ""){
+                        row.style.display = "";
+                    }
+                    else {
+                        const groups = row.dataset.groups
+                            ? row.dataset.groups.split(',')
+                            : [];
+                        if(groups.includes(selectedGroup)){
+                            row.style.display = "";
+                        }
+                        else{
+                            row.style.display = "none";
+                        }
+                    }
+                });
+            });
+        });
     </script>
+
 <?php require "includes/footer.php"; ?>
