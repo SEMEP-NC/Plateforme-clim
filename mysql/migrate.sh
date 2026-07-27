@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 echo "=== Database migration ==="
-MYSQL="mysql \
+MYSQL="mariadb \
     -h${DB_HOST} \
     -u${DB_USER} \
     -p${DB_PASSWORD} \
