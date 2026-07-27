@@ -21,7 +21,7 @@ if [ ! -f "$CA_DIR/config/ca.json" ]; then
         --dns "clim-ca" \
         --address ":9000" \
         --provisioner "admin" \
-        --password-file $CA_PASSWORD
+        --password-file <(echo $CA_PASSWORD)
 
 else
 
