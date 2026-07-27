@@ -42,7 +42,7 @@ if [ ! -f "$CERT_DIR/clim.crt" ]; then
         "$CERT_DIR/clim.crt" \
         "$CERT_DIR/clim.key" \
         --provisioner admin \
-        --provisioner-password-file <(echo "ChangeMe123!")
+        --provisioner-password-file <(echo $CA_PASSWORD)
 
 
 else
