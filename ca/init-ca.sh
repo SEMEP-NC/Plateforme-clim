@@ -21,7 +21,7 @@ if [ ! -f "$CA_DIR/config/ca.json" ]; then
     step ca init \
         --name "Clim Local CA" \
         --dns "clim-ca" \
-        --address ":9000" \
+        --address ":9443" \
         --provisioner "admin" \
         --password-file "$CA_PASSWORD_FILE"
 
@@ -34,20 +34,26 @@ fi
 
 export STEPPATH=$CA_DIR
 
-CA_URL="https://localhost:9000"
+CA_URL="https://localhost:9443"
 
 
 echo "=== Démarrage Smallstep CA ==="
 
 
-step-ca "$CA_DIR/config/ca.json" &
+step-ca "$CA_DIR/config/ca.json" \
+    --password-file "$CA_PASSWORD_FILE" &
+
 CA_PID=$!
 
 
 echo "Attente du démarrage de la CA..."
 
-sleep 5
+sleep 10
 
+if ! curl -k https://localhost:9443/health; then
+    echo "Erreur: Smallstep CA non démarrée"
+    exit 1
+fi
 
 echo "=== Génération certificat serveur ==="
 
