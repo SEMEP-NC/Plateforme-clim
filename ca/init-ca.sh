@@ -1,10 +1,12 @@
 #!/bin/bash
 set -e
 
-
 CA_DIR="/home/step"
 CERT_DIR="/home/step/certs"
 
+CA_PASSWORD_FILE="/tmp/ca_password"
+
+echo "$CA_PASSWORD" > "$CA_PASSWORD_FILE"
 
 mkdir -p "$CERT_DIR"
 
@@ -21,7 +23,7 @@ if [ ! -f "$CA_DIR/config/ca.json" ]; then
         --dns "clim-ca" \
         --address ":9000" \
         --provisioner "admin" \
-        --password-file <(echo $CA_PASSWORD)
+        --password-file "$CA_PASSWORD_FILE"
 
 else
 
@@ -29,6 +31,22 @@ else
 
 fi
 
+
+export STEPPATH=$CA_DIR
+
+CA_URL="https://localhost:9000"
+
+
+echo "=== Démarrage Smallstep CA ==="
+
+
+step-ca "$CA_DIR/config/ca.json" &
+CA_PID=$!
+
+
+echo "Attente du démarrage de la CA..."
+
+sleep 5
 
 
 echo "=== Génération certificat serveur ==="
@@ -41,8 +59,10 @@ if [ ! -f "$CERT_DIR/clim.crt" ]; then
         "$SERVER_IP" \
         "$CERT_DIR/clim.crt" \
         "$CERT_DIR/clim.key" \
+        --ca-url "$CA_URL" \
+        --root "$CA_DIR/certs/root_ca.crt" \
         --provisioner admin \
-        --provisioner-password-file <(echo $CA_PASSWORD)
+        --provisioner-password-file "$CA_PASSWORD_FILE"
 
 
 else
@@ -55,6 +75,7 @@ fi
 
 cp "$CA_DIR/certs/root_ca.crt" \
    "$CA_DIR/root_ca.crt"
+
 
 
 echo ""
@@ -72,4 +93,5 @@ echo "$CA_DIR/root_ca.crt"
 echo "================================"
 
 
-sleep infinity
+# garde le conteneur actif tant que step-ca tourne
+wait $CA_PID
