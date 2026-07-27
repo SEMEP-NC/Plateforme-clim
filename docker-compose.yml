@@ -141,6 +141,20 @@ services:
       networks:
         - clim_network
 
+  ca:
+    build: ./ca
+    container_name: clim_ca
+    restart: "no"
+
+    environment:
+      SERVER_IP: ${HOST_IP}
+      CA_PASSWORD: ${CA_PASSWORD}
+
+    volumes:
+      - ./ca/data:/home/step
+
+    networks:
+      - clim_network
 
 volumes:
   db_data:
