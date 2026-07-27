@@ -1,7 +1,12 @@
 #!/bin/bash
 set -e
 echo "=== Database migration ==="
-MYSQL="mysql -u${MYSQL_USER} -p${MYSQL_PASSWORD} ${MYSQL_DATABASE}"
+MYSQL="mysql \
+    -h${DB_HOST} \
+    -u${DB_USER} \
+    -p${DB_PASSWORD} \
+    ${DB_NAME}"
+    
 echo "Checking migration table..."
 $MYSQL <<EOF
 CREATE TABLE IF NOT EXISTS schema_migrations (
