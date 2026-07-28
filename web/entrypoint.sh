@@ -1,8 +1,21 @@
 #!/bin/bash
 set -e
-echo "Initialisation des dossiers documents..."
-mkdir -p /var/www/html/documents/uploads
-chown -R www-data:www-data /var/www/html/documents
-chmod -R 755 /var/www/html/documents
+
+echo "Initialisation stockage..."
+
+mkdir -p /var/www/storage/documents
+
+echo "Permissions documents..."
+chown -R www-data:www-data /var/www/storage/documents
+chmod 750 /var/www/storage
+chmod 750 /var/www/storage/documents
+
+if [ -f /var/www/storage/certificates/root_ca.crt ]; then
+    echo "CA détectée"
+    chmod 644 /var/www/storage/certificates/root_ca.crt
+else
+    echo "Attention : root_ca.crt absent"
+fi
+
 echo "Démarrage Apache..."
 exec apache2-foreground

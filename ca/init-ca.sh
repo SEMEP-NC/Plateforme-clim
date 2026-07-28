@@ -98,6 +98,9 @@ echo "CA utilisateur:"
 echo "$CA_DIR/root_ca.crt"
 echo "================================"
 
+mkdir -p /export
+cp /home/step/root_ca.crt /export/root_ca.crt
+chmod 644 /export/root_ca.crt
 
 # garde step-ca actif
 wait $CA_PID

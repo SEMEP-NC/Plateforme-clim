@@ -1,7 +1,6 @@
 <?php
 require 'auth.php';
 
-session_start();
 require_admin();
 
 $file = "/var/www/storage/certificates/root_ca.crt";

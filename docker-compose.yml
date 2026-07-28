@@ -8,7 +8,8 @@ services:
       - "80"
     volumes:
       - ./web/src:/var/www/html
-      - ./ca/data/root_ca.crt:/var/www/storage/certificates/root_ca.crt:ro 
+      - ./ca/export:/var/www/storage/certificates:ro
+
     depends_on:
       db:
         condition: service_healthy
@@ -153,6 +154,7 @@ services:
 
     volumes:
       - ./ca/data:/home/step
+      - ./ca/export:/export
 
     networks:
       clim_network:
