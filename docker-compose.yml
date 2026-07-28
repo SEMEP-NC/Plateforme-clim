@@ -154,7 +154,9 @@ services:
       - ./ca/data:/home/step
 
     networks:
-      - clim_network
+      clim_network:
+        aliases:
+          - clim-ca
 
 volumes:
   db_data:
