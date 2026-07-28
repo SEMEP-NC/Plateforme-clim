@@ -91,17 +91,5 @@ Liste des évolutions envisagées :
 Plantage scheduler si aucune configuration mail ;
 Amélioration de la gestion des erreurs Modbus en cours.
 
----
-
-Je vous conseille aussi d'ajouter un fichier **`.env.example`** dans le dépôt, car actuellement le README explique les variables mais un nouvel installateur ne sait pas quelles valeurs sont obligatoires.
-
-Autre amélioration importante : ajouter un dossier :
-
-
-docs/
-├── INSTALLATION.md
-├── ADMINISTRATION.md
-├── DEPANNAGE.md
-└── SECURITE.md
 
 
