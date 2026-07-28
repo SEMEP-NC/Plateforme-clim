@@ -1,37 +1,54 @@
 # Plateforme Clim GREE
 
-Plateforme Docker pour detecter, declarer, planifier et piloter des climatiseurs via Modbus TCP.
+Plateforme Docker permettant de détecter, déclarer, planifier et piloter des climatiseurs GREE via Modbus TCP.
 
-Le projet fournit:
+Le projet fournit :
 
-- une interface web PHP pour la detection, les equipements et les plannings;
-- une API Flask pour lancer la detection Modbus;
-- un hub Modbus FastAPI pour centraliser les lectures/ecritures;
-- un scheduler Python pour executer les actions programmees;
-- une base MariaDB pour conserver la configuration, les equipements, les plannings et les logs.
+- une interface web PHP pour la détection, la configuration des équipements et les plannings ;
+- une API Flask pour la découverte automatique Modbus ;
+- un hub Modbus FastAPI pour centraliser les lectures et écritures ;
+- un scheduler Python pour exécuter les actions programmées ;
+- une base MariaDB pour conserver la configuration, les équipements, les plannings et les historiques ;
+- une autorité de certification locale permettant de sécuriser l'accès HTTPS interne.
 
-## Evolution 
-La liste des evolutions envisagés
-- Logs utilisateurs (a completer)
-- Amelioration de l'outil historique
-- Mise en place d'un affichage sous forme de calendrier du planning (a ameliorer)
-- Prise en compte splits et multi splits
+---
 
-## Debug 
-- Plantage scheduler si pas de config mails
+# Evolution
 
-## Architecture
+Liste des évolutions envisagées :
+
+- Logs utilisateurs complets ;
+- Amélioration de l'outil historique ;
+- Prise en compte splits et multi-splits ;
+- Amélioration supervision énergétique ;
+- Notifications avancées ;
+- Gestion multi-sites.
+
+---
+
+# Architecture
 
 ```text
-                 +--------------------+
-                 |  Interface Web PHP |
-                 |  port 8085         |
+                         HTTPS
+                           |
+                           v
+                +---------------------+
+                | Nginx Proxy Manager |
+                | clim_proxy          |
+                | ports 80/443/81     |
+                +----------+----------+
+                           |
+                           |
+                           v
+                 +---------+----------+
+                 | Interface Web PHP  |
+                 | clim_web           |
                  +---------+----------+
                            |
                            v
                     +------+------+
-                    |  MariaDB    |
-                    |  clim_db    |
+                    | MariaDB    |
+                    | clim_db    |
                     +------+------+
                            ^
                            |
@@ -39,7 +56,7 @@ La liste des evolutions envisagés
         |                                     |
 +-------+--------+                    +-------+--------+
 | API Flask      |                    | Scheduler      |
-| clim_api:5001  |                    | clim_scheduler |
+| clim_api       |                    | clim_scheduler |
 +-------+--------+                    +-------+--------+
         |                                     |
         +------------------+------------------+
@@ -47,224 +64,222 @@ La liste des evolutions envisagés
                            v
                  +---------+----------+
                  | Modbus Hub FastAPI |
-                 | port 8500          |
+                 | modbus_hub         |
                  +---------+----------+
                            |
                            v
-                    Passerelle Modbus/GREE GMV
+
+                 Passerelle Modbus GREE
 ```
 
 ## Services
 
-| Service | Role | Port |
-| --- | --- | --- |
-| `web` | Interface utilisateur PHP/Apache | `8085` |
-| `api` | Endpoint de detection Modbus | interne |
-| `modbus-hub` | Lectures/ecritures Modbus TCP | `8500` |
-| `scheduler` | Execution des plannings | interne |
-| `db` | Base MariaDB | interne |
+| Service    | Rôle                             | Port      |
+| ---------- | -------------------------------- | --------- |
+| web        | Interface utilisateur PHP/Apache | interne   |
+| api        | Détection Modbus                 | interne   |
+| modbus-hub | Communication Modbus TCP         | interne   |
+| scheduler  | Exécution des automatismes       | interne   |
+| db         | Base MariaDB                     | interne   |
+| proxy      | Reverse proxy HTTPS              | 80/443/81 |
+| ca         | Autorité de certification locale | interne   |
 
-## Lancement
 
-Depuis la racine du depot:
+## Prérequis
 
+Serveur recommandé :
+
+Debian 11 ou supérieur ;
+Docker Engine ;
+Docker Compose v2 ;
+Adresse IP fixe ;
+Accès réseau aux équipements GREE.
+
+## Installation Docker :
+```bash
+apt update
+
+apt install -y docker.io docker-compose-plugin
+
+systemctl enable docker
+systemctl start docker
+
+Vérification :
+
+docker --version
+
+docker compose version
+```
+
+## Installation : 
+### 1 - Récupération du projet
+Depuis le serveur :
+```bash
+git clone <repository>
+cd Plateforme-clim
+```
+
+### 2 - Configuration environnement
+
+modifier le fichier .env :
+```bash
+nano .env
+```
+Modifier les paramètres :
+```text
+HOST_IP=<nom DNS>
+
+DB_NAME=clim
+DB_USER=clim_user
+DB_PASSWORD=mot_de_passe
+
+MYSQL_ROOT_PASSWORD=mot_de_passe_root
+
+SCHEDULER_INTERVAL=60
+DISCOVERY_INTERVAL=300
+```
+
+### Génération de l'autorité de certification locale
+
+La plateforme utilise une CA interne pour générer les certificats HTTPS.
+
+Lancement :
+```bash
+docker compose run --rm ca
+```
+Le certificat racine est généré :
+```text
+ca/data/root_ca.crt
+```
+Ce certificat doit être installé sur les postes utilisateurs afin d'éviter les alertes navigateur.
+Pour les utilisateurs windows le certificat client pourra etre téléchargé depuis la page d'administration
+
+## Démarrage de la plateforme
+
+### Depuis la racine :
 ```bash
 docker compose up -d --build
 ```
 
-Puis ouvrir:
-
+Vérification :
+```bash
+docker compose ps
+```
+Les services doivent être en état :
 ```text
-http://<ip>:8085
+running
+healthy
+Configuration HTTPS
 ```
 
+### La plateforme utilise Nginx Proxy Manager.
 
-## Configuration
-
-Les variables principales sont definies dans `.env`.
-
-| Variable | Description | Exemple |
-| `SCHEDULER_INTERVAL` | Intervalle de boucle scheduler en secondes | `60` |
-| `DISCOVERY_INTERVAL` | Intervalle discovery automatique en secondes | `300` |
-
-
-## Hub Modbus
-
-Le hub Modbus expose des endpoints HTTP pour les services internes
-
-URL locale:
-
+Accès administration :
 ```text
-http://localhost:8500
+http://IP_SERVEUR:81
 ```
+Créer un Proxy Host :
 
-Dans Docker:
-
+Domain Names :
 ```text
-http://modbus-hub:8500
+<nom DNS>
 ```
-
-### Healthcheck
-
+Scheme :
 ```text
-GET /health
+http
 ```
-
-Exemple:
-
+Forward Hostname :
 ```text
-http://localhost:8500/health
+clim_web
 ```
-
-### Lecture POST
-
-Utilise par l'API et la discovery.
-
+Forward Port :
 ```text
-POST /read
+80
 ```
-
-Payload registre:
-
-```json
-{
-  "ip": "10.5.0.20",
-  "port": 502,
-  "device_id": 1,
-  "type": "register",
-  "address": 123,
-  "count": 1
-}
-```
-
-Payload coils:
-
-```json
-{
-  "ip": "10.5.0.20",
-  "port": 502,
-  "device_id": 1,
-  "type": "coils",
-  "address": 120,
-  "count": 8
-}
-```
-
-### Lecture GET
-
-Lire un registre:
-
+Activer :
 ```text
-http://localhost:8500/read?ip=10.5.0.20&port=502&device_id=1&type=register&address=123
+Block Common Exploits
+Websocket Support
 ```
+Dans SSL :
 
-Lire plusieurs registres:
-
+Certificate :
 ```text
-http://localhost:8500/read?ip=10.5.0.20&port=502&device_id=1&type=register&address=123&count=4
+clim-ca
 ```
-
-Lire des coils:
-
+Force SSL :
 ```text
-http://localhost:8500/read?ip=10.5.0.20&port=502&device_id=1&type=coils&address=120&count=8
+Oui
 ```
+## DNS
 
-Reponse registre unique:
-
-```json
-{
-  "success": true,
-  "cached": false,
-  "registers": [45],
-  "value": 45
-}
-```
-
-Quand `count=1`, le champ `value` est ajoute pour faciliter le mapping dans FUXA.
-
-### Ecriture POST
-
-Utilise par le scheduler.
-
+### Créer un enregistrement DNS interne :
 ```text
-POST /write
+<nom DNS>    A    10.0.0.39
 ```
+Le nom doit correspondre exactement au certificat généré.
 
-Payload registre:
+## Premier accès
 
-```json
-{
-  "ip": "10.5.0.20",
-  "port": 502,
-  "slave": 1,
-  "type": "register",
-  "address": 102,
-  "value": 170
-}
-```
-
-Payload coil:
-
-```json
-{
-  "ip": "10.5.0.20",
-  "port": 502,
-  "slave": 1,
-  "type": "coil",
-  "address": 120,
-  "value": true
-}
-```
-
-### Ecriture GET
-
-Ecrire un registre:
-
+### Ouvrir :
 ```text
-http://localhost:8500/write?ip=10.5.0.20&port=502&device_id=1&type=register&address=102&value=170
+https://<nom DNS>
+```
+Installer la CA si nécessaire.
+
+Connexion avec le compte administrateur créé lors de l'installation.
+
+## Base de donnée
+### Connexion MariaDB :
+```bash
+docker exec -it clim_db mariadb \
+-u root \
+-p
+Sauvegarde
+Base MariaDB
+```
+### Créer une sauvegarde :
+```bash
+docker exec clim_db mariadb-dump \
+-u root \
+-p clim > backup.sql
+```
+### Restauration :
+```bash
+docker exec -i clim_db mariadb \
+-u root \
+-p clim < backup.sql
 ```
 
-Ecrire une coil:
+## Mise à jour
 
-```text
-http://localhost:8500/write?ip=10.5.0.20&port=502&device_id=1&type=coil&address=120&value=true
+### Arrêt :
+```bash
+docker compose down
+```
+### Reconstruction :
+```bash
+docker compose pull
+docker compose build
+docker compose up -d
 ```
 
-Reponse:
 
-```json
-{
-  "success": true,
-  "queued": true
-}
-```
+## Debug connu
+Plantage scheduler si aucune configuration mail ;
+Amélioration de la gestion des erreurs Modbus en cours.
 
-L'ecriture est mise en file d'attente par le hub pour eviter les acces concurrents au meme equipement Modbus.
+---
 
-## Registres utilises
+Je vous conseille aussi d'ajouter un fichier **`.env.example`** dans le dépôt, car actuellement le README explique les variables mais un nouvel installateur ne sait pas quelles valeurs sont obligatoires.
 
-Pour une UI `n`:
+Autre amélioration importante : ajouter un dossier :
 
-| Fonction | Calcul adresse | Exemple UI 1 |
-| --- | --- | --- |
-| Commande ON/OFF | `102 + 25 * (n - 1)` | `102` |
-| Temperature consigne | `104 + 25 * (n - 1)` | `104` |
-| Puissance detectee | `123 + 25 * (n - 1)` | `123` |
 
-Valeurs commande:
-
-| Action | Valeur |
-| --- | --- |
-| `ON` | `0xAA` / `170` |
-| `OFF` | `0x55` / `85` |
-
-La temperature est envoyee en dixiemes de degre.
-
-Exemple:
-
-```text
-24 deg C -> 240
-```
+docs/
+├── INSTALLATION.md
+├── ADMINISTRATION.md
+├── DEPANNAGE.md
+└── SECURITE.md
 
 
