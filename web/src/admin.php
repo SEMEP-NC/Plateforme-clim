@@ -369,6 +369,37 @@ if(isset($_POST['valider_gate_control'])){
             </div>
         </div>
      </div>
+     <div class="row g-4">
+        <div class="col-12 col-xl-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <strong>Certificats</strong>
+                </div>
+                <div class="card-body">
+                    <p>
+                        Pour éviter les alertes de certificat dans les navigateurs,
+                        installez l'autorité de certification locale.
+                    </p>
+                    <a href="download_root_ca.php"
+                    class="btn btn-primary">
+                        <i class="bi bi-download"></i>
+                        Télécharger la CA Clim
+                    </a>
+                    <p>
+                        Certificat à installer :
+                        Clim Local CA Root CA
+
+                        Compatible :
+                        ✓ Windows
+                        ✓ Linux
+                        ✓ Android
+                        ✓ Firefox
+                        ✓ Chrome / Edge
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
 </main>
 <script>
 document.getElementById('read_gate_status').addEventListener('change', function(){

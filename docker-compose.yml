@@ -8,6 +8,7 @@ services:
       - "80"
     volumes:
       - ./web/src:/var/www/html
+      - ./ca/data/root_ca.crt:/var/www/storage/certificates/root_ca.crt:ro 
     depends_on:
       db:
         condition: service_healthy
