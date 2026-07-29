@@ -1,12 +1,13 @@
-document.addEventListener("DOMContentLoaded", () => {   
+
         const equipModalEl = document.getElementById("commandModal");
-        const equipModal = equipModalEl 
-            ? new bootstrap.Modal(equipModalEl)
+        const equipModal = (equipModalEl && typeof bootstrap !== "undefined")
+            ? bootstrap.Modal.getOrCreateInstance(equipModalEl)
             : null;
 
+
         const groupModalEl = document.getElementById("groupCommandModal");
-        const groupModal = groupModalEl 
-            ? new bootstrap.Modal(groupModalEl)
+        const groupModal = (groupModalEl && typeof bootstrap !== "undefined")
+            ? bootstrap.Modal.getOrCreateInstance(groupModalEl)
             : null;
         
 
@@ -14,6 +15,24 @@ document.addEventListener("DOMContentLoaded", () => {
         let currentEquipmentId = null;
         let currentGroupId = null;
 
+        function setChecked(id, value) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.checked = !!value;
+            }
+        }
+
+
+        function setValue(id, value) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.value = value;
+            }
+        }
+
+        function isChecked(id){
+            return document.getElementById(id)?.checked ?? false;
+        }
         document.querySelectorAll('.group-localisation-filter')
             .forEach(select => {
                 select.addEventListener('change', function(){
@@ -44,7 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const id = button.dataset.id;
                 currentEquipmentId = id;
 
-                document.getElementById("equipment_id").value = id;
+                setValue("equipment_id", id);
 
                 try {
                     const res = await fetch(`/api/modbus_proxy.php?id=${id}`);
@@ -60,26 +79,26 @@ document.addEventListener("DOMContentLoaded", () => {
                     document.querySelectorAll("#commandForm input[type=checkbox]")
                         .forEach(c => c.checked = false);
 
-                    document.getElementById("shield_energy").checked  = !!shields[0];
-                    document.getElementById("shield_setpoint").checked = !!shields[1];
-                    document.getElementById("shield_mode").checked     = !!shields[2];
-                    document.getElementById("shield_power").checked    = !!shields[3];
-                    document.getElementById("lock_function").checked   = !!shields[4];
+                    setChecked("shield_energy", shields[0]);
+                    setChecked("shield_setpoint", shields[1]);
+                    setChecked("shield_mode", shields[2]);
+                    setChecked("shield_power", shields[3]);
+                    setChecked("lock_function", shields[4]);
 
                     lastReadRegisters = regs.map(v =>
                         (v === null || v === undefined || isNaN(v)) ? 0 : Number(v)
                     );
 
-                    while (lastReadRegisters.length < 4) {
+                    while (lastReadRegisters.length < 5) {
                         lastReadRegisters.push(0);
                     }
 
                     // UI
-                    document.getElementById("power").value = lastReadRegisters[0];
-                    document.getElementById("mode").value = lastReadRegisters[1];
-                    document.getElementById("setpoint").value = lastReadRegisters[2] / 10;
-                    document.getElementById("fan").value = lastReadRegisters[3];
-                    document.getElementById("min_setpoint").value = lastReadRegisters[4] / 10;
+                    setValue("power", lastReadRegisters[0]);
+                    setValue("mode", lastReadRegisters[1]);
+                    setValue("setpoint", lastReadRegisters[2] / 10 );
+                    setValue("fan", lastReadRegisters[3]);
+                    setValue("min_setpoint", lastReadRegisters[4] / 10);
 
                     
 
@@ -98,73 +117,100 @@ document.addEventListener("DOMContentLoaded", () => {
         /* =========================
         EQUIPMENT : WRITE
         ========================= */
-        document.getElementById("commandForm").addEventListener("submit", async (e) => {
-            e.preventDefault();
+        const commandForm = document.getElementById("commandForm");
 
-            const id = currentEquipmentId || document.getElementById("equipment_id").value;
+        if (commandForm) {
+            commandForm.addEventListener("submit", async (e) => {
+                e.preventDefault();
 
-            if (!id) {
-                alert("ID équipement manquant");
-                return;
-            }
+                const id = currentEquipmentId ||
+                        document.getElementById("equipment_id")?.value;
 
-            const regs = [...lastReadRegisters];
-
-            for (let i = 0; i < 5; i++) {
-                if (regs[i] === undefined || regs[i] === null || isNaN(regs[i])) {
-                    regs[i] = 0;
+                if (!id) {
+                    alert("ID équipement manquant");
+                    return;
                 }
-            }
 
-            if (document.querySelector('[name="send_power"]').checked) {
-                regs[0] = parseInt(document.getElementById("power").value) || 0;
-            }
+                const regs = [...lastReadRegisters];
 
-            if (document.querySelector('[name="send_mode"]').checked) {
-                regs[1] = parseInt(document.getElementById("mode").value) || 0;
-            }
+                while (regs.length < 5) {
+                    regs.push(0);
+                }
 
-            if (document.querySelector('[name="send_setpoint"]').checked) {
-                const sp = parseFloat(document.getElementById("setpoint").value);
-                regs[2] = isNaN(sp) ? 0 : Math.round(sp * 10);
-            }
+                if (document.querySelector('[name="send_power"]')?.checked) {
+                    regs[0] = parseInt(
+                        document.getElementById("power").value
+                    ) || 0;
+                }
 
-            if (document.querySelector('[name="send_fan"]').checked) {
-                regs[3] = parseInt(document.getElementById("fan").value) || 0;
-            }
-            if (document.querySelector('[name="send_min_setpoint"]').checked) {
-                const minSp = parseFloat(document.getElementById("min_setpoint").value);
-                regs[4] = isNaN(minSp) ? 0 : Math.round(minSp * 10);
-            }
+                if (document.querySelector('[name="send_mode"]')?.checked) {
+                    regs[1] = parseInt(
+                        document.getElementById("mode").value
+                    ) || 0;
+                }
 
-            const shields = [
-                document.getElementById("shield_energy").checked,
-                document.getElementById("shield_setpoint").checked,
-                document.getElementById("shield_mode").checked,
-                document.getElementById("shield_power").checked,
-                document.getElementById("lock_function").checked
-            ];
+                if (document.querySelector('[name="send_setpoint"]')?.checked) {
+                    const sp = parseFloat(
+                        document.getElementById("setpoint").value
+                    );
+                    regs[2] = isNaN(sp)
+                        ? 0
+                        : Math.round(sp * 10);
+                }
 
-            try {
-                const res = await fetch(`/api/modbus_proxy.php?action=write&id=${id}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ registers: regs, shields: shields })
-                });
+                if (document.querySelector('[name="send_fan"]')?.checked) {
+                    regs[3] = parseInt(
+                        document.getElementById("fan").value
+                    ) || 0;
+                }
 
-                const data = await res.json();
+                if (document.querySelector('[name="send_min_setpoint"]')?.checked) {
+                    const minSp = parseFloat(
+                        document.getElementById("min_setpoint").value
+                    );
+                    regs[4] = isNaN(minSp)
+                        ? 0
+                        : Math.round(minSp * 10);
+                }
 
-                if (!data.success) throw new Error(data.error || "Write failed");
+                const shields = [
+                    document.getElementById("shield_energy")?.checked ?? false,
+                    document.getElementById("shield_setpoint")?.checked ?? false,
+                    document.getElementById("shield_mode")?.checked ?? false,
+                    document.getElementById("shield_power")?.checked ?? false,
+                    document.getElementById("lock_function")?.checked ?? false
+                ];
 
-                alert("Commande envoyée");
-                equipModal.hide();
+                try {
+                    const res = await fetch(
+                        `/api/modbus_proxy.php?action=write&id=${id}`,
+                        {
+                            method:"POST",
+                            headers:{
+                                "Content-Type":"application/json"
+                            },
+                            body:JSON.stringify({
+                                registers:regs,
+                                shields:shields
+                            })
+                        }
+                    );
 
-            } catch (err) {
-                console.error(err);
-                alert("Erreur écriture Modbus");
-            }
-        });
+                    const data = await res.json();
 
+                    if(!data.success) {
+                        throw new Error(data.error);
+                    }
+
+                    alert("Commande envoyée");
+                    equipModal?.hide();
+                } catch(err){
+
+                    console.error(err);
+                    alert("Erreur écriture Modbus");
+                }
+            });
+        }
 
         /* =========================
         GROUP : OPEN MODAL
@@ -173,7 +219,7 @@ document.addEventListener("DOMContentLoaded", () => {
             btn.addEventListener("click", () => {
 
                 currentGroupId = btn.dataset.id;
-                document.getElementById("group_id").value = currentGroupId;
+                setValue("group_id", currentGroupId);
 
                 // RESET CHECKBOX GROUP
                 document.querySelectorAll("#groupCommandForm input[type=checkbox]")
@@ -185,8 +231,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.querySelectorAll("#groupCommandForm input[type=number]")
                     .forEach(i => i.value = "");
                 // RESET INPUTS OPTIONNELS
-                document.getElementById("g_setpoint").value = "24";
-                document.getElementById("g_min_setpoint").value = "24";
+                setValue("g_setpoint", "24");
+                setValue("g_min_setpoint", "24");
                 if (groupModal) {
                     groupModal.show();
                 }
@@ -216,84 +262,91 @@ document.addEventListener("DOMContentLoaded", () => {
         /* =========================
         GROUP : WRITE (BROADCAST)
         ========================= */
-        document.getElementById("groupCommandForm").addEventListener("submit", async (e) => {
-            e.preventDefault();
+        const groupCommandForm = document.getElementById("groupCommandForm");
 
-            if (!currentGroupId) {
-                alert("Groupe manquant");
-                return;
-            }
 
-            const registers = {};
+        if(groupCommandForm){
 
-            if (document.getElementById("send_power_group").checked) {
-                const v = document.getElementById("g_power").value;
-                if (v !== "") registers.power = parseInt(v);
-            }
+            groupCommandForm.addEventListener("submit", async(e)=>{
 
-            if (document.getElementById("send_mode_group").checked) {
-                const v = document.getElementById("g_mode").value;
-                if (v !== "") registers.mode = parseInt(v);
-            }
+                e.preventDefault();
 
-            if (document.getElementById("send_setpoint_group").checked) {
-                const v = document.getElementById("g_setpoint").value;
-                if (v !== "") registers.setpoint = Math.round(parseFloat(v));
-            }
-
-            if (document.getElementById("send_fan_group").checked) {
-                const v = document.getElementById("g_fan").value;
-                if (v !== "") registers.fan = parseInt(v);
-            }
-            if (document.getElementById("send_min_setpoint_group").checked) {
-                const v = document.getElementById("g_min_setpoint").value;
-                if (v !== "") registers.min_setpoint = Math.round(parseFloat(v));
-            }
-
-            const payload = {
-                group_id: currentGroupId,
-                registers: registers
-            };
-
-            const shieldCollapse = document.getElementById("shieldCollapse");
-
-            if (shieldCollapse.classList.contains("show")) {
-                payload.shields = [
-                    document.getElementById("g_shield_energy").checked,
-                    document.getElementById("g_shield_setpoint").checked,
-                    document.getElementById("g_shield_mode").checked,
-                    document.getElementById("g_shield_power").checked,
-                    document.getElementById("g_lock_function").checked
-                ];
-            }
-            
-            try {
-                const res = await fetch("/api/modbus_group_proxy.php?action=write_group", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-
-                const text = await res.text();
-
-                let data;
-                try {
-                    data = JSON.parse(text);
-                } catch (e) {
-                    console.error("RAW RESPONSE:", text);
-                    throw new Error("Invalid JSON from server");
+                if (!currentGroupId) {
+                    alert("Groupe manquant");
+                    return;
                 }
 
-                if (!data.success) throw new Error(data.error || "Group write failed");
+                const registers = {};
 
-                alert("Commande groupe envoyée");
-                groupModal.hide();
+                if (isChecked("send_power_group")) {
+                    const v = document.getElementById("g_power").value;
+                    if (v !== "") registers.power = parseInt(v);
+                }
 
-            } catch (err) {
-                console.error(err);
-                alert("Erreur commande groupe");
-            }
-        });
+                if (isChecked("send_mode_group")) {
+                    const v = document.getElementById("g_mode").value;
+                    if (v !== "") registers.mode = parseInt(v);
+                }
+
+                if (isChecked("send_setpoint_group")) {
+                    const v = document.getElementById("g_setpoint").value;
+                    if (v !== "") registers.setpoint = Math.round(parseFloat(v));
+                }
+
+                if (isChecked("send_fan_group")) {
+                    const v = document.getElementById("g_fan").value;
+                    if (v !== "") registers.fan = parseInt(v);
+                }
+                if (isChecked("send_min_setpoint_group")) {
+                    const v = document.getElementById("g_min_setpoint").value;
+                    if (v !== "") registers.min_setpoint = Math.round(parseFloat(v));
+                }
+
+                const payload = {
+                    group_id: currentGroupId,
+                    registers: registers
+                };
+
+                const shieldCollapse = document.getElementById("shieldCollapse");
+
+                if (shieldCollapse && shieldCollapse.classList.contains("show")) {
+                    payload.shields = [
+                        document.getElementById("g_shield_energy").checked,
+                        document.getElementById("g_shield_setpoint").checked,
+                        document.getElementById("g_shield_mode").checked,
+                        document.getElementById("g_shield_power").checked,
+                        document.getElementById("g_lock_function").checked
+                    ];
+                }
+                
+                try {
+                    const res = await fetch("/api/modbus_group_proxy.php?action=write_group", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const text = await res.text();
+
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        console.error("RAW RESPONSE:", text);
+                        throw new Error("Invalid JSON from server");
+                    }
+
+                    if (!data.success) throw new Error(data.error || "Group write failed");
+
+                    alert("Commande groupe envoyée");
+                    groupModal.hide();
+
+                } catch (err) {
+                    console.error(err);
+                    alert("Erreur commande groupe");
+                }
+            });
+        }
 
         //script modal courbe
         let historyChart = null;
@@ -338,7 +391,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     const modalEl = document.getElementById("historyModal");
                     const canvas = document.getElementById("historyChart");
 
-                    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    if (!modalEl || typeof bootstrap === "undefined") {
+                        return;
+                    }
+
+                    const modal =
+                        bootstrap.Modal.getOrCreateInstance(modalEl);
 
                     modal.show();
 
@@ -350,7 +408,12 @@ document.addEventListener("DOMContentLoaded", () => {
                             historyChart.destroy();
                         }
 
+                        if(typeof Chart === "undefined"){
+                            console.error("Chart.js non chargé");
+                            return;
+                        }
                         const ctx = canvas.getContext("2d");
+
 
                         historyChart = new Chart(ctx, {
                             type: "line",
@@ -473,7 +536,14 @@ document.addEventListener("DOMContentLoaded", () => {
             th.addEventListener("click", function () {
 
                 const table = document.getElementById("equipmentsTable");
+                if(!table){
+                    return;
+                }
+
                 const tbody = table.querySelector("tbody");
+                if(!tbody){
+                    return;
+                }
 
                 const key = this.dataset.sort;
 
@@ -497,6 +567,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
                     // Cas Nom avec input admin
+                    if(!cellA || !cellB){
+                        return 0;
+                    }
                     const inputA = cellA.querySelector("input");
                     const inputB = cellB.querySelector("input");
 
@@ -565,9 +638,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 document
                     .querySelectorAll("#equipmentsTable tbody tr")
                     .forEach(row => {
-                        const localisation = row.cells[0]
-                            .dataset.localisation
-                            .toLowerCase();
+                        const cell = row.cells[0];
+                        if(!cell){
+                            return;
+                        }
+                        const localisation =
+                            cell.dataset.localisation?.toLowerCase() || "";
 
                         if (
                             selected.length === 0 ||
@@ -605,4 +681,3 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             });
         });
-});

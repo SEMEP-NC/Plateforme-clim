@@ -668,14 +668,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                             <tbody>
                                 <?php foreach ($equipments as $equipment): ?>
                                 <?php
-                                    $equipmentGroups = [];
+                                    $currentEquipmentGroups = [];
+
                                     foreach ($groupEquipments as $groupId => $equipIds) {
-                                        if(in_array($equipment['id'], $equipIds)){
-                                            $equipmentGroups[] = $groupId;
+                                        if (in_array($equipment['id'], $equipIds)) {
+                                            $currentEquipmentGroups[] = $groupId;
                                         }
                                     }
                                 ?>
-                                <tr data-groups="<?= implode(',', $equipmentGroups) ?>">
+                                <tr data-groups="<?= implode(',', $currentEquipmentGroups) ?>">
                                     <td data-localisation="<?= htmlspecialchars($equipment['localisation'] ?? '') ?>">
                                         <?php if ($_SESSION['user']['role'] === 'admin'): ?>
                                             <input 
