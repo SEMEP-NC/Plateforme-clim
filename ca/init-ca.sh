@@ -65,7 +65,7 @@ echo "=== Génération certificat serveur ==="
 if [ ! -f "$CERT_DIR/clim.crt" ]; then
 
     step ca certificate \
-        "$SERVER_IP" \
+        "$HOST_NAME" \
         "$CERT_DIR/clim.crt" \
         "$CERT_DIR/clim.key" \
         --ca-url "$CA_URL" \

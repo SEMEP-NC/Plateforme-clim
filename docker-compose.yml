@@ -27,6 +27,8 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       API_BASE_URL: http://clim_api:5001
       APP_VERSION: ${APP_VERSION}
+      HOST_IP: ${HOST_IP}
+      HOST_NAME: ${HOST_NAME}
     networks:
     - clim_network
 
@@ -153,6 +155,7 @@ services:
 
     environment:
       SERVER_IP: ${HOST_IP}
+      HOST_NAME: ${HOST_NAME}
       CA_PASSWORD: ${CA_PASSWORD}
 
     volumes:

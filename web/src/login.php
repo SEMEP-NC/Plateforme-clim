@@ -91,74 +91,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adminExists) {
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
-    $stmt->execute([$username]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adminExists) {
-
-
-    $username = trim($_POST['username'] ?? '');
-    $password = $_POST['password'] ?? '';
-
-
+   
     if(check_login_block($pdo,$username,$ip)){
-            $error="Compte temporairement bloqué. Réessayez plus tard.";
+        $error="Compte temporairement bloqué. Réessayez plus tard.";
+    }
+    else {
+        $stmt = $pdo->prepare("
+            SELECT * FROM users WHERE username = ?
+        ");
+        $stmt->execute([$username]);
+        $user=$stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($user && password_verify($password,$user['password_hash'])) {
+
+        // remise à zéro après succès
+            $stmt=$pdo->prepare("
+                DELETE FROM login_attempts
+                WHERE username=? AND ip_address=?
+            ");
+            $stmt->execute([
+                $username,
+                $ip
+            ]);
+            session_regenerate_id(true);
+            $_SESSION['user']=[
+                'id'=>$user['id'],
+                'username'=>$user['username'],
+                'role'=>$user['role']
+            ];
+            $_SESSION['LAST_ACTIVITY']=time();
+            audit(
+                'LOGIN',
+                'Connexion réussie'
+            );
+            if($user['role']=='viewer'){
+                header("Location:view.php");
+            }
+            else{
+                header("Location:index.php");
+            }
+            exit;
         }
         else {
-            $stmt = $pdo->prepare("
-                SELECT * FROM users WHERE username = ?
-            ");
-            $stmt->execute([$username]);
-            $user=$stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($user && password_verify($password,$user['password_hash'])) {
-
-            // remise à zéro après succès
-                $stmt=$pdo->prepare("
-                    DELETE FROM login_attempts
-                    WHERE username=? AND ip_address=?
-                ");
-                $stmt->execute([
-                    $username,
-                    $ip
-                ]);
-                session_regenerate_id(true);
-                $_SESSION['user']=[
-                    'id'=>$user['id'],
-                    'username'=>$user['username'],
-                    'role'=>$user['role']
-                ];
-                $_SESSION['LAST_ACTIVITY']=time();
-                audit(
-                    'LOGIN',
-                    'Connexion réussie'
-                );
-                if($user['role']=='viewer'){
-                    header("Location:view.php");
-                }
-                else{
-                    header("Location:index.php");
-                }
-                exit;
-            }
-            else {
-                register_failed_login(
-                    $pdo,
-                    $username,
-                    $ip,
-                    $maxAttempts,
-                    $blockMinutes
-                );
-                audit(
-                    'LOGIN_FAILED',
-                    "Echec connexion utilisateur $username depuis $ip"
-                );
-                $error="Identifiants invalides";
-            }
+            register_failed_login(
+                $pdo,
+                $username,
+                $ip,
+                $maxAttempts,
+                $blockMinutes
+            );
+            audit(
+                'LOGIN_FAILED',
+                "Echec connexion utilisateur $username depuis $ip"
+            );
+            $error="Identifiants invalides";
         }
     }
-    $error = "Identifiants invalides";
 }
 ?>
 
@@ -217,7 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adminExists) {
         <div class="modal-dialog">
 
             <form method="POST" action="create_admin.php" class="modal-content">
-
+                <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                 <div class="modal-header">
                     <h5 class="modal-title">Initialisation système</h5>
                 </div>
@@ -265,22 +253,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $adminExists) {
         </div>
     </div>
 <?php endif; ?>
-<footer class="text-center py-3 mt-auto">
-    <small>
-        Supervision GREE - SEMEP - Version <?= htmlspecialchars($_ENV['APP_VERSION'] ?? '') ?>
-    </small>
-</footer>
-</body>
 <script>
-document.querySelector("form").addEventListener("submit", function(e) {
+const adminForm = document.querySelector('form[action="create_admin.php"]');
 
-    const p1 = document.getElementById("pwd1").value;
-    const p2 = document.getElementById("pwd2").value;
+if (adminForm) {
+    adminForm.addEventListener("submit", function(e) {
 
-    if (p1 !== p2) {
-        e.preventDefault();
-        document.getElementById("pwdError").classList.remove("d-none");
-    }
-});
+        const p1 = document.getElementById("pwd1").value;
+        const p2 = document.getElementById("pwd2").value;
+
+        if (p1 !== p2) {
+            e.preventDefault();
+            document.getElementById("pwdError").classList.remove("d-none");
+        }
+    });
+}
 </script>
+
+<?php require "includes/footer.php"; ?>
+
 </html>

@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libzip-dev \
     ca-certificates \
+    gettext-base \
     && docker-php-ext-install mysqli pdo pdo_mysql \
     && rm -rf /var/lib/apt/lists/*
 
@@ -21,10 +22,11 @@ RUN mkdir -p \
 
 COPY entrypoint.sh /entrypoint.sh
 COPY php/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
-COPY apache/000-default.conf \
-     /etc/apache2/sites-available/000-default.conf
-COPY apache/default-ssl.conf \
-     /etc/apache2/sites-available/default-ssl.conf
+COPY apache/000-default.conf.template \
+     /etc/apache2/sites-available/000-default.conf.template
+
+COPY apache/default-ssl.conf.template \
+     /etc/apache2/sites-available/default-ssl.conf.template
 
 RUN a2ensite default-ssl \
     && chmod +x /entrypoint.sh

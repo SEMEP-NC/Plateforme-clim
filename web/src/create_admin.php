@@ -1,9 +1,10 @@
 <?php
-session_start();
+require 'auth.php';
 require 'config/db.php';
 
-$pdo = get_db();
 
+$pdo = get_db();
+verify_csrf();
 $username = $_POST['username'] ?? 'admin';
 $password = $_POST['password'] ?? '';
 $password_confirm = $_POST['password_confirm'] ?? '';

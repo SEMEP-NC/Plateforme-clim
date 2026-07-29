@@ -1,6 +1,6 @@
 <VirtualHost *:80>
 
-    ServerName ${HOST_IP}
+    ServerName ${HOST_NAME}
 
     DocumentRoot /var/www/html
 
