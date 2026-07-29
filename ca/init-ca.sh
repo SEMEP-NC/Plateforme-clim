@@ -80,27 +80,48 @@ else
 fi
 
 
+echo ""
+echo "=== Export des certificats ==="
+
+EXPORT_DIR="/export"
+
+mkdir -p "$EXPORT_DIR"
+
+
+# Root CA pour les postes clients
 cp "$CA_DIR/certs/root_ca.crt" \
-   "$CA_DIR/root_ca.crt"
+   "$EXPORT_DIR/root_ca.crt"
+
+
+# Certificat serveur Apache
+cp "$CERT_DIR/clim.crt" \
+   "$EXPORT_DIR/server.crt"
+
+
+# Clé privée Apache
+cp "$CERT_DIR/clim.key" \
+   "$EXPORT_DIR/server.key"
+
+
+# Permissions
+
+chmod 644 "$EXPORT_DIR/root_ca.crt"
+chmod 644 "$EXPORT_DIR/server.crt"
+chmod 640 "$EXPORT_DIR/server.key"
 
 
 echo ""
 echo "================================"
-echo "Certificats générés"
+echo "Certificats exportés"
+echo ""
+ls -l "$EXPORT_DIR"
+echo ""
+echo "Root CA:"
+echo "$EXPORT_DIR/root_ca.crt"
 echo ""
 echo "Certificat serveur:"
-echo "$CERT_DIR/clim.crt"
+echo "$EXPORT_DIR/server.crt"
 echo ""
 echo "Clé privée:"
-echo "$CERT_DIR/clim.key"
-echo ""
-echo "CA utilisateur:"
-echo "$CA_DIR/root_ca.crt"
+echo "$EXPORT_DIR/server.key"
 echo "================================"
-
-mkdir -p /export
-cp /home/step/root_ca.crt /export/root_ca.crt
-chmod 644 /export/root_ca.crt
-
-# garde step-ca actif
-wait $CA_PID

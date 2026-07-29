@@ -267,3 +267,13 @@ CREATE TABLE IF NOT EXISTS equipment_runtime_weekly (
         REFERENCES equipments(id)
         ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL,
+    ip_address VARCHAR(45) NOT NULL,
+    attempts INT NOT NULL DEFAULT 0,
+    last_attempt DATETIME NOT NULL,
+    blocked_until DATETIME NULL,
+    UNIQUE KEY unique_login(username, ip_address)
+);

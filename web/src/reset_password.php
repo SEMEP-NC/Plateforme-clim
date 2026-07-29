@@ -27,17 +27,21 @@ if(!$user){
 /*
     Génération mot de passe temporaire
 */
-function generate_password($length = 8)
+function generate_password($length = 12)
 {
     $chars =
         'ABCDEFGHJKLMNPQRSTUVWXYZ'
         .'abcdefghijkmnopqrstuvwxyz'
         .'23456789';
-    return substr(
-        str_shuffle($chars),
-        0,
-        $length
-    );
+    $password = '';
+
+    $max = strlen($chars) - 1;
+
+    for ($i = 0; $i < $length; $i++) {
+        $password .= $chars[random_int(0, $max)];
+    }
+
+    return $password;
 }
 
 $new_password = generate_password();

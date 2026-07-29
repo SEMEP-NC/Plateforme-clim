@@ -1,6 +1,8 @@
 <?php
 require 'auth.php';
-require_login();
+
+require_login_view();
+
 require 'config/db.php';
 
 $db = get_db();

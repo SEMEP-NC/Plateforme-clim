@@ -434,6 +434,14 @@ def process_planning():
                             flush=True
                         )
 
+                    # Validation transaction
+                    conn.commit()
+
+                    print(
+                        f"Transaction validée planning {schedule_id}",
+                        flush=True
+                    )
+
                 else:
                     print(
                         f"Planning {schedule_id} en erreur",
@@ -447,16 +455,20 @@ def process_planning():
                     flush=True
                 )
 
-                log_command(
-                    cur,
-                    schedule.get("equipment_id"),
-                    schedule_id,
-                    "SCHEDULE",
-                    "error",
-                    str(e)
-                )
+                try:
+                    log_command(
+                        cur,
+                        schedule.get("equipment_id"),
+                        schedule_id,
+                        "SCHEDULE",
+                        "error",
+                        str(e)
+                    )
 
-                conn.commit()
+                    conn.commit()
+
+                except Exception:
+                    conn.rollback()
 
     except Exception as e:
 
@@ -464,6 +476,12 @@ def process_planning():
             f"[PLANNING ERROR] {e}",
             flush=True
         )
+
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
 
     finally:
         if conn:

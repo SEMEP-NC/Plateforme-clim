@@ -1,9 +1,12 @@
 <?php
 if(session_status() === PHP_SESSION_NONE){
+    ini_set('session.cookie_secure', '1');
+    ini_set('session.cookie_httponly', '1');
+    ini_set('session.cookie_samesite', 'Strict');
     session_set_cookie_params([
         'lifetime' => 0,
         'path' => '/',
-        'secure' => false, // passer à true avec HTTPS
+        'secure' => true, // passer à true avec HTTPS
         'httponly' => true,
         'samesite' => 'Strict'
     ]);
@@ -30,10 +33,23 @@ function current_user(){
     return $_SESSION['user'] ?? null;
 }
 
-function require_login(){
-    if(empty($_SESSION['user'])){
+function require_login_view(){
+    if (
+        !isset($_SESSION['user']) ||
+        !isset($_SESSION['user']['role'])
+    ) {
         header("Location: login.php");
         exit;
+    }
+}
+
+function require_login(){
+    require_login_view();
+    $role = $_SESSION['user']['role'];
+
+    if (!in_array($role, ['user', 'admin'])) {
+        http_response_code(403);
+        die("Accès refusé");
     }
 }
 

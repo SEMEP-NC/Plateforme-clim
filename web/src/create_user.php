@@ -4,7 +4,7 @@ require 'config/db.php';
 require 'auth.php';
 
 require_admin();
-
+verify_csrf();
 $pdo = get_db();
 
 $username = trim($_POST['username'] ?? '');

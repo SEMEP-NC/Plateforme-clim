@@ -6,6 +6,7 @@ services:
     restart: always
     expose:
       - "80"
+      - "443"
     volumes:
       - ./web/src:/var/www/html
       - ./ca/export:/var/www/storage/certificates:ro
@@ -17,6 +18,8 @@ services:
         condition: service_started
       migrations:
         condition: service_completed_successfully 
+      ca:
+        condition: service_completed_successfully
     environment:
       DB_HOST: ${DB_HOST}
       DB_NAME: ${DB_NAME}
