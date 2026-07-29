@@ -288,47 +288,7 @@ def build_test_mail():
     return subject, html
 
 
-def send_test_mail():
-
-    conn = None
-
-    try:
-
-        conn = get_connection()
-        cur = conn.cursor()
-
-        account = get_mail_account(cur)
-
-        if not account:
-            return False, "Aucun compte SMTP actif"
-
-        recipients = get_recipients(cur)
-
-        if not recipients:
-            return False, "Aucun destinataire configuré"
-
-        subject, html = build_test_mail()
-
-        send_mail(
-            account,
-            recipients,
-            subject,
-            html
-        )
-
-        return True, f"Mail envoyé à {', '.join(recipients)}"
-
-    except Exception as e:
-
-        traceback.print_exc()
-
-        return False, str(e)
-
-    finally:
-
-        if conn:
-            conn.close()
-            
+           
 def check_mail_queue():
 
     conn=None

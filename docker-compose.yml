@@ -105,7 +105,7 @@ services:
     build: ./modbus-hub
     container_name: modbus_hub
     #ports:
-    #  - "${MODBUS_PORT}:8500"
+    #  - "${MODBUS_PORT}:8500"  a décommenter pour acceder au modbus direct
     restart: always
     networks:
     - clim_network
