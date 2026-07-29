@@ -17,8 +17,10 @@ RUN mkdir -p \
     /var/www/storage/documents \
     /var/www/storage/certificates \
     && chown -R www-data:www-data /var/www/storage/documents \
-    && chmod 750 /var/www/storage \
-    && chmod 750 /var/www/storage/documents
+    && chmod 751 /var/www/storage \
+    && chmod 751 /var/www/storage/certificates \
+    && chmod 750 /var/www/storage/documents \
+    && chmod 700 /etc/ssl/private
 
 COPY entrypoint.sh /entrypoint.sh
 COPY php/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
