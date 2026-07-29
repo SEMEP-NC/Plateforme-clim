@@ -271,5 +271,3 @@ if (adminForm) {
 </script>
 
 <?php require "includes/footer.php"; ?>
-
-</html>
