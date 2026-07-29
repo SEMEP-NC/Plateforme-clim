@@ -4,9 +4,9 @@ services:
     build: ./web
     container_name: clim_web
     restart: always
-    expose:
-      - "80"
-      - "443"
+    ports:
+      - "80:80"
+      - "443:443"
     volumes:
       - ./web/src:/var/www/html
       - ./ca/export:/var/www/storage/certificates:ro
