@@ -99,6 +99,16 @@ if(isset($_POST['valider_gate_control'])){
         header("Location: admin.php");
         exit;
     }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_recipient'])) {
+        verify_csrf();
+        $id = (int)($_POST['recipient_id'] ?? 0);
+        $stmt = $pdo->prepare("DELETE FROM mail_recipients WHERE id = ?");
+        $stmt->execute([$id]);
+        header("Location: ".$_SERVER['PHP_SELF']);
+        exit;
+    }
+
     /* MAIL TEST */
     if(isset($_POST['send_test_mail'])){
         verify_csrf();
@@ -351,20 +361,35 @@ if(isset($_POST['valider_gate_control'])){
                     </div>
                 </form>
                 <hr>
-                <table class="table">
-                    <tr>
-                        <th>Nom</th>
-                        <th>Email</th>
-                        <th>Actif</th>
-                    </tr>
+                <table class="table table-striped align-middle">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Email</th>
+                            <th style="width:120px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                     <?php foreach($recipients as $r): ?>
                         <tr>
-                            <td><?=htmlspecialchars($r['name'])?></td>
-                            <td><?=htmlspecialchars($r['email'])?></td>
-                            <td><?= $r['enabled']?'Oui':'Non' ?></td>
+                            <td><?= htmlspecialchars($r['name']) ?></td>
+                            <td><?= htmlspecialchars($r['email']) ?></td>
+                            <td>
+                                <form method="POST" class="d-inline"
+                                    onsubmit="return confirm('Supprimer ce destinataire ?');">
+                                    <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+                                    <input type="hidden" name="recipient_id" value="<?= (int)$r['id'] ?>">
+                                    <button type="submit"
+                                            name="delete_recipient"
+                                            class="btn btn-sm btn-danger">
+                                        Supprimer
+                                    </button>
+                                </form>
+                            </td>
                         </tr>
-                    <?php endforeach; ?>    
-                </table>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>                            
             </div>
             </div>
         </div>

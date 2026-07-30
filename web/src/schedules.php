@@ -98,6 +98,8 @@ asort($equipmentFilters);
     $page_title = "Planning";
     require "includes/header.php";
     require "includes/user_menu.php";
+    $tz = new DateTimeZone('Pacific/Noumea');
+    $serverTime = new DateTime('now', $tz);
 ?>
     <style>
         .page-title {
@@ -113,6 +115,30 @@ asort($equipmentFilters);
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
     <main class="container flex-grow-1 mt-4">
+        <div class="text-center">
+            <strong>Date et heure du serveur</strong><br>
+            <span id="serverTime"><?= $serverTime->format('Y-m-d\TH:i:s') ?></span>
+            <small class="text-muted d-block"> </small>
+        </div>
+        <script>
+            let serverTime = new Date(document.getElementById('serverTime').textContent);
+
+            function updateClock() {
+                serverTime.setSeconds(serverTime.getSeconds() + 1);
+
+                const d = String(serverTime.getDate()).padStart(2, '0');
+                const m = String(serverTime.getMonth() + 1).padStart(2, '0');
+                const y = serverTime.getFullYear();
+                const h = String(serverTime.getHours()).padStart(2, '0');
+                const min = String(serverTime.getMinutes()).padStart(2, '0');
+                const s = String(serverTime.getSeconds()).padStart(2, '0');
+
+                document.getElementById('serverTime').textContent =
+                    `${d}/${m}/${y} ${h}:${min}:${s}`;
+            }
+
+            setInterval(updateClock, 1000);
+        </script>
         <div class="row g-4">
             <!-- =========================
                 FORMULAIRE AJOUT
