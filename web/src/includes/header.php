@@ -3,18 +3,16 @@
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
+    if (isset($page_title) && $page_title === "Vue des equipements") {
+        require_login_view();
+    }elseif (isset($page_title) && $page_title === "Changement de mot de passe"){
+        require_login_view();
+    } else {
     require_login();
+    }
     $user_session = $_SESSION['user'];
 
 
-    if (isset($_SESSION['user']['role']) && 
-        $_SESSION['user']['role']=='viewer' && 
-        $page_title != "Vue des equipements" && 
-        $page_title = "Changement de mot de passe"
-        ) {
-            header("Location: login.php");
-            exit;
-        }
 ?>
 
 <!DOCTYPE html>

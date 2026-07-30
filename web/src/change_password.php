@@ -1,6 +1,6 @@
 <?php
 require 'auth.php';
-require_login();
+require_login_view();
 require 'config/db.php';
 $db = get_db();
 $userId = $_SESSION['user']['id'];
@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $userId
             ]);
             $_SESSION['flash_success'] = "Mot de passe modifié avec succès.";
-            header("Location: index.php");
+            header("Location: login.php");
             exit;
         }
     }
