@@ -20,8 +20,7 @@ Liste des évolutions envisagées :
 - Logs utilisateurs complets ;
 - Amélioration de l'outil historique ;
 - Prise en compte splits et multi-splits ;
-- Notifications avancées ;
-- Gestion multi-sites.
+
 
 ---
 
@@ -87,9 +86,6 @@ Liste des évolutions envisagées :
 
 
 
-## Debug connu
-Plantage scheduler si aucune configuration mail ;
-Amélioration de la gestion des erreurs Modbus en cours.
 
 
 
