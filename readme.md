@@ -17,8 +17,7 @@ Le projet fournit :
 
 Liste des évolutions envisagées :
 
-- Logs utilisateurs complets ;
-- Amélioration de l'outil historique ;
+- application mobile ;
 - Prise en compte splits et multi-splits ;
 
 
