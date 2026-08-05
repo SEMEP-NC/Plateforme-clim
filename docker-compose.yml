@@ -9,6 +9,7 @@ services:
       - "443:443"
     volumes:
       - ./web/src:/var/www/html
+      - ./web/storage/documents:/var/www/storage/documents
       - ./ca/export/root_ca.crt:/var/www/storage/certificates/root_ca.crt:ro
       - ./ca/export/server.crt:/etc/ssl/certs/clim.crt:ro
       - ./ca/export/server.key:/etc/ssl/private/clim.key:ro
