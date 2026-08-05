@@ -15,6 +15,46 @@ require "includes/user_menu.php";
 ?>
 <main class="container flex-grow-1 mt-4 mb-5">
 
+    <!-- ========================= EXPORT HISTORIQUE CSV ========================= -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <strong>Export CSV de l'historique des équipements</strong>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">
+                Exporte l'historique (température, état ON/OFF, défauts...)
+                d'un équipement ou de tous les équipements, sur une période donnée.
+            </p>
+            <form method="GET" action="export_history_csv.php" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Équipement</label>
+                    <select name="id" class="form-select">
+                        <option value="0">Tous les équipements</option>
+                        <?php foreach ($equipments as $eq): ?>
+                            <option value="<?= (int)$eq['id'] ?>">
+                                UI <?= (int)$eq['UI'] ?> - <?= htmlspecialchars($eq['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Date début</label>
+                    <input type="date" class="form-control" name="date_start">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Date fin</label>
+                    <input type="date" class="form-control" name="date_end">
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-success w-100">
+                        <i class="bi bi-file-earmark-spreadsheet"></i>
+                        Export CSV
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <!-- ========================= SAUVEGARDE CONFIG ========================= -->
     <div class="card mb-4">
         <div class="card-header">
@@ -89,45 +129,7 @@ require "includes/user_menu.php";
         </div>
     </div>
 
-    <!-- ========================= EXPORT HISTORIQUE CSV ========================= -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <strong>Export CSV de l'historique des équipements</strong>
-        </div>
-        <div class="card-body">
-            <p class="text-muted">
-                Exporte l'historique (température, état ON/OFF, défauts...)
-                d'un équipement ou de tous les équipements, sur une période donnée.
-            </p>
-            <form method="GET" action="export_history_csv.php" class="row g-3 align-items-end">
-                <div class="col-md-4">
-                    <label class="form-label">Équipement</label>
-                    <select name="id" class="form-select">
-                        <option value="0">Tous les équipements</option>
-                        <?php foreach ($equipments as $eq): ?>
-                            <option value="<?= (int)$eq['id'] ?>">
-                                UI <?= (int)$eq['UI'] ?> - <?= htmlspecialchars($eq['name']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Date début</label>
-                    <input type="date" class="form-control" name="date_start">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Date fin</label>
-                    <input type="date" class="form-control" name="date_end">
-                </div>
-                <div class="col-md-2">
-                    <button class="btn btn-success w-100">
-                        <i class="bi bi-file-earmark-spreadsheet"></i>
-                        Export CSV
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+
 
     <a href="admin.php" class="btn btn-outline-secondary">Retour administration</a>
 </main>
