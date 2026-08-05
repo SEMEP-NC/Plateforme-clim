@@ -258,6 +258,10 @@ if(isset($_POST['valider_gate_control'])){
                     </i>Alarmes température</a>
                 </div>
                 <div class="card-body">
+                    <a href="backup.php" class="btn btn-outline-secondary">
+                    <i class="bi bi-hdd-network"></i> Sauvegarde &amp; Restauration</a>
+                </div>
+                <div class="card-body">
                     <form method="POST" id="gateControlForm">
                         <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                         <div class="form-check form-switch">
