@@ -350,6 +350,11 @@
 
         //script modal courbe
         let historyChart = null;
+        let historyState = {
+            id: null,
+            name: null,
+            period: "1"
+        };
 
         function toUTCPlus11(dateStr) {
             // équipement DB en UTC -> conversion locale +11
@@ -357,173 +362,315 @@
             return new Date(d.getTime() + 11 * 60 * 60 * 1000);
         }
 
-        document.querySelectorAll(".historyButton").forEach(button => {
-            button.addEventListener("click", async function () {
+        function formatDateInput(d) {
+            return d.toISOString().slice(0, 10);
+        }
 
-                try {
-                    const id = this.dataset.id;
-                    const name = this.dataset.name;
+        function periodToRange(period) {
+            const end = new Date();
+            const start = new Date();
 
-                    document.getElementById("historyTitle").textContent = name;
+            if (period === "7") {
+                start.setDate(start.getDate() - 7);
+            } else if (period === "28") {
+                start.setDate(start.getDate() - 28);
+            } else {
+                start.setDate(start.getDate() - 1);
+            }
 
-                    const response = await fetch("equipment_history.php?id=" + id);
+            return {
+                date_start: formatDateInput(start),
+                date_end: formatDateInput(end)
+            };
+        }
 
-                    if (!response.ok) {
-                        throw new Error("HTTP " + response.status);
+        async function loadHistoryChart(dateStart, dateEnd) {
+            const id = historyState.id;
+            if (!id) return;
+
+            const canvas = document.getElementById("historyChart");
+            const loading = document.getElementById("historyLoading");
+            const empty = document.getElementById("historyEmpty");
+            const aggregatedNotice = document.getElementById("historyAggregatedNotice");
+            const exportLink = document.getElementById("historyExportLink");
+
+            canvas.classList.remove("d-none");
+            empty.classList.add("d-none");
+            aggregatedNotice.classList.add("d-none");
+            loading.classList.remove("d-none");
+
+            if (exportLink) {
+                exportLink.href = "export_history_csv.php?id=" + encodeURIComponent(id)
+                    + "&date_start=" + encodeURIComponent(dateStart)
+                    + "&date_end=" + encodeURIComponent(dateEnd);
+            }
+
+            try {
+                const url = "equipment_history.php?id=" + encodeURIComponent(id)
+                    + "&date_start=" + encodeURIComponent(dateStart)
+                    + "&date_end=" + encodeURIComponent(dateEnd);
+
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error("HTTP " + response.status);
+                }
+
+                const payload = await response.json();
+
+                if (!payload || !Array.isArray(payload.points)) {
+                    console.error("API invalid:", payload);
+                    loading.classList.add("d-none");
+                    return;
+                }
+
+                const data = payload.points;
+
+                loading.classList.add("d-none");
+
+                // ---- Statistiques ----
+                const temps = data
+                    .map(p => Number(p.return_temp))
+                    .filter(v => !Number.isNaN(v));
+                const onCount = data.filter(p => Number(p.state) === 1).length;
+                const faultCount = data.filter(p => Number(p.fault) === 1).length;
+
+                document.getElementById("statMin").textContent =
+                    temps.length ? Math.min(...temps).toFixed(1) + " °C" : "-";
+                document.getElementById("statMax").textContent =
+                    temps.length ? Math.max(...temps).toFixed(1) + " °C" : "-";
+                document.getElementById("statAvg").textContent =
+                    temps.length
+                        ? (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1) + " °C"
+                        : "-";
+                document.getElementById("statOnRatio").textContent =
+                    data.length ? Math.round((onCount / data.length) * 100) + " %" : "-";
+                document.getElementById("statFaults").textContent = faultCount;
+                document.getElementById("statPoints").textContent = data.length;
+
+                if (payload.sampled) {
+                    aggregatedNotice.textContent =
+                        "Historique allégé : 1 point sur 2 affiché";
+                    aggregatedNotice.classList.remove("d-none");
+                }
+
+                if (data.length === 0) {
+                    canvas.classList.add("d-none");
+                    empty.classList.remove("d-none");
+                    if (historyChart) {
+                        historyChart.destroy();
+                        historyChart = null;
                     }
+                    return;
+                }
 
-                    const data = await response.json();
+                if (typeof Chart === "undefined") {
+                    console.error("Chart.js non chargé");
+                    return;
+                }
 
-                    if (!Array.isArray(data)) {
-                        console.error("API invalid:", data);
-                        return;
-                    }
+                const labels = data.map(p => toUTCPlus11(p.created_at));
+                const retour = data.map(p => p.return_temp);
+                const consigne = data.map(p => p.setpoint);
+                const ext = data.map(p => p.outside_temp);
+                // ON/OFF (0/10 demandé)
+                const state = data.map(p => (Number(p.state) ? 10 : 0));
 
-                    const labels = data.map(p => toUTCPlus11(p.created_at));
+                if (historyChart) {
+                    historyChart.destroy();
+                }
 
-                    const retour = data.map(p => p.return_temp);
-                    const consigne = data.map(p => p.setpoint);
-                    const ext = data.map(p => p.outside_temp);
+                const ctx = canvas.getContext("2d");
 
-                    // ON/OFF (0/10 demandé)
-                    const state = data.map(p => (p.state ? 10 : 0));
-
-                    const modalEl = document.getElementById("historyModal");
-                    const canvas = document.getElementById("historyChart");
-
-                    if (!modalEl || typeof bootstrap === "undefined") {
-                        return;
-                    }
-
-                    const modal =
-                        bootstrap.Modal.getOrCreateInstance(modalEl);
-
-                    modal.show();
-
-                    modalEl.addEventListener("shown.bs.modal", function handler() {
-
-                        modalEl.removeEventListener("shown.bs.modal", handler);
-
-                        if (historyChart) {
-                            historyChart.destroy();
-                        }
-
-                        if(typeof Chart === "undefined"){
-                            console.error("Chart.js non chargé");
-                            return;
-                        }
-                        const ctx = canvas.getContext("2d");
-
-
-                        historyChart = new Chart(ctx, {
-                            type: "line",
-                            data: {
-                                labels,
-                                datasets: [
-                                    {
-                                        label: "T°C Ambiance",
-                                        data: retour,
-                                        borderColor: "#0d6efd",
-                                        tension: 0.35,
-                                        pointRadius: 0,
-                                        yAxisID: "y"
-                                    },
-                                    {
-                                        label: "T°C Consigne",
-                                        data: consigne,
-                                        borderColor: "#198754",
-                                        tension: 0.35,
-                                        pointRadius: 0,
-                                        yAxisID: "y"
-                                    },
-                                    {
-                                        label: "T°C Exterieur",
-                                        data: ext,
-                                        borderColor: "#fd7e14",
-                                        tension: 0.35,
-                                        pointRadius: 0,
-                                        yAxisID: "y"
-                                    },
-                                    {
-                                        label: "ON/OFF",
-                                        data: state,
-                                        borderColor: "#dc3545",
-                                        stepped: true,
-                                        pointRadius: 0,
-                                        yAxisID: "yState"
-                                    }
-                                ]
+                historyChart = new Chart(ctx, {
+                    type: "line",
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label: "T°C Ambiance",
+                                data: retour,
+                                borderColor: "#0d6efd",
+                                tension: 0.01,
+                                pointRadius: 0,
+                                yAxisID: "y"
                             },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
+                            {
+                                label: "T°C Consigne",
+                                data: consigne,
+                                borderColor: "#198754",
+                                tension: 0,
+                                pointRadius: 0,
+                                yAxisID: "y"
+                            },
+                            {
+                                label: "T°C Exterieur",
+                                data: ext,
+                                borderColor: "#fd7e14",
+                                tension: 0,
+                                pointRadius: 0,
+                                yAxisID: "y"
+                            },
+                            {
+                                label: "ON/OFF",
+                                data: state,
+                                borderColor: "#dc3545",
+                                stepped: true,
+                                pointRadius: 0,
+                                yAxisID: "yState"
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
 
-                                interaction: {
-                                    mode: "index",
-                                    intersect: false
+                        interaction: {
+                            mode: "index",
+                            intersect: false
+                        },
+
+                        plugins: {
+                            legend: { position: "top" },
+
+                            zoom: {
+                                pan: {
+                                    enabled: true,
+                                    mode: "x"
                                 },
-
-                                plugins: {
-                                    legend: { position: "top" },
-
-                                    zoom: {
-                                        pan: {
-                                            enabled: true,
-                                            mode: "x"
-                                        },
-                                        zoom: {
-                                            wheel: { enabled: true },
-                                            pinch: { enabled: true },
-                                            mode: "x"
-                                        }
-                                    }
-                                },
-
-                                scales: {
-                                    x: {
-                                        type: "time",
-                                        time: {
-                                            tooltipFormat: "dd/MM/yyyy HH:mm",
-                                            displayFormats: {
-                                                minute: "HH:mm",
-                                                hour: "dd/MM HH:mm"
-                                            }
-                                        },
-                                        ticks: {
-                                            source: "auto"
-                                        }
-                                    },
-
-                                    y: {
-                                        min: 0,
-                                        max: 35,
-                                        title: {
-                                            display: true,
-                                            text: "Température (°C)"
-                                        }
-                                    },
-
-                                    yState: {
-                                        position: "right",
-                                        min: 0,
-                                        max: 10,
-                                        ticks: {
-                                            stepSize: 10,
-                                            callback: v => v === 10 ? "ON" : "OFF"
-                                        },
-                                        grid: {
-                                            drawOnChartArea: false
-                                        }
-                                    }
+                                zoom: {
+                                    wheel: { enabled: true },
+                                    pinch: { enabled: true },
+                                    mode: "x"
                                 }
                             }
-                        });
-                    }, { once: true });
+                        },
 
-                } catch (err) {
-                    console.error("ERROR:", err);
+                        scales: {
+                            x: {
+                                type: "time",
+                                time: {
+                                    tooltipFormat: "dd/MM/yyyy HH:mm",
+                                    displayFormats: {
+                                        minute: "HH:mm",
+                                        hour: "dd/MM HH:mm",
+                                        day: "dd/MM"
+                                    }
+                                },
+                                ticks: {
+                                    source: "auto"
+                                }
+                            },
+
+                            y: {
+                                min: 0,
+                                max: 35,
+                                title: {
+                                    display: true,
+                                    text: "Température (°C)"
+                                }
+                            },
+
+                            yState: {
+                                position: "right",
+                                min: 0,
+                                max: 10,
+                                ticks: {
+                                    stepSize: 10,
+                                    callback: v => v === 10 ? "ON" : "OFF"
+                                },
+                                grid: {
+                                    drawOnChartArea: false
+                                }
+                            }
+                        }
+                    }
+                });
+
+            } catch (err) {
+                console.error("ERROR:", err);
+                loading.classList.add("d-none");
+            }
+        }
+
+        document.querySelectorAll(".historyButton").forEach(button => {
+            button.addEventListener("click", function () {
+
+                const id = this.dataset.id;
+                const name = this.dataset.name;
+
+                historyState.id = id;
+                historyState.name = name;
+                historyState.period = "1";
+
+                document.getElementById("historyTitle").textContent = name;
+
+                document.querySelectorAll("#historyPeriodButtons button").forEach(b => {
+                    b.classList.toggle("active", b.dataset.period === "1");
+                });
+                document.getElementById("historyCustomRange").classList.add("d-none");
+
+                const modalEl = document.getElementById("historyModal");
+
+                if (!modalEl || typeof bootstrap === "undefined") {
+                    return;
                 }
+
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+
+                modalEl.addEventListener("shown.bs.modal", function handler() {
+                    modalEl.removeEventListener("shown.bs.modal", handler);
+                    const range = periodToRange("1");
+                    loadHistoryChart(range.date_start, range.date_end);
+                }, { once: true });
             });
+        });
+
+        // Boutons de période prédéfinie (24h / 7 jours / 30 jours)
+        document.querySelectorAll("#historyPeriodButtons button").forEach(btn => {
+            btn.addEventListener("click", function () {
+                const period = this.dataset.period;
+                const customRange = document.getElementById("historyCustomRange");
+
+                document.querySelectorAll("#historyPeriodButtons button").forEach(b => {
+                    b.classList.toggle("active", b === this);
+                });
+
+                if (period === "custom") {
+                    customRange.classList.remove("d-none");
+                    return;
+                }
+
+                customRange.classList.add("d-none");
+                historyState.period = period;
+
+                const range = periodToRange(period);
+                loadHistoryChart(range.date_start, range.date_end);
+            });
+        });
+
+        // Période personnalisée
+        document.getElementById("historyCustomRange").addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            const dateStart = document.getElementById("historyDateStart").value;
+            const dateEnd = document.getElementById("historyDateEnd").value;
+
+            if (!dateStart || !dateEnd) {
+                alert("Sélectionnez une date de début et une date de fin.");
+                return;
+            }
+
+            historyState.period = "custom";
+            loadHistoryChart(dateStart, dateEnd);
+        });
+
+        // Réinitialisation du zoom / pan du graphique
+        document.getElementById("historyResetZoom").addEventListener("click", function () {
+            if (historyChart && typeof historyChart.resetZoom === "function") {
+                historyChart.resetZoom();
+            }
         });
         /* =========================
         TRI TABLE UNITÉS

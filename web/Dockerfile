@@ -16,10 +16,13 @@ WORKDIR /var/www/html
 RUN mkdir -p \
     /var/www/storage/documents \
     /var/www/storage/certificates \
+    /var/www/storage/tmp_backups \
     && chown -R www-data:www-data /var/www/storage/documents \
+    && chown -R www-data:www-data /var/www/storage/tmp_backups \
     && chmod 751 /var/www/storage \
     && chmod 751 /var/www/storage/certificates \
     && chmod 750 /var/www/storage/documents \
+    && chmod 700 /var/www/storage/tmp_backups \
     && chmod 700 /etc/ssl/private
 
 COPY entrypoint.sh /entrypoint.sh

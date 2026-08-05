@@ -17,6 +17,7 @@ from mail_notifier import (
 INTERVAL = int(os.getenv("SCHEDULER_INTERVAL"))
 DISCOVERY_INTERVAL = int(os.getenv("DISCOVERY_INTERVAL"))
 HUB_WRITE_URL = os.getenv("HUB_WRITE_URL")
+HISTORY_RETENTION_DAYS = int(os.getenv("HISTORY_RETENTION_DAYS", "90"))
 LOCAL_TZ = timezone(timedelta(hours=11))
 RUNTIME_INCREMENT = INTERVAL
 
@@ -931,30 +932,74 @@ def create_temperature_fault(cur,equipment,fault_name,active):
         active
     ))
 
+_last_history_cleanup_date = None
+
+
 def cleanup_history():
+    """
+    Purge les historiques au-delà de HISTORY_RETENTION_DAYS.
+
+    Tables concernées :
+      - equipment_history
+      - command_log
+      - equipment_fault_history
+
+    La purge est exécutée une seule fois par jour et par lots afin
+    d'éviter les transactions trop importantes.
+    """
+
+    global _last_history_cleanup_date
+
+    today = datetime.utcnow().date()
+
+    if _last_history_cleanup_date == today:
+        return
 
     conn = None
+    batch_size = 5000
+
+    tables = [
+        ("equipment_history", "Historique équipements"),
+        ("command_logs", "Journal des commandes"),
+        ("equipment_fault_history", "Historique défauts"),
+        ("audit_logs", "Journal audit"),
+    ]
 
     try:
-
         conn = get_connection()
         cur = conn.cursor()
 
-        cur.execute("""
-            DELETE FROM equipment_history
-            WHERE created_at < NOW() - INTERVAL 90 DAY
-        """)
+        for table, label in tables:
 
-        deleted = cur.rowcount
+            total_deleted = 0
 
-        conn.commit()
+            while True:
 
-        if deleted:
-            print(
-                f"[DB] Historique supprimé : {deleted} lignes",
-                flush=True
-            )
+                cur.execute(
+                    f"""
+                    DELETE FROM {table}
+                    WHERE created_at < NOW() - INTERVAL %s DAY
+                    LIMIT %s
+                    """,
+                    (HISTORY_RETENTION_DAYS, batch_size)
+                )
 
+                conn.commit()
+
+                deleted = cur.rowcount
+                total_deleted += deleted
+
+                if deleted < batch_size:
+                    break
+
+            if total_deleted:
+                print(
+                    f"[DB] {label} : {total_deleted} lignes supprimées "
+                    f"(rétention {HISTORY_RETENTION_DAYS}j)",
+                    flush=True
+                )
+
+        _last_history_cleanup_date = today
 
     except Exception as e:
 
@@ -963,11 +1008,11 @@ def cleanup_history():
             flush=True
         )
 
-
     finally:
 
         if conn:
             conn.close()
+
 
 def main():
     wait_for_db()

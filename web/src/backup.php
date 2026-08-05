@@ -86,6 +86,7 @@ require "includes/user_menu.php";
                 La restauration remplace les données existantes des sections
                 sélectionnées. Cette action est irréversible : téléchargez une
                 sauvegarde récente avant de continuer.
+                Un aperçu du contenu vous sera présenté avant toute écriture en base.
             </div>
             <form method="POST" action="import_config.php" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
@@ -139,11 +140,8 @@ document.querySelector('form[action="import_config.php"]').addEventListener('sub
     if (checked.length === 0) {
         e.preventDefault();
         alert("Sélectionnez au moins une section à restaurer.");
-        return;
     }
-    if (!confirm("Confirmez-vous la restauration ? Les données existantes des sections sélectionnées seront remplacées.")) {
-        e.preventDefault();
-    }
+    // La confirmation définitive se fait sur la page d'aperçu qui suit.
 });
 </script>
 <?php require "includes/footer.php"; ?>

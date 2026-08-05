@@ -962,13 +962,103 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                     <div class="modal-header">
                         <h5 id="historyTitle"></h5>
 
+                        <a id="historyExportLink"
+                           href="#"
+                           class="btn btn-success btn-sm ms-auto me-3"
+                           target="_blank">
+                            <i class="bi bi-file-earmark-spreadsheet"></i>
+                            Export CSV
+                        </a>
+
                         <button class="btn-close"
                                 data-bs-dismiss="modal"></button>
                     </div>
 
                     <div class="modal-body">
 
-                        <canvas id="historyChart" height="650"></canvas>
+                        <!-- Sélecteur de période -->
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                            <div class="btn-group" role="group" id="historyPeriodButtons">
+                                <button type="button" class="btn btn-outline-primary btn-sm active" data-period="1">24h</button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" data-period="7">7 jours</button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" data-period="28">28 jours</button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" data-period="custom">Personnalisé</button>
+                            </div>
+
+                            <form id="historyCustomRange" class="d-none d-flex flex-wrap gap-2 align-items-center">
+                                <input type="date" class="form-control form-control-sm" id="historyDateStart" style="width:150px">
+                                <span>→</span>
+                                <input type="date" class="form-control form-control-sm" id="historyDateEnd" style="width:150px">
+                                <button type="submit" class="btn btn-primary btn-sm">Appliquer</button>
+                            </form>
+
+                            <button type="button" class="btn btn-outline-secondary btn-sm ms-auto" id="historyResetZoom">
+                                <i class="bi bi-arrows-angle-contract"></i> Réinitialiser le zoom
+                            </button>
+                        </div>
+
+                        <!-- Bandeau de statistiques -->
+                        <div class="row text-center g-2 mb-3" id="historyStats">
+                            <div class="col-6 col-md-2">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small">T° min</div>
+                                    <div class="fw-bold" id="statMin">-</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small">T° max</div>
+                                    <div class="fw-bold" id="statMax">-</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small">T° moyenne</div>
+                                    <div class="fw-bold" id="statAvg">-</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small">Temps ON</div>
+                                    <div class="fw-bold" id="statOnRatio">-</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small">Défauts</div>
+                                    <div class="fw-bold" id="statFaults">-</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small">Points affichés</div>
+                                    <div class="fw-bold" id="statPoints">-</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-muted small mb-2 d-none" id="historyAggregatedNotice">
+                            <i class="bi bi-info-circle"></i>
+                            Sur cette période, les valeurs affichées sont des moyennes agrégées
+                            (et non des relevés bruts) afin de garder un graphique lisible.
+                        </div>
+
+                        <!-- Zone graphique -->
+                        <div class="position-relative">
+                            <canvas id="historyChart" height="650"></canvas>
+
+                            <div id="historyLoading"
+                                 class="position-absolute top-50 start-50 translate-middle d-none">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Chargement...</span>
+                                </div>
+                            </div>
+
+                            <div id="historyEmpty"
+                                 class="position-absolute top-50 start-50 translate-middle text-muted d-none">
+                                <i class="bi bi-inbox fs-1"></i>
+                                <div>Aucune donnée disponible sur cette période.</div>
+                            </div>
+                        </div>
 
                     </div>
 
