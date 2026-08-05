@@ -159,10 +159,7 @@ echo "========================================"
 echo "Certificats exportés"
 echo "========================================"
 
-openssl x509 \
-    -in "$EXPORT_DIR/server.crt" \
-    -noout \
-    -dates
+step certificate inspect "$EXPORT_DIR/server.crt"
 
 echo ""
 echo "CA prête"
