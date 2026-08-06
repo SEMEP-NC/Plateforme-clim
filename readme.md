@@ -17,7 +17,7 @@ Le projet fournit :
 
 Liste des évolutions envisagées :
 
-- application mobile ;
+- Application mobile ;
 - Prise en compte splits et multi-splits ;
 
 
