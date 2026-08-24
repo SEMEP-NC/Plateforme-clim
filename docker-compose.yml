@@ -137,7 +137,7 @@ services:
   ca:
     build: ./ca
     container_name: clim_ca
-    restart: "no"
+    restart: always
 
     environment:
       SERVER_IP: ${HOST_IP}

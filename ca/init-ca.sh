@@ -165,7 +165,29 @@ echo ""
 echo "CA prête"
 
 ########################################################
-# Garde step-ca au premier plan
+# Surveillance de step-ca
 ########################################################
 
-wait $CA_PID
+echo ""
+echo "========================================"
+echo "CA prête"
+echo "Redémarrage automatique dans 12 heures"
+echo "========================================"
+
+while true; do
+
+    sleep 12h
+
+    echo ""
+    echo "========================================"
+    echo "Redémarrage périodique de clim-ca"
+    echo "========================================"
+
+    echo "Arrêt de step-ca..."
+
+    kill "$CA_PID" 2>/dev/null || true
+
+    echo "Arrêt du conteneur..."
+    exit 0
+
+done
