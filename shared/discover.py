@@ -9,7 +9,7 @@ from db import get_connection
 HUB_URL = os.getenv("HUB_URL", "http://modbus-hub:8500/read")
 
 BIT_START = 120
-BIT_END = 247
+BIT_END = 374
 MAX_SCAN_IPS = int(os.getenv("MAX_SCAN_IPS", "256"))
 
 
@@ -88,35 +88,96 @@ def hub_read(ip, port, slave, address, count, mode):
 def check_ui_bits(ip, port, slave_id):
     print(f"[DISCOVERY] Checking {ip}:{port} slave={slave_id}", flush=True)
 
-    result = hub_read(
-        ip=ip,
-        port=port,
-        slave=slave_id,
-        address=BIT_START,
-        count=(BIT_END - BIT_START + 1),
-        mode="coils",
-    )
-
-    if not result or not result.get("success"):
-        print(f"[DISCOVERY] hub error {result}", flush=True)
-        return []
-
-    bits = result.get("bits", [])
-
-    if not isinstance(bits, list):
-        print("[DISCOVERY] invalid bits format", flush=True)
-        return []
-
     devices = []
 
-    for i, bit in enumerate(bits):
+    # ---------------------------------------------------------
+    # Lecture des coils par blocs de maximum 128 bits
+    # ---------------------------------------------------------
+    MAX_COILS_PER_REQUEST = 128
+
+    all_bits = []
+
+    current_address = BIT_START
+
+    while current_address <= BIT_END:
+
+        count = min(
+            MAX_COILS_PER_REQUEST,
+            BIT_END - current_address + 1
+        )
+
+        print(
+            f"[DISCOVERY] Reading coils {current_address} -> "
+            f"{current_address + count - 1} ({count} bits)",
+            flush=True
+        )
+
+        result = hub_read(
+            ip=ip,
+            port=port,
+            slave=slave_id,
+            address=current_address,
+            count=count,
+            mode="coils",
+        )
+
+        if not result or not result.get("success"):
+            print(
+                f"[DISCOVERY] hub error on coils "
+                f"{current_address}-{current_address + count - 1}: {result}",
+                flush=True
+            )
+            return []
+
+        bits = result.get("bits", [])
+
+        if not isinstance(bits, list):
+            print(
+                f"[DISCOVERY] invalid bits format "
+                f"for coils {current_address}-{current_address + count - 1}",
+                flush=True
+            )
+            return []
+
+        if len(bits) != count:
+            print(
+                f"[DISCOVERY] unexpected bit count: "
+                f"expected={count}, received={len(bits)}",
+                flush=True
+            )
+            return []
+
+        all_bits.extend(bits)
+
+        current_address += count
+
+    # ---------------------------------------------------------
+    # Analyse des bits
+    # ---------------------------------------------------------
+
+    for i, bit in enumerate(all_bits):
+
         if bit:
             coil_address = BIT_START + i
+
+            # 120 -> UI1
+            # 121 -> UI2
+            # ...
+            # 374 -> UI255
             ui_number = coil_address - 119
 
-            print(f"[DISCOVERY] UI FOUND UI{ui_number} @ {ip}:{port}", flush=True)
+            print(
+                f"[DISCOVERY] UI FOUND UI{ui_number} "
+                f"@ {ip}:{port}",
+                flush=True
+            )
 
-            power = read_ui_power(ip, port, slave_id, ui_number)
+            power = read_ui_power(
+                ip,
+                port,
+                slave_id,
+                ui_number
+            )
 
             devices.append({
                 "ui": ui_number,
@@ -127,7 +188,6 @@ def check_ui_bits(ip, port, slave_id):
             })
 
     return devices
-
 
 def read_ui_power(ip, port, slave_id, ui_number):
     register = 123 + (25 * (ui_number - 1))
