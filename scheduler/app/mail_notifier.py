@@ -146,20 +146,26 @@ def build_mail(faults):
 
     return subject, html
 
+
 def send_mail(account, recipients, subject, html):
     """
     Envoi SMTP
     """
+
     msg = MIMEMultipart("alternative")
+
     sender = account["sender_email"]
+
     if account["sender_name"]:
         msg["From"] = (
             f"{account['sender_name']} <{sender}>"
         )
     else:
         msg["From"] = sender
+
     msg["To"] = ", ".join(recipients)
     msg["Subject"] = subject
+
     msg.attach(
         MIMEText(
             html,
@@ -167,24 +173,45 @@ def send_mail(account, recipients, subject, html):
             "utf-8"
         )
     )
-    smtp = smtplib.SMTP(
-        account["smtp_host"],
-        int(account["smtp_port"]),
-        timeout=10
-    )
-    if account["smtp_secure"] == "tls":
-        smtp.starttls()
-    if account["smtp_user"]:
+
+    smtp_secure = (account.get("smtp_secure") or "tls").lower()
+
+    # Connexion SMTP
+    if smtp_secure == "ssl":
+        smtp = smtplib.SMTP_SSL(
+            account["smtp_host"],
+            int(account["smtp_port"]),
+            timeout=10
+        )
+
+    else:
+        smtp = smtplib.SMTP(
+            account["smtp_host"],
+            int(account["smtp_port"]),
+            timeout=10
+        )
+
+        # STARTTLS uniquement pour le mode TLS
+        if smtp_secure == "tls":
+            smtp.starttls()
+
+    # Authentification uniquement si elle est configurée
+    # En mode "none", aucune authentification n'est effectuée.
+    if smtp_secure != "none" and account["smtp_user"]:
         smtp.login(
             account["smtp_user"],
             account["smtp_password"]
         )
+
     smtp.sendmail(
         sender,
         recipients,
         msg.as_string()
     )
+
     smtp.quit()
+
+
 
 def mark_as_sent(cur, fault_ids):
     for fault_id in fault_ids:

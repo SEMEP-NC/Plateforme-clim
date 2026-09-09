@@ -311,9 +311,15 @@ if(isset($_POST['valider_gate_control'])){
 
                         <label class="mt-3">Sécurité</label>
                         <select class="form-select" name="smtp_secure">
-                            <option value="tls">TLS</option>
-                            <option value="ssl">SSL</option>
-                            <option value="none">Aucune</option>
+                            <option value="tls" <?= (($smtp['smtp_secure'] ?? 'tls') === 'tls') ? 'selected' : '' ?>>
+                                TLS
+                            </option>
+                            <option value="ssl" <?= (($smtp['smtp_secure'] ?? 'tls') === 'ssl') ? 'selected' : '' ?>>
+                                SSL
+                            </option>
+                            <option value="none" <?= (($smtp['smtp_secure'] ?? 'tls') === 'none') ? 'selected' : '' ?>>
+                                Aucune
+                            </option>
                         </select>
 
                         <label class="mt-3">Nom expéditeur</label>
@@ -335,6 +341,7 @@ if(isset($_POST['valider_gate_control'])){
                         <button class="btn btn-success" name="save_smtp">💾 Sauvegarder</button>
                     </form>
                     <form method="POST" class="mt-3">
+                        <input type="hidden" name="csrf_token" value="<?=csrf_token()?>">
                         <button
                             type="submit"
                             name="send_test_mail"
