@@ -134,6 +134,26 @@ services:
     networks:
     - clim_network
 
+  node-red:
+    image: nodered/node-red:latest
+    container_name: clim_nodered
+    restart: always
+    # Accès interne uniquement (IP:port), pas de HTTPS via le reverse proxy.
+    ports:
+      - "${NODERED_PORT:-1880}:1880"
+    environment:
+      TZ: ${TZ}
+      NODERED_USER: ${NODERED_USER}
+      NODERED_PASSWORD_HASH: ${NODERED_PASSWORD_HASH}
+    volumes:
+      - ./nodered/data:/data
+      - ./nodered/settings.js:/data/settings.js:ro
+    depends_on:
+      modbus-hub:
+        condition: service_started
+    networks:
+    - clim_network
+
   ca:
     build: ./ca
     container_name: clim_ca

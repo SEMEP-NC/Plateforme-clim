@@ -12,6 +12,8 @@ from mail_notifier import (
     check_mail_queue,
     check_weekly_report
 )
+import registers
+from registers import GMV, UMATCH
 
 
 INTERVAL = int(os.getenv("SCHEDULER_INTERVAL"))
@@ -25,25 +27,9 @@ last_discovery = 0
 LAST_LOOP = time.time()
 LAST_LOOP_LOCK = threading.Lock()
 
-FAULTS = {
-    408: "Défaut général",
-    409: "Erreur communication",
-    410: "Protection unité intérieure",
-    411: "Protection ventilateur indoor",
-    412: "Bac à condensats plein",
-    413: "Protection surintensité",
-    414: "Protection anti-gel",
-    415: "Conflit mode",
-    416: "Défaut carte indoor",
-    417: "Défaut sonde reprise",
-    418: "Défaut sonde ambiance",
-    419: "Défaut sonde liquide",
-    420: "Défaut sonde gaz",
-    421: "Défaut sonde humidité",
-    422: "Conflit adresse",
-    423: "Pas de master",
-    424: "Défaut quantité unités"
-}
+# Les dictionnaires de défauts par type (GMV_FAULTS / UMATCH_FAULTS) sont
+# centralisés dans shared/registers.py afin de rester cohérents avec la
+# découverte et l'API web.
 
 fault_cache = {}
 temperature_alarm_cache = {}
@@ -245,7 +231,8 @@ def process_planning():
                             e.ip,
                             e.port,
                             e.slave_id,
-                            e.UI
+                            e.UI,
+                            e.type
                         FROM equipments e
                         JOIN equipment_groups eg
                             ON eg.equipment_id = e.id
@@ -270,7 +257,8 @@ def process_planning():
                             ip,
                             port,
                             slave_id,
-                            UI
+                            UI,
+                            type
                         FROM equipments
                         WHERE id=%s
                         AND enabled=1
@@ -293,9 +281,10 @@ def process_planning():
                     equipment_id = eq["id"]
 
                     ui = int(eq["UI"])
+                    eq_type = eq.get("type") or GMV
 
-                    cmd_register = 102 + (25 * (ui - 1))
-                    temp_register = 104 + (25 * (ui - 1))
+                    cmd_register = registers.cmd_register(eq_type, ui)
+                    temp_register = registers.setpoint_register(eq_type, ui)
 
                     print(
                         f"UI={ui} "
@@ -510,7 +499,7 @@ def run_discovery_if_needed():
 
         last_discovery = now
 
-def read_coils(ip, port, slave_id, address):
+def read_coils(ip, port, slave_id, address, count):
 
     try:
         r = requests.get(
@@ -521,15 +510,103 @@ def read_coils(ip, port, slave_id, address):
                 "device_id": slave_id,
                 "type": "coils",
                 "address": address,
-                "count": 17
+                "count": count
             },
             timeout=1
         )
 
-        return r.json().get("bits", [0] * 17)
+        return r.json().get("bits", [0] * count)
 
     except Exception:
-        return [0] * 17
+        return [0] * count
+
+
+def read_registers(ip, port, slave_id, address, count, timeout=1):
+    try:
+        r = requests.get(
+            "http://modbus-hub:8500/read",
+            params={
+                "ip": ip,
+                "port": port,
+                "device_id": slave_id,
+                "type": "register",
+                "address": address,
+                "count": count
+            },
+            timeout=timeout
+        )
+
+        return r.json().get("registers", [])
+
+    except Exception:
+        return []
+
+
+def read_gmv_telemetry(eq, ui, get_outdoor_temp):
+    """
+    Lecture télémétrie GMV : reproduit exactement la logique historique
+    (bloc de 16 registres à partir de cmd_register, température extérieure
+    lue séparément sur le registre "système" 6507).
+    """
+    base = registers.cmd_register(GMV, ui)
+
+    regs = read_registers(eq["ip"], eq["port"], eq["slave_id"], base, 16)
+
+    if len(regs) < 16:
+        return None
+
+    state = 1 if regs[0] == 170 else 0
+    setpoint = regs[2] / 10 if regs[2] is not None else None
+    return_temp = regs[14] / 10 if regs[14] is not None else None
+    gate_status = regs[15] if regs[15] is not None else None
+
+    outside_temp = get_outdoor_temp(eq["ip"], eq["port"], eq["slave_id"])
+
+    return {
+        "state": state,
+        "setpoint": setpoint,
+        "return_temp": return_temp,
+        "outside_temp": outside_temp,
+        "gate_status": gate_status,
+    }
+
+
+def read_umatch_telemetry(eq):
+    """
+    Lecture télémétrie UMATCH : 1 esclave = 1 unité, adresses fixes.
+    Un seul bloc de registres [cmd .. temperature exterieure] couvre tous
+    les champs utiles.
+    """
+    start = registers.cmd_register(UMATCH, 1)
+    end = registers.outside_temp_register(UMATCH, 1)
+    count = end - start + 1
+
+    regs = read_registers(eq["ip"], eq["port"], eq["slave_id"], start, count)
+
+    if len(regs) < count:
+        return None
+
+    def value_at(address):
+        v = regs[address - start]
+        return v
+
+    cmd_value = value_at(registers.cmd_register(UMATCH, 1))
+    setpoint_raw = value_at(registers.setpoint_register(UMATCH, 1))
+    return_temp_raw = value_at(registers.return_temp_register(UMATCH, 1))
+    outside_raw = value_at(registers.outside_temp_register(UMATCH, 1))
+
+    state = 1 if cmd_value == 170 else 0
+    setpoint = setpoint_raw / 10 if setpoint_raw is not None else None
+    return_temp = return_temp_raw / 10 if return_temp_raw is not None else None
+    outside_temp = outside_raw / 10 if outside_raw is not None else None
+
+    return {
+        "state": state,
+        "setpoint": setpoint,
+        "return_temp": return_temp,
+        "outside_temp": outside_temp,
+        "gate_status": None,   # non disponible côté U-Match
+    }
 
 def collect_telemetry():
     global fault_cache
@@ -544,7 +621,7 @@ def collect_telemetry():
         cur = conn.cursor()
 
         cur.execute("""
-            SELECT id, ip, port, slave_id, UI
+            SELECT id, ip, port, slave_id, UI, type
             FROM equipments
             WHERE enabled = 1
         """)
@@ -566,7 +643,7 @@ def collect_telemetry():
                         "port": port,
                         "device_id": slave_id,
                         "type": "register",
-                        "address": 6507,
+                        "address": registers.outside_temp_register(GMV, 1),
                         "count": 1
                     },
                     timeout=1
@@ -584,32 +661,27 @@ def collect_telemetry():
         for eq in equipments:
 
             ui = int(eq["UI"])
-            base = 102 + 25 * (ui - 1)
+            eq_type = eq.get("type") or GMV
 
             try:
 
                 #
-                # Lecture registres UI
+                # Lecture registres UI (carte de registres selon le type)
                 #
-                r = requests.get(
-                    "http://modbus-hub:8500/read",
-                    params={
-                        "ip": eq["ip"],
-                        "port": eq["port"],
-                        "device_id": eq["slave_id"],
-                        "type": "register",
-                        "address": base,
-                        "count": 16
-                    },
-                    timeout=1
-                )
+                if eq_type == UMATCH:
+                    telemetry = read_umatch_telemetry(eq)
+                else:
+                    telemetry = read_gmv_telemetry(eq, ui, get_outdoor_temp)
 
-                registers = r.json().get("registers", [])
-
-                if len(registers) < 16:
+                if telemetry is None:
                     continue
 
-                state = 1 if registers[0] == 170 else 0
+                state = telemetry["state"]
+                setpoint = telemetry["setpoint"]
+                return_temp = telemetry["return_temp"]
+                outside_temp = telemetry["outside_temp"]
+                gate_status = telemetry["gate_status"]
+
                 #
                 # Compteur temps de fonctionnement
                 #
@@ -625,33 +697,42 @@ def collect_telemetry():
                         RUNTIME_INCREMENT,
                         eq["id"]
                     ))
-                setpoint = registers[2] / 10 if registers[2] is not None else None
-                return_temp = registers[14] / 10 if registers[14] is not None else None
-                gate_status = registers[15] if registers[15] is not None else None
+
                 check_temperature_alarm(cur,eq,return_temp)
-                
+
                 #
-                # Lecture défauts
+                # Lecture défauts (bloc de coils propre au type)
                 #
-                coil_addr = 408 + (64 * (ui - 1))
+                fault_start, fault_count = registers.fault_scan_range(eq_type, ui)
+                fault_labels = registers.REGISTER_MAPS[eq_type]["faults"]
 
                 coils = read_coils(
                     eq["ip"],
                     eq["port"],
                     eq["slave_id"],
-                    coil_addr
+                    fault_start,
+                    fault_count
                 )
 
-                fault = 1 if any(coils) else 0
+                fault = 0
 
                 #
                 # Historique défauts
                 #
                 for i, value in enumerate(coils):
 
-                    code = coil_addr + i
+                    code = fault_start + i
+
+                    # Seuls les bits documentés dans la table du type sont
+                    # des défauts (le bloc UMATCH couvre aussi des coils
+                    # non significatifs entre les codes connus).
+                    if code not in fault_labels:
+                        continue
 
                     current = bool(value)
+
+                    if current:
+                        fault = 1
 
                     key = (eq["id"], code)
 
@@ -680,26 +761,17 @@ def collect_telemetry():
                         """, (
                             eq["id"],
                             code,
-                            FAULTS.get(408 + i, f"Défaut {code}"),
+                            fault_labels.get(code, f"Défaut {code}"),
                             current
                         ))
 
                         print(
                             f"[FAULT] "
                             f"UI{ui} "
-                            f"{FAULTS.get(408 + i, code)} "
+                            f"{fault_labels.get(code, code)} "
                             f"{'ACTIVE' if current else 'CLEAR'}",
                             flush=True
                         )
-
-                #
-                # Température extérieure
-                #
-                outside_temp = get_outdoor_temp(
-                    eq["ip"],
-                    eq["port"],
-                    eq["slave_id"]
-                )
 
                 #
                 # Mise à jour équipement

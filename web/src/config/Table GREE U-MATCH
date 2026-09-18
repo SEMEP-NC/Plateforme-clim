@@ -1,0 +1,42 @@
+# coils UI
+17 : Lock fonction
+18 : Shield consigne
+19 : Shield mode
+20 : Shield ON/OFF
+21 : Shield Energy saving
+95 : Défaut general
+97 : Défaut capteur temperature evapo
+98 : Défaut capteur temperature retour air
+99 : Défaut capteur temperature afficheur
+101 : Bac a condensat plein
+105 : Défaut ventilateur
+122 : Défaut communication interieur / exterieure
+152 : Protection haute Pression
+153 : Protection 
+154 : Protection moteur ventilateur interieur
+155 : Protection vanne 4 voies
+156 : Protecction surpuissance
+157 : Protection surcharge
+158 : Protection basse Pression
+159 : Protection haute pression 
+160 : Protection prise en glace
+161 : Défaut capteur temperature exterieure
+162 : Défaut capteur temperature HP
+163 : Défaut capteur temperature BP
+174 : Défaut communication cartes
+184 : Protection tension bus DC 
+185 : Protection tension bus DC 
+186 - 196 : Protection compresseur
+
+
+
+
+#Register UI
+2 : ON/OFF #0xAA=ON , 0x55=OFF
+4 : Temerature reprise #valeur x10 , plage -30 +138°C
+17 : Mode #1=Froid, 2=Chauffage, 3=Deshumidification, 4=Ventilation, 5=Auto
+19 : Vitesse ventilation (0=auto, 1=speed 1, 2=speed 2, 3=speed 3, 4=speed 4, 5=speed 5, 6=turbo)
+20 : Consigne #valeur x10 , plage 16-30°C
+35 : Limite basse consigne froid #valeur x10 , plage 16-30°C
+36 : Limite haute consigne chaud #valeur x10 , plage 16-30°C
+49 : Temperature extérieure #plage -30 +155 °C

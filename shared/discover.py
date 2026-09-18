@@ -4,42 +4,53 @@ import os
 import requests
 
 from db import get_connection
+from registers import GMV, UMATCH, presence_probe_register
 
 
 HUB_URL = os.getenv("HUB_URL", "http://modbus-hub:8500/read")
 
+# Plage de coils "présence unité intérieure" pour le GMV (Table GREE).
 BIT_START = 120
 BIT_END = 374
 MAX_SCAN_IPS = int(os.getenv("MAX_SCAN_IPS", "256"))
 
 
-def load_discovery_config():
+def load_discovery_configs():
+    """
+    Charge toutes les passerelles configurées (une ligne = une plage IP avec
+    son type de matériel GMV ou UMATCH).
+    """
     print("[DISCOVERY] Loading configuration from database", flush=True)
 
     conn = get_connection()
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT start_ip, end_ip, ports, slave_ids
+        SELECT id, name, start_ip, end_ip, ports, slave_ids, type
         FROM discovery_config
-        LIMIT 1
     """)
 
-    row = cur.fetchone()
+    rows = cur.fetchall()
     conn.close()
 
-    if not row:
+    if not rows:
         raise Exception("No discovery configuration found")
 
-    config = {
-        "start_ip": row["start_ip"],
-        "end_ip": row["end_ip"],
-        "ports": [int(x.strip()) for x in row["ports"].split(",") if x.strip()],
-        "slave_ids": [int(x.strip()) for x in row["slave_ids"].split(",") if x.strip()],
-    }
+    configs = []
 
-    print(f"[DISCOVERY] CONFIG loaded: {config}", flush=True)
-    return config
+    for row in rows:
+        configs.append({
+            "id": row["id"],
+            "name": row.get("name") or f"Config {row['id']}",
+            "start_ip": row["start_ip"],
+            "end_ip": row["end_ip"],
+            "ports": [int(x.strip()) for x in row["ports"].split(",") if x.strip()],
+            "slave_ids": [int(x.strip()) for x in row["slave_ids"].split(",") if x.strip()],
+            "type": row.get("type") or GMV,
+        })
+
+    print(f"[DISCOVERY] {len(configs)} configuration(s) loaded", flush=True)
+    return configs
 
 
 def scan_ip_range(config):
@@ -84,6 +95,11 @@ def hub_read(ip, port, slave, address, count, mode):
         print(f"[HUB] request error: {e}", flush=True)
         return None
 
+
+# ---------------------------------------------------------------------------
+# GMV : plusieurs UI multiplexées derrière un même esclave, détection par
+# scan des coils de présence 120-374.
+# ---------------------------------------------------------------------------
 
 def check_ui_bits(ip, port, slave_id):
     print(f"[DISCOVERY] Checking {ip}:{port} slave={slave_id}", flush=True)
@@ -185,9 +201,11 @@ def check_ui_bits(ip, port, slave_id):
                 "port": port,
                 "slave": slave_id,
                 "power": power,
+                "type": GMV,
             })
 
     return devices
+
 
 def read_ui_power(ip, port, slave_id, ui_number):
     register = 123 + (25 * (ui_number - 1))
@@ -209,18 +227,76 @@ def read_ui_power(ip, port, slave_id, ui_number):
     return regs[0] if regs else None
 
 
+# ---------------------------------------------------------------------------
+# UMATCH : 1 esclave = 1 unité. Pas de multiplexage : on teste simplement
+# la présence de chaque esclave en lisant son registre ON/OFF.
+# ---------------------------------------------------------------------------
+
+def check_umatch_slave(ip, port, slave_id):
+    print(f"[DISCOVERY] Checking UMATCH {ip}:{port} slave={slave_id}", flush=True)
+
+    register = presence_probe_register(UMATCH)
+
+    result = hub_read(
+        ip=ip,
+        port=port,
+        slave=slave_id,
+        address=register,
+        count=1,
+        mode="register",
+    )
+
+    if not result or not result.get("success"):
+        return []
+
+    regs = result.get("registers", [])
+
+    if not regs or regs[0] is None:
+        return []
+
+    print(
+        f"[DISCOVERY] UMATCH FOUND @ {ip}:{port} slave={slave_id}",
+        flush=True
+    )
+
+    return [{
+        "ui": 1,
+        "ip": ip,
+        "port": port,
+        "slave": slave_id,
+        "power": None,
+        "type": UMATCH,
+    }]
+
+
 def discover():
     print("\n[DISCOVERY] START\n", flush=True)
 
-    config = load_discovery_config()
+    configs = load_discovery_configs()
 
     devices = []
 
-    for ip in scan_ip_range(config):
-        for port in config["ports"]:
-            for slave in config["slave_ids"]:
-                print(f"[DISCOVERY] scanning {ip}:{port} slave={slave}", flush=True)
-                devices.extend(check_ui_bits(ip, port, slave))
+    for config in configs:
+
+        print(
+            f"[DISCOVERY] --- Config '{config['name']}' ({config['type']}) ---",
+            flush=True
+        )
+
+        for ip in scan_ip_range(config):
+            for port in config["ports"]:
+                for slave in config["slave_ids"]:
+
+                    print(
+                        f"[DISCOVERY] scanning {ip}:{port} slave={slave} "
+                        f"type={config['type']}",
+                        flush=True
+                    )
+
+                    if config["type"] == UMATCH:
+                        devices.extend(check_umatch_slave(ip, port, slave))
+                    else:
+                        devices.extend(check_ui_bits(ip, port, slave))
 
     print(f"[DISCOVERY] DONE -> {len(devices)} devices", flush=True)
     return devices
@@ -235,15 +311,16 @@ def save(devices):
 
         cur.execute("""
             INSERT INTO discovered_units
-                (device_id, port, slave_id, ip, name, model, last_seen, online)
+                (device_id, port, slave_id, ip, name, model, type, last_seen, online)
             VALUES
-                (%s,%s,%s,%s,%s,%s,NOW(),1)
+                (%s,%s,%s,%s,%s,%s,%s,NOW(),1)
             ON DUPLICATE KEY UPDATE
                 port = VALUES(port),
                 slave_id = VALUES(slave_id),
                 ip = VALUES(ip),
                 name = VALUES(name),
                 model = VALUES(model),
+                type = VALUES(type),
                 last_seen = NOW(),
                 online = 1
         """, (
@@ -253,6 +330,7 @@ def save(devices):
             d["ip"],
             f"UI-{d['ui']}",
             d["power"],
+            d.get("type", GMV),
         ))
 
     conn.commit()

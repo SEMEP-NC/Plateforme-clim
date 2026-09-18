@@ -33,6 +33,34 @@
         function isChecked(id){
             return document.getElementById(id)?.checked ?? false;
         }
+
+        /* =========================
+        DROPDOWNS MODE / VENTILATION PAR TYPE
+        ========================= */
+        function populateSelect(selectEl, optionsMap, currentValue) {
+            if (!selectEl) return;
+
+            selectEl.innerHTML = "";
+
+            Object.entries(optionsMap || {}).forEach(([value, label]) => {
+                const opt = document.createElement("option");
+                opt.value = value;
+                opt.textContent = label;
+                selectEl.appendChild(opt);
+            });
+
+            if (currentValue !== undefined && currentValue !== null && !Number.isNaN(currentValue)) {
+                selectEl.value = String(currentValue);
+            }
+        }
+
+        function registerUiFor(type) {
+            const ui = window.EQUIPMENT_REGISTER_UI || { modes: {}, fanSpeeds: {} };
+            return {
+                modes: ui.modes?.[type] || ui.modes?.GMV || {},
+                fanSpeeds: ui.fanSpeeds?.[type] || ui.fanSpeeds?.GMV || {}
+            };
+        }
         document.querySelectorAll('.group-localisation-filter')
             .forEach(select => {
                 select.addEventListener('change', function(){
@@ -61,9 +89,18 @@
             button.addEventListener("click", async () => {
 
                 const id = button.dataset.id;
+                const type = button.dataset.type || "GMV";
+                const name = button.dataset.name || "";
                 currentEquipmentId = id;
 
                 setValue("equipment_id", id);
+
+                const infoEl = document.getElementById("commandEquipmentInfo");
+                if (infoEl) {
+                    infoEl.textContent = name
+                        ? `${name} — type ${type}`
+                        : `Type ${type}`;
+                }
 
                 try {
                     const res = await fetch(`/api/modbus_proxy.php?id=${id}`);
@@ -93,14 +130,17 @@
                         lastReadRegisters.push(0);
                     }
 
+                    // Dropdowns mode / ventilation : numérotation propre au type
+                    const { modes, fanSpeeds } = registerUiFor(type);
+                    populateSelect(document.getElementById("mode"), modes, lastReadRegisters[1]);
+                    populateSelect(document.getElementById("fan"), fanSpeeds, lastReadRegisters[3]);
+
                     // UI
                     setValue("power", lastReadRegisters[0]);
-                    setValue("mode", lastReadRegisters[1]);
                     setValue("setpoint", lastReadRegisters[2] / 10 );
-                    setValue("fan", lastReadRegisters[3]);
                     setValue("min_setpoint", lastReadRegisters[4] / 10);
 
-                    
+
 
                     if (equipModal) {
                         equipModal.show();

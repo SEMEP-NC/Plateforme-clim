@@ -183,3 +183,61 @@ docker compose pull
 docker compose build
 docker compose up -d
 ```
+
+## Types de climatiseurs (GMV / U-Match)
+
+Depuis la page **Détection** (`discovered_units.php`), chaque passerelle Modbus est déclarée
+avec un type :
+
+- **GMV** : système centralisé, plusieurs unités intérieures derrière un même esclave
+  (scan des bits de présence) ;
+- **U-Match** : splits/multi-splits, un esclave Modbus par unité derrière la passerelle IP
+  (scan direct des esclaves déclarés).
+
+Le type conditionne à la fois la méthode de découverte et les adresses Modbus utilisées pour
+le pilotage et la télémétrie (voir `shared/registers.py`). Une passerelle existante peut être
+modifiée à tout moment depuis cette page ; le type des équipements déjà importés reste celui
+choisi au moment de leur ajout (modifiable directement en base si besoin).
+
+## Node-RED
+
+Un service Node-RED est fourni pour construire des automatismes ou tableaux de bord
+complémentaires à partir du hub Modbus existant, sans aucune modification de celui-ci.
+
+### Accès
+
+```text
+http://<IP_SERVEUR>:1880
+```
+(accès réseau interne uniquement, pas de HTTPS via le reverse proxy)
+
+### Appeler le hub Modbus depuis un flow
+
+Depuis un nœud "http request" :
+
+- Lecture : `POST http://modbus-hub:8500/read` avec un corps JSON
+  `{"ip":"...","port":502,"device_id":1,"address":102,"count":5,"type":"register"}` ;
+- Écriture : `POST http://modbus-hub:8500/write` avec un corps JSON
+  `{"ip":"...","port":502,"slave":1,"address":102,"value":170,"type":"register"}`.
+
+### Sécuriser l'éditeur (recommandé)
+
+L'éditeur Node-RED permet d'exécuter du code arbitraire sur le serveur (nœud Function) : il est
+fortement recommandé de le protéger par un compte avant toute utilisation durable.
+
+```bash
+docker compose run --rm node-red node-red admin hash-pw
+```
+
+Copier le hash obtenu dans `.env` :
+```text
+NODERED_USER=admin
+NODERED_PASSWORD_HASH=<hash généré>
+```
+
+Puis redémarrer le service :
+```bash
+docker compose up -d node-red
+```
+
+Tant que `NODERED_PASSWORD_HASH` est vide, l'éditeur reste accessible sans authentification.

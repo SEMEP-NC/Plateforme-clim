@@ -3,6 +3,7 @@ require 'auth.php';
 require_login();
 require 'config/db.php';
 require 'lib/audit.php';
+require 'lib/registers.php';
 
 $db = get_db();
 
@@ -604,6 +605,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                     </th>
                                     <?php if ($_SESSION['user']['role'] === 'admin'): ?>
                                         <th>Puissance</th>
+                                        <th>Type</th>
                                         <th>IP</th>
                                         <th>Slave</th>
                                     <?php endif; ?>
@@ -713,6 +715,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                         </td>
                                     <?php endif; ?>
                                     <?php if ($_SESSION['user']['role'] === 'admin'): ?>
+                                        <td>
+                                            <span class="badge bg-<?= ($equipment['type'] ?? 'GMV') === 'UMATCH' ? 'info' : 'primary' ?>">
+                                                <?= htmlspecialchars($equipment['type'] ?? 'GMV') ?>
+                                            </span>
+                                        </td>
                                         <td><?= htmlspecialchars($equipment['ip']) ?></td>
                                         <td><?= htmlspecialchars($equipment['slave_id']) ?></td>
                                     <?php endif; ?>
@@ -753,6 +760,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                             class="btn btn-warning btn-sm commandButton"
                                             data-id="<?= $equipment['id'] ?>"
                                             data-ui="<?= $equipment['UI'] ?>"
+                                            data-type="<?= htmlspecialchars($equipment['type'] ?? 'GMV') ?>"
                                             data-ip="<?= htmlspecialchars($equipment['ip']) ?>"
                                             data-port="<?= $equipment['port'] ?? 502 ?>"
                                             data-name="<?= htmlspecialchars($equipment['name']) ?>">
@@ -827,6 +835,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
+                            <div id="commandEquipmentInfo" class="text-muted small mb-2"></div>
                             <table class="table table-bordered align-middle">
                                 <thead>
                                     <tr>
@@ -1066,7 +1075,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
             </div>
         </div>
     </main>
-    
+
+    <script>
+        // Numérotations mode/ventilation par type d'équipement (GMV / U-Match),
+        // générées depuis web/src/lib/registers.php pour rester en phase avec
+        // les adresses Modbus utilisées côté serveur.
+        const EQUIPMENT_REGISTER_UI = <?= json_encode([
+            'modes' => MODES,
+            'fanSpeeds' => FAN_SPEEDS,
+        ], JSON_UNESCAPED_UNICODE) ?>;
+    </script>
    <script src="assets/js/equipments.js" defer></script>
 
 <?php require "includes/footer.php"; ?>

@@ -2,6 +2,7 @@
 require '../auth.php';
 require_login();
 require '../config/db.php';
+require '../lib/registers.php';
 
 function log_modbus($msg, $data = null) {
     $line = "[MODBUS PROXY] " . $msg;
@@ -13,6 +14,45 @@ function log_modbus($msg, $data = null) {
     error_log($line);
 }
 
+function hub_get($params, $timeout = 3) {
+    $url = "http://modbus-hub:8500/read?" . http_build_query($params);
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+
+    $response = curl_exec($ch);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    if ($response === false) {
+        return ["success" => false, "error" => $error];
+    }
+
+    $data = json_decode($response, true);
+    return is_array($data) ? $data : ["success" => false, "error" => "Invalid JSON"];
+}
+
+function hub_post($path, $body, $timeout = 5) {
+    $ch = curl_init("http://modbus-hub:8500/" . $path);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+
+    $response = curl_exec($ch);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    if ($response === false) {
+        return ["success" => false, "error" => $error];
+    }
+
+    $data = json_decode($response, true);
+    return is_array($data) ? $data : ["success" => false, "error" => "Invalid JSON"];
+}
+
 header('Content-Type: application/json');
 
 $db = get_db();
@@ -20,7 +60,7 @@ $db = get_db();
 $action = $_GET['action'] ?? 'read';
 $id = (int)($_GET['id'] ?? 0);
 
-$stmt = $db->prepare("SELECT ip, port, slave_id, UI FROM equipments WHERE id = ?");
+$stmt = $db->prepare("SELECT ip, port, slave_id, UI, type FROM equipments WHERE id = ?");
 $stmt->execute([$id]);
 $eq = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -32,75 +72,71 @@ if (!$eq) {
 
 $port = $eq['port'] ?: 502;
 $ui = (int)$eq['UI'];
-$address = 102 + 25 * ($ui - 1);
+$type = reg_type($eq['type'] ?? 'GMV');
+
+$cmdAddresses = reg_command_addresses($type, $ui);       // [power,mode,setpoint,fan,min_setpoint]
+$shieldOrder = reg_shield_order($type);                  // [energy,setpoint,mode,power,lock]
+$shieldAddresses = reg_shield_addresses($type, $ui);      // adresses dans le même ordre
 
 /* =========================
    READ
 ========================= */
 if ($action === 'read') {
 
-    $coilAddress = 440 + 64 * ($ui - 1);
+    // ---- Registres de commande ----
+    $cmdList = array_values($cmdAddresses);
+    $cmdStart = min($cmdList);
+    $cmdCount = max($cmdList) - $cmdStart + 1;
 
-    // Registers
-    $url = "http://modbus-hub:8500/read?" . http_build_query([
-        "ip"=>$eq['ip'],
-        "port"=>$port,
-        "device_id"=>$eq['slave_id'],
-        "type"=>"register",
-        "address"=>$address,
-        "count"=>5
+    $regResponse = hub_get([
+        "ip" => $eq['ip'],
+        "port" => $port,
+        "device_id" => $eq['slave_id'],
+        "type" => "register",
+        "address" => $cmdStart,
+        "count" => $cmdCount,
     ]);
 
-    $ch=curl_init($url);
-    curl_setopt($ch,CURLOPT_RETURNTRANSFER,true);
-    curl_setopt($ch,CURLOPT_TIMEOUT,3);
-
-    $regResponse=curl_exec($ch);
-
-    if($regResponse===false){
-        echo json_encode([
-            "success"=>false,
-            "error"=>curl_error($ch)
-        ]);
+    if (!($regResponse['success'] ?? false)) {
+        echo json_encode(["success" => false, "error" => $regResponse['error'] ?? "Erreur lecture registres"]);
         exit;
     }
 
-    curl_close($ch);
+    $regBlock = $regResponse['registers'] ?? [];
+    $registers = [];
+    foreach ($cmdAddresses as $key => $addr) {
+        $registers[] = $regBlock[$addr - $cmdStart] ?? null;
+    }
 
-    $registers=json_decode($regResponse,true);
+    // ---- Coils shield ----
+    $shieldStart = min($shieldAddresses);
+    $shieldCount = max($shieldAddresses) - $shieldStart + 1;
 
-    // Coils
-    $url = "http://modbus-hub:8500/read?" . http_build_query([
-        "ip"=>$eq['ip'],
-        "port"=>$port,
-        "device_id"=>$eq['slave_id'],
-        "type"=>"coils",
-        "address"=>$coilAddress,
-        "count"=>5
+    $coilResponse = hub_get([
+        "ip" => $eq['ip'],
+        "port" => $port,
+        "device_id" => $eq['slave_id'],
+        "type" => "coils",
+        "address" => $shieldStart,
+        "count" => $shieldCount,
     ]);
 
-    $ch=curl_init($url);
-    curl_setopt($ch,CURLOPT_RETURNTRANSFER,true);
-    curl_setopt($ch,CURLOPT_TIMEOUT,3);
-
-    $coilResponse=curl_exec($ch);
-
-    if($coilResponse===false){
-        echo json_encode([
-            "success"=>false,
-            "error"=>curl_error($ch)
-        ]);
+    if (!($coilResponse['success'] ?? false)) {
+        echo json_encode(["success" => false, "error" => $coilResponse['error'] ?? "Erreur lecture coils"]);
         exit;
     }
 
-    curl_close($ch);
-
-    $coils=json_decode($coilResponse,true);
+    $coilBlock = $coilResponse['bits'] ?? [];
+    $coils = [];
+    foreach ($shieldAddresses as $addr) {
+        $coils[] = $coilBlock[$addr - $shieldStart] ?? false;
+    }
 
     echo json_encode([
-        "success"=>true,
-        "registers"=>$registers["registers"] ?? [],
-        "coils"=>$coils["bits"] ?? []
+        "success" => true,
+        "type" => $type,
+        "registers" => $registers,
+        "coils" => $coils,
     ]);
 
     exit;
@@ -111,11 +147,7 @@ if ($action === 'read') {
 ========================= */
 if ($action === 'write') {
 
-    header('Content-Type: application/json');
-
     $payload = json_decode(file_get_contents("php://input"), true);
-
-
 
     if (!$payload || !isset($payload['registers'])) {
         echo json_encode([
@@ -128,24 +160,23 @@ if ($action === 'write') {
     $registers = $payload['registers'] ?? [];
     $shields = $payload["shields"] ?? [];
 
-
     $registers = array_map(function($v) {
         if (!is_numeric($v)) return 0;
         return (int)$v;
     }, $registers);
 
-    // force taille fixe 5
     while (count($registers) < 5) {
         $registers[] = 0;
     }
 
-    $shields = array_map(function($v){
+    $shields = array_map(function($v) {
         return $v ? true : false;
     }, $shields);
 
-    while(count($shields)<5){
+    while (count($shields) < 5) {
         $shields[] = false;
     }
+
     if (!is_array($registers) || count($registers) !== 5) {
         echo json_encode([
             "success" => false,
@@ -154,81 +185,59 @@ if ($action === 'write') {
         exit;
     }
 
+    // Écriture registre par registre : les adresses ne sont pas forcément
+    // contiguës (cas U-Match), une écriture par bloc écraserait des
+    // registres non concernés.
+    $cmdKeys = array_keys($cmdAddresses); // ['power','mode','setpoint','fan','min_setpoint']
 
-    // URL modbus-hub
-    $url = "http://modbus-hub:8500/write";
+    $success = true;
+    $errors = [];
 
-    $requestBody = [
-        "ip" => $eq['ip'],
-        "port" => $port,
-        "slave" => $eq['slave_id'],
-        "type" => "register",
-        "address" => $address,
-        "count" => 5,
-        "values" => array_map('intval', $registers)
-    ];
-    
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json'
+    foreach ($cmdKeys as $i => $key) {
+        $addr = $cmdAddresses[$key];
+
+        $result = hub_post("write", [
+            "ip" => $eq['ip'],
+            "port" => $port,
+            "slave" => $eq['slave_id'],
+            "type" => "register",
+            "address" => $addr,
+            "value" => $registers[$i],
+        ]);
+
+        if (!($result['success'] ?? false)) {
+            $success = false;
+            $errors[] = $result['error'] ?? "Erreur écriture registre $addr";
+            log_modbus("WRITE REGISTER ERROR", ["address" => $addr, "result" => $result]);
+        }
+    }
+
+    // Écriture des coils shield, un par un (même raison que ci-dessus).
+    foreach ($shieldOrder as $i => $key) {
+        $addr = reg_shield_address($type, $ui, $key);
+
+        $result = hub_post("write", [
+            "ip" => $eq['ip'],
+            "port" => $port,
+            "slave" => $eq['slave_id'],
+            "type" => "coil",
+            "address" => $addr,
+            "value" => (bool)$shields[$i],
+        ]);
+
+        if (!($result['success'] ?? false)) {
+            $success = false;
+            $errors[] = $result['error'] ?? "Erreur écriture coil $addr";
+            log_modbus("WRITE COIL ERROR", ["address" => $addr, "result" => $result]);
+        }
+    }
+
+    echo json_encode([
+        "success" => $success,
+        "errors" => $errors,
     ]);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($requestBody));
 
-   
-
-    $response = curl_exec($ch);
-
-    if ($response === false) {
-
-        log_modbus("CURL ERROR", [
-            "error" => curl_error($ch)
-        ]);
-
-        echo json_encode([
-            "success" => false,
-            "error" => curl_error($ch)
-        ]);
-
-        curl_close($ch);
-        exit;
-    }
-
-    curl_close($ch);
-
-    // renvoyer brut modbus-hub
-    echo $response;
-        
-    $coilAddress = 440 + 64 * ($ui - 1);
-
-    $requestBody = [
-        "ip"=>$eq['ip'],
-        "port"=>$port,
-        "slave"=>$eq['slave_id'],
-        "type"=>"coils",
-        "address"=>$coilAddress,
-        "count"=>5,
-        "values"=>$shields
-    ];
-
-    $ch=curl_init("http://modbus-hub:8500/write");
-
-    curl_setopt($ch,CURLOPT_RETURNTRANSFER,true);
-    curl_setopt($ch,CURLOPT_POST,true);
-    curl_setopt($ch,CURLOPT_HTTPHEADER,['Content-Type: application/json']);
-    curl_setopt($ch,CURLOPT_POSTFIELDS,json_encode($requestBody));
-
-    $coilResponse=curl_exec($ch);
-
-    if($coilResponse===false){
-        echo json_encode([
-            "success"=>false,
-            "error"=>curl_error($ch)
-        ]);
-        exit;
-    }
-
-    curl_close($ch);
+    exit;
 }
+
+echo json_encode(["success" => false, "error" => "Unknown action"]);
