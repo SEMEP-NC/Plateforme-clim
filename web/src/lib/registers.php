@@ -8,11 +8,11 @@
  *
  * GMV    : plusieurs UI derrière un même esclave, adresses décalées de
  *          step*(UI-1) par rapport à l'UI 1.
- * UMATCH : 1 esclave = 1 unité, adresses fixes (UI toujours = 1).
+ * SPLIT : 1 esclave = 1 unité, adresses fixes (UI toujours = 1).
  */
 
 const REGISTER_TYPE_GMV = 'GMV';
-const REGISTER_TYPE_UMATCH = 'UMATCH';
+const REGISTER_TYPE_SPLIT = 'SPLIT';
 
 const REGISTER_MAPS = [
     'GMV' => [
@@ -34,7 +34,7 @@ const REGISTER_MAPS = [
         'fault_step' => 64,
         'fault_count' => 17,
     ],
-    'UMATCH' => [
+    'SPLIT' => [
         'cmd' => 2,
         'return_temp' => 4,
         'mode' => 17,
@@ -68,7 +68,7 @@ const MODES = [
         4 => 'Chauffage',
         5 => 'Auto',
     ],
-    'UMATCH' => [
+    'SPLIT' => [
         1 => 'Froid',
         2 => 'Chauffage',
         3 => 'Déshumidification',
@@ -87,7 +87,7 @@ const FAN_SPEEDS = [
         6 => 'Fort',
         7 => 'Turbo',
     ],
-    'UMATCH' => [
+    'SPLIT' => [
         0 => 'Auto',
         1 => 'Vitesse 1',
         2 => 'Vitesse 2',

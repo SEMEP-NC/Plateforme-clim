@@ -709,14 +709,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_equipment'])) 
                                     </td>
                                     <?php if ($_SESSION['user']['role'] === 'admin'): ?>
                                         <td>
-                                            <?= is_numeric($equipment['power'])
-                                                ? number_format($equipment['power']/10, 1) . ' kW'
-                                                : htmlspecialchars($equipment['power']) ?>
+                                            <?= $equipment['power'] === null
+                                                ? ''
+                                                : (is_numeric($equipment['power'])
+                                                    ? number_format($equipment['power'] / 10, 1) . ' kW'
+                                                    : htmlspecialchars($equipment['power']))
+                                            ?>
                                         </td>
                                     <?php endif; ?>
                                     <?php if ($_SESSION['user']['role'] === 'admin'): ?>
                                         <td>
-                                            <span class="badge bg-<?= ($equipment['type'] ?? 'GMV') === 'UMATCH' ? 'info' : 'primary' ?>">
+                                            <span class="badge bg-<?= ($equipment['type'] ?? 'GMV') === 'SPLIT' ? 'info' : 'primary' ?>">
                                                 <?= htmlspecialchars($equipment['type'] ?? 'GMV') ?>
                                             </span>
                                         </td>

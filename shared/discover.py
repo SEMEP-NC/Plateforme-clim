@@ -4,7 +4,7 @@ import os
 import requests
 
 from db import get_connection
-from registers import GMV, UMATCH, presence_probe_register
+from registers import GMV, SPLIT, presence_probe_register
 
 
 HUB_URL = os.getenv("HUB_URL", "http://modbus-hub:8500/read")
@@ -18,7 +18,7 @@ MAX_SCAN_IPS = int(os.getenv("MAX_SCAN_IPS", "256"))
 def load_discovery_configs():
     """
     Charge toutes les passerelles configurées (une ligne = une plage IP avec
-    son type de matériel GMV ou UMATCH).
+    son type de matériel GMV ou SPLIT).
     """
     print("[DISCOVERY] Loading configuration from database", flush=True)
 
@@ -228,14 +228,14 @@ def read_ui_power(ip, port, slave_id, ui_number):
 
 
 # ---------------------------------------------------------------------------
-# UMATCH : 1 esclave = 1 unité. Pas de multiplexage : on teste simplement
+# SPLIT : 1 esclave = 1 unité. Pas de multiplexage : on teste simplement
 # la présence de chaque esclave en lisant son registre ON/OFF.
 # ---------------------------------------------------------------------------
 
 def check_umatch_slave(ip, port, slave_id):
-    print(f"[DISCOVERY] Checking UMATCH {ip}:{port} slave={slave_id}", flush=True)
+    print(f"[DISCOVERY] Checking SPLIT {ip}:{port} slave={slave_id}", flush=True)
 
-    register = presence_probe_register(UMATCH)
+    register = presence_probe_register(SPLIT)
 
     result = hub_read(
         ip=ip,
@@ -255,7 +255,7 @@ def check_umatch_slave(ip, port, slave_id):
         return []
 
     print(
-        f"[DISCOVERY] UMATCH FOUND @ {ip}:{port} slave={slave_id}",
+        f"[DISCOVERY] SPLIT FOUND @ {ip}:{port} slave={slave_id}",
         flush=True
     )
 
@@ -265,7 +265,7 @@ def check_umatch_slave(ip, port, slave_id):
         "port": port,
         "slave": slave_id,
         "power": None,
-        "type": UMATCH,
+        "type": SPLIT,
     }]
 
 
@@ -293,7 +293,7 @@ def discover():
                         flush=True
                     )
 
-                    if config["type"] == UMATCH:
+                    if config["type"] == SPLIT:
                         devices.extend(check_umatch_slave(ip, port, slave))
                     else:
                         devices.extend(check_ui_bits(ip, port, slave))

@@ -13,7 +13,7 @@ from mail_notifier import (
     check_weekly_report
 )
 import registers
-from registers import GMV, UMATCH
+from registers import GMV, SPLIT
 
 
 INTERVAL = int(os.getenv("SCHEDULER_INTERVAL"))
@@ -27,7 +27,7 @@ last_discovery = 0
 LAST_LOOP = time.time()
 LAST_LOOP_LOCK = threading.Lock()
 
-# Les dictionnaires de défauts par type (GMV_FAULTS / UMATCH_FAULTS) sont
+# Les dictionnaires de défauts par type (GMV_FAULTS / SPLIT_FAULTS) sont
 # centralisés dans shared/registers.py afin de rester cohérents avec la
 # découverte et l'API web.
 
@@ -573,12 +573,12 @@ def read_gmv_telemetry(eq, ui, get_outdoor_temp):
 
 def read_umatch_telemetry(eq):
     """
-    Lecture télémétrie UMATCH : 1 esclave = 1 unité, adresses fixes.
+    Lecture télémétrie SPLIT : 1 esclave = 1 unité, adresses fixes.
     Un seul bloc de registres [cmd .. temperature exterieure] couvre tous
     les champs utiles.
     """
-    start = registers.cmd_register(UMATCH, 1)
-    end = registers.outside_temp_register(UMATCH, 1)
+    start = registers.cmd_register(SPLIT, 1)
+    end = registers.outside_temp_register(SPLIT, 1)
     count = end - start + 1
 
     regs = read_registers(eq["ip"], eq["port"], eq["slave_id"], start, count)
@@ -590,15 +590,15 @@ def read_umatch_telemetry(eq):
         v = regs[address - start]
         return v
 
-    cmd_value = value_at(registers.cmd_register(UMATCH, 1))
-    setpoint_raw = value_at(registers.setpoint_register(UMATCH, 1))
-    return_temp_raw = value_at(registers.return_temp_register(UMATCH, 1))
-    outside_raw = value_at(registers.outside_temp_register(UMATCH, 1))
+    cmd_value = value_at(registers.cmd_register(SPLIT, 1))
+    setpoint_raw = value_at(registers.setpoint_register(SPLIT, 1))
+    return_temp_raw = value_at(registers.return_temp_register(SPLIT, 1))
+    outside_raw = value_at(registers.outside_temp_register(SPLIT, 1))
 
     state = 1 if cmd_value == 170 else 0
-    setpoint = setpoint_raw / 10 if setpoint_raw is not None else None
+    setpoint = setpoint_raw if setpoint_raw is not None else None
     return_temp = return_temp_raw / 10 if return_temp_raw is not None else None
-    outside_temp = outside_raw / 10 if outside_raw is not None else None
+    outside_temp = outside_raw if outside_raw is not None else None
 
     return {
         "state": state,
@@ -668,7 +668,7 @@ def collect_telemetry():
                 #
                 # Lecture registres UI (carte de registres selon le type)
                 #
-                if eq_type == UMATCH:
+                if eq_type == SPLIT:
                     telemetry = read_umatch_telemetry(eq)
                 else:
                     telemetry = read_gmv_telemetry(eq, ui, get_outdoor_temp)
@@ -724,7 +724,7 @@ def collect_telemetry():
                     code = fault_start + i
 
                     # Seuls les bits documentés dans la table du type sont
-                    # des défauts (le bloc UMATCH couvre aussi des coils
+                    # des défauts (le bloc SPLIT couvre aussi des coils
                     # non significatifs entre les codes connus).
                     if code not in fault_labels:
                         continue

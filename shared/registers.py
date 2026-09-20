@@ -9,7 +9,7 @@ GMV (VRF centralisé)
     `step * (UI - 1)` par rapport à l'UI 1. C'est la logique historique de
     la plateforme (cf. web/src/config/"Table GREE").
 
-UMATCH (splits / multi-splits)
+SPLIT (splits / multi-splits)
     Une passerelle IP donne accès à plusieurs esclaves Modbus, mais
     contrairement au GMV, un esclave = une seule unité intérieure. Il n'y a
     donc pas de décalage à appliquer : les adresses sont fixes. On modélise
@@ -22,9 +22,9 @@ que les deux familles de matériel restent cohérentes entre elles.
 """
 
 GMV = "GMV"
-UMATCH = "UMATCH"
+SPLIT = "SPLIT"
 
-EQUIPMENT_TYPES = (GMV, UMATCH)
+EQUIPMENT_TYPES = (GMV, SPLIT)
 
 
 # ---------------------------------------------------------------------------
@@ -52,9 +52,9 @@ GMV_FAULTS = {
     424: "Défaut quantité unités",
 }
 
-# Coils défauts UMATCH : adresses fixes, non contiguës (une seule unité par
+# Coils défauts SPLIT : adresses fixes, non contiguës (une seule unité par
 # esclave, donc pas de décalage par UI).
-UMATCH_FAULTS = {
+SPLIT_FAULTS = {
     95: "Défaut général",
     97: "Défaut capteur température évaporateur",
     98: "Défaut capteur température retour air",
@@ -79,7 +79,7 @@ UMATCH_FAULTS = {
     185: "Protection tension bus DC",
 }
 for _code in range(186, 197):
-    UMATCH_FAULTS[_code] = "Protection compresseur"
+    SPLIT_FAULTS[_code] = "Protection compresseur"
 del _code
 
 
@@ -95,7 +95,7 @@ MODES = {
         4: "Chauffage",
         5: "Auto",
     },
-    UMATCH: {
+    SPLIT: {
         1: "Froid",
         2: "Chauffage",
         3: "Déshumidification",
@@ -117,7 +117,7 @@ FAN_SPEEDS = {
         6: "Fort",
         7: "Turbo",
     },
-    UMATCH: {
+    SPLIT: {
         0: "Auto",
         1: "Vitesse 1",
         2: "Vitesse 2",
@@ -164,7 +164,7 @@ REGISTER_MAPS = {
         # supposée par esclave).
         "outside_temp_register": 6507,
     },
-    UMATCH: {
+    SPLIT: {
         # Adresses fixes : 1 esclave = 1 unité, aucun décalage.
         "cmd": 2,
         "return_temp": 4,
@@ -187,10 +187,10 @@ REGISTER_MAPS = {
         "shield_order": ["energy", "setpoint", "mode", "power", "lock"],
 
         # Défauts non contigus : on lit un bloc unique [95..196] (102 coils)
-        # et on filtre les adresses présentes dans UMATCH_FAULTS.
+        # et on filtre les adresses présentes dans SPLIT_FAULTS.
         "fault_scan_start": 95,
         "fault_scan_count": 102,
-        "faults": UMATCH_FAULTS,
+        "faults": SPLIT_FAULTS,
 
         "outside_temp_register": 49,   # lu directement sur l'esclave
 
@@ -254,7 +254,7 @@ def outside_temp_register(eq_type, ui):
 
     - GMV : registre "système", fixe (pas de décalage par UI dans cette
       implémentation).
-    - UMATCH : lu directement sur l'esclave de l'unité (pas de décalage,
+    - SPLIT : lu directement sur l'esclave de l'unité (pas de décalage,
       chaque split ayant son propre capteur extérieur).
     """
     return _map(eq_type)["outside_temp_register"]
@@ -290,7 +290,7 @@ def fault_addresses(eq_type, ui):
         base = m["fault_base"] + m["fault_step"] * (int(ui) - 1)
         return [(base + i, label) for i, (code, label) in enumerate(sorted(faults.items()))]
 
-    # Adresses fixes (UMATCH) : pas de décalage par UI.
+    # Adresses fixes (SPLIT) : pas de décalage par UI.
     return [(code, label) for code, label in sorted(faults.items())]
 
 
@@ -309,5 +309,5 @@ def fault_scan_range(eq_type, ui):
 
 
 def presence_probe_register(eq_type):
-    """Registre lu pour confirmer la présence d'une unité UMATCH sur un esclave."""
+    """Registre lu pour confirmer la présence d'une unité SPLIT sur un esclave."""
     return _map(eq_type).get("presence_probe_register")

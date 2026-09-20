@@ -9,7 +9,7 @@ $error_message = null;
 
 const EQUIPMENT_TYPES = [
     'GMV' => 'GMV (système centralisé)',
-    'UMATCH' => 'U-Match (split / multi-split)',
+    'SPLIT' => 'SPLIT (split / multi-split)',
 ];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -245,7 +245,7 @@ $units = $db->query("
                                 <tr>
                                     <td><?= htmlspecialchars($config['name']) ?></td>
                                     <td>
-                                        <span class="badge bg-<?= $config['type'] === 'UMATCH' ? 'info' : 'primary' ?>">
+                                        <span class="badge bg-<?= $config['type'] === 'SPLIT' ? 'info' : 'primary' ?>">
                                             <?= htmlspecialchars(EQUIPMENT_TYPES[$config['type']] ?? $config['type']) ?>
                                         </span>
                                     </td>
@@ -393,7 +393,7 @@ $units = $db->query("
                                 </td>
 
                                 <td>
-                                    <span class="badge bg-<?= ($u['type'] ?? 'GMV') === 'UMATCH' ? 'info' : 'primary' ?>">
+                                    <span class="badge bg-<?= ($u['type'] ?? 'GMV') === 'SPLIT' ? 'info' : 'primary' ?>">
                                         <?= htmlspecialchars($u['type'] ?? 'GMV') ?>
                                     </span>
                                 </td>
