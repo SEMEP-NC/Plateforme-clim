@@ -82,6 +82,7 @@
                 });
             });
 
+
         /* =========================
         EQUIPMENT : OPEN + READ
         ========================= */
@@ -91,6 +92,8 @@
                 const id = button.dataset.id;
                 const type = button.dataset.type || "GMV";
                 const name = button.dataset.name || "";
+                const isGmv = type.toUpperCase() === "GMV";
+
                 currentEquipmentId = id;
 
                 setValue("equipment_id", id);
@@ -112,6 +115,7 @@
 
                     const regs = Array.isArray(data.registers) ? data.registers : [];
                     const shields = Array.isArray(data.coils) ? data.coils : [];
+
                     // reset checkboxes
                     document.querySelectorAll("#commandForm input[type=checkbox]")
                         .forEach(c => c.checked = false);
@@ -132,15 +136,37 @@
 
                     // Dropdowns mode / ventilation : numérotation propre au type
                     const { modes, fanSpeeds } = registerUiFor(type);
-                    populateSelect(document.getElementById("mode"), modes, lastReadRegisters[1]);
-                    populateSelect(document.getElementById("fan"), fanSpeeds, lastReadRegisters[3]);
+
+                    populateSelect(
+                        document.getElementById("mode"),
+                        modes,
+                        lastReadRegisters[1]
+                    );
+
+                    populateSelect(
+                        document.getElementById("fan"),
+                        fanSpeeds,
+                        lastReadRegisters[3]
+                    );
 
                     // UI
                     setValue("power", lastReadRegisters[0]);
-                    setValue("setpoint", lastReadRegisters[2] / 10 );
-                    setValue("min_setpoint", lastReadRegisters[4] / 10);
 
+                    // GMV : valeur Modbus en dixièmes
+                    // Non-GMV : valeur Modbus directe
+                    setValue(
+                        "setpoint",
+                        isGmv
+                            ? lastReadRegisters[2] / 10
+                            : lastReadRegisters[2]
+                    );
 
+                    setValue(
+                        "min_setpoint",
+                        isGmv
+                            ? lastReadRegisters[4] / 10
+                            : lastReadRegisters[4]
+                    );
 
                     if (equipModal) {
                         equipModal.show();
@@ -164,12 +190,18 @@
                 e.preventDefault();
 
                 const id = currentEquipmentId ||
-                        document.getElementById("equipment_id")?.value;
+                    document.getElementById("equipment_id")?.value;
 
                 if (!id) {
                     alert("ID équipement manquant");
                     return;
                 }
+
+                const type =
+                    document.querySelector(`.commandButton[data-id="${id}"]`)
+                        ?.dataset.type || "GMV";
+
+                const isGmv = type.toUpperCase() === "GMV";
 
                 const regs = [...lastReadRegisters];
 
@@ -193,9 +225,10 @@
                     const sp = parseFloat(
                         document.getElementById("setpoint").value
                     );
+
                     regs[2] = isNaN(sp)
                         ? 0
-                        : Math.round(sp * 10);
+                        : (isGmv ? Math.round(sp * 10) : Math.round(sp));
                 }
 
                 if (document.querySelector('[name="send_fan"]')?.checked) {
@@ -208,9 +241,10 @@
                     const minSp = parseFloat(
                         document.getElementById("min_setpoint").value
                     );
+
                     regs[4] = isNaN(minSp)
                         ? 0
-                        : Math.round(minSp * 10);
+                        : (isGmv ? Math.round(minSp * 10) : Math.round(minSp));
                 }
 
                 const shields = [
@@ -225,27 +259,27 @@
                     const res = await fetch(
                         `/api/modbus_proxy.php?action=write&id=${id}`,
                         {
-                            method:"POST",
-                            headers:{
-                                "Content-Type":"application/json"
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json"
                             },
-                            body:JSON.stringify({
-                                registers:regs,
-                                shields:shields
+                            body: JSON.stringify({
+                                registers: regs,
+                                shields: shields
                             })
                         }
                     );
 
                     const data = await res.json();
 
-                    if(!data.success) {
+                    if (!data.success) {
                         throw new Error(data.error);
                     }
 
                     alert("Commande envoyée");
                     equipModal?.hide();
-                } catch(err){
 
+                } catch (err) {
                     console.error(err);
                     alert("Erreur écriture Modbus");
                 }

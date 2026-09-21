@@ -212,25 +212,110 @@ if ($action === 'write') {
         }
     }
 
-    // Écriture des coils shield, un par un (même raison que ci-dessus).
-    foreach ($shieldOrder as $i => $key) {
-        $addr = reg_shield_address($type, $ui, $key);
+// Écriture des shields en un seul bloc FC15 (Write Multiple Coils).
+// Les 5 shields sont contigus pour les équipements concernés.
+
+$shieldAddresses = [];
+
+foreach ($shieldOrder as $i => $key) {
+    $shieldAddresses[$key] = reg_shield_address($type, $ui, $key);
+}
+
+if (!empty($shieldAddresses)) {
+
+    /*
+     * Construire les valeurs dans l'ordre croissant des adresses.
+     *
+     * Exemple GMV :
+     *   energy=440
+     *   setpoint=441
+     *   mode=442
+     *   power=443
+     *   lock=444
+     *
+     * Exemple SPLIT :
+     *   lock=17
+     *   setpoint=18
+     *   mode=19
+     *   power=20
+     *   energy=21
+     */
+
+    asort($shieldAddresses, SORT_NUMERIC);
+
+    $addresses = array_keys($shieldAddresses);
+    $values = [];
+
+    $sortedAddresses = array_values($shieldAddresses);
+
+    // Vérifier que les adresses sont bien contiguës
+    $startAddr = $sortedAddresses[0];
+    $expectedAddr = $startAddr;
+
+    foreach ($sortedAddresses as $addr) {
+
+        if ($addr !== $expectedAddr) {
+
+            $success = false;
+
+            $errors[] =
+                "Les adresses shield ne sont pas contiguës";
+
+            log_modbus("WRITE COILS ERROR", [
+                "type" => $type,
+                "addresses" => $shieldAddresses
+            ]);
+
+            break;
+        }
+
+        $expectedAddr++;
+    }
+
+    if ($success) {
+
+        /*
+         * Construire les valeurs dans le même ordre
+         * que les adresses triées.
+         */
+        foreach ($addresses as $key) {
+
+            $index = array_search(
+                $key,
+                $shieldOrder,
+                true
+            );
+
+            $values[] = (bool)$shields[$index];
+        }
 
         $result = hub_post("write", [
             "ip" => $eq['ip'],
             "port" => $port,
             "slave" => $eq['slave_id'],
-            "type" => "coil",
-            "address" => $addr,
-            "value" => (bool)$shields[$i],
+            "type" => "coils",
+            "address" => $startAddr,
+            "values" => $values,
         ]);
 
         if (!($result['success'] ?? false)) {
+
             $success = false;
-            $errors[] = $result['error'] ?? "Erreur écriture coil $addr";
-            log_modbus("WRITE COIL ERROR", ["address" => $addr, "result" => $result]);
+
+            $errors[] =
+                $result['error'] ??
+                "Erreur écriture coils à partir de $startAddr";
+
+            log_modbus("WRITE COILS ERROR", [
+                "type" => $type,
+                "address" => $startAddr,
+                "values" => $values,
+                "addresses" => $shieldAddresses,
+                "result" => $result
+            ]);
         }
     }
+}
 
     echo json_encode([
         "success" => $success,
