@@ -138,6 +138,7 @@ services:
     image: nodered/node-red:latest
     container_name: clim_nodered
     restart: always
+    user: root
     # Accès interne uniquement (IP:port), pas de HTTPS via le reverse proxy.
     ports:
       - "${NODERED_PORT:-1880}:1880"
