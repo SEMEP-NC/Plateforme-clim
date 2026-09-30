@@ -1,0 +1,52 @@
+'use strict';
+
+const http = require('http');
+
+/**
+ * Appel HTTP au modbus-hub existant (aucune dépendance npm supplémentaire :
+ * on utilise le module natif "http", le hub étant joignable en clair sur le
+ * réseau Docker interne clim_network).
+ */
+function hubRequest(path, body, timeoutMs) {
+    return new Promise((resolve, reject) => {
+        const data = JSON.stringify(body);
+
+        const req = http.request(
+            {
+                hostname: 'modbus-hub',
+                port: 8500,
+                path: '/' + path,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(data)
+                },
+                timeout: timeoutMs || 5000
+            },
+            (res) => {
+                let raw = '';
+                res.on('data', (chunk) => { raw += chunk; });
+                res.on('end', () => {
+                    try {
+                        resolve(JSON.parse(raw));
+                    } catch (err) {
+                        reject(new Error('Réponse invalide du hub Modbus: ' + raw));
+                    }
+                });
+            }
+        );
+
+        req.on('error', (err) => {
+            reject(new Error('Hub Modbus injoignable: ' + err.message));
+        });
+
+        req.on('timeout', () => {
+            req.destroy(new Error('Timeout hub Modbus'));
+        });
+
+        req.write(data);
+        req.end();
+    });
+}
+
+module.exports = { hubRequest };

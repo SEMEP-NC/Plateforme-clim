@@ -211,14 +211,56 @@ http://<IP_SERVEUR>:1880
 ```
 (accès réseau interne uniquement, pas de HTTPS via le reverse proxy)
 
+### Permissions du volume de données
+
+L'image `nodered/node-red` tourne normalement avec un utilisateur non-root (uid/gid 1000).
+Si `./nodered/data` a été créé par Docker (root) avant le premier démarrage, cela provoque :
+```text
+Error: EACCES: permission denied, mkdir '/data/node_modules'
+```
+Le `docker-compose.yml` fixe `user: root` sur le service `node-red` : l'entrypoint officiel
+de l'image détecte ce cas, corrige lui-même les permissions de `/data`, puis repasse en
+utilisateur `node-red` avant de démarrer l'application. Aucune action manuelle n'est
+nécessaire ; il suffit de relancer :
+```bash
+docker compose up -d node-red
+```
+
 ### Appeler le hub Modbus depuis un flow
 
-Depuis un nœud "http request" :
+Depuis un nœud "http request" (nœud du cœur de Node-RED, rien à installer) :
 
 - Lecture : `POST http://modbus-hub:8500/read` avec un corps JSON
   `{"ip":"...","port":502,"device_id":1,"address":102,"count":5,"type":"register"}` ;
 - Écriture : `POST http://modbus-hub:8500/write` avec un corps JSON
   `{"ip":"...","port":502,"slave":1,"address":102,"value":170,"type":"register"}`.
+
+Le fichier `nodered/exemple-flow-modbus-hub.json` fournit un flow d'exemple prêt à
+importer (lecture et écriture) : dans l'éditeur Node-RED, menu ≡ → Import → coller le
+contenu du fichier, puis adapter l'IP/port/slave/adresse dans les deux nœuds "function"
+avant de déployer.
+
+### Nœuds custom "GREE Modbus"
+
+Deux nœuds dédiés sont fournis dans `nodered/nodes/node-red-contrib-gree-modbus/` et
+montés automatiquement dans le conteneur (catégorie **GREE Clim** dans la palette,
+à droite de l'éditeur) :
+
+- **GREE lecture** : lit un champ (Marche/Arrêt, mode, consigne, ventilation, température
+  de reprise/extérieure, puissance...) d'une unité GMV ou U-Match ;
+- **GREE écriture** : écrit un champ (y compris les verrouillages "shield") sur une unité.
+
+Les deux nœuds calculent eux-mêmes l'adresse Modbus à partir du type sélectionné (GMV /
+U-Match), sans avoir à connaître les adresses de `shared/registers.py`. IP/port/esclave/UI
+peuvent être fixés dans la config du nœud, ou laissés vides pour être fournis
+dynamiquement via `msg.ip`/`msg.port`/`msg.slave`/`msg.ui` (utile pour boucler sur
+plusieurs équipements avec un seul nœud).
+
+Ces nœuds sont montés directement dans `/data/node_modules` (pas d'installation npm) :
+un redémarrage du conteneur suffit pour qu'ils apparaissent dans la palette.
+```bash
+docker compose restart node-red
+```
 
 ### Sécuriser l'éditeur (recommandé)
 

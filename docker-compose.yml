@@ -149,6 +149,7 @@ services:
     volumes:
       - ./nodered/data:/data
       - ./nodered/settings.js:/data/settings.js:ro
+      - ./nodered/nodes/node-red-contrib-gree-modbus:/data/node_modules/node-red-contrib-gree-modbus
     depends_on:
       modbus-hub:
         condition: service_started
@@ -180,3 +181,7 @@ volumes:
 networks:
   clim_network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.251.0/24
+          gateway: 192.168.251.1

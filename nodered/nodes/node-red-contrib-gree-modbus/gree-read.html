@@ -1,0 +1,103 @@
+<script type="text/javascript">
+    RED.nodes.registerType('gree-read', {
+        category: 'GREE Clim',
+        color: '#a6d5fa',
+        defaults: {
+            name: { value: '' },
+            equipType: { value: 'GMV' },
+            field: { value: 'cmd' },
+            ip: { value: '' },
+            port: { value: '502' },
+            slave: { value: '1' },
+            ui: { value: '1' }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: 'font-awesome/fa-thermometer-half',
+        label: function () {
+            return this.name || 'GREE lecture (' + this.equipType + ')';
+        },
+        paletteLabel: 'GREE lecture',
+        oneditprepare: function () {
+            // rien de dynamique pour l'instant
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="gree-read">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Nom</label>
+        <input type="text" id="node-input-name" placeholder="Nom du nœud">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-equipType"><i class="fa fa-list"></i> Type</label>
+        <select id="node-input-equipType" style="width:70%">
+            <option value="GMV">GMV (système centralisé)</option>
+            <option value="UMATCH">U-Match (split / multi-split)</option>
+        </select>
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-field"><i class="fa fa-thermometer-half"></i> Champ</label>
+        <select id="node-input-field" style="width:70%">
+            <option value="cmd">Marche / Arrêt</option>
+            <option value="mode">Mode</option>
+            <option value="setpoint">Consigne</option>
+            <option value="fan">Vitesse ventilation</option>
+            <option value="lowLimit">Limite basse consigne</option>
+            <option value="highLimit">Limite haute consigne</option>
+            <option value="returnTemp">Température de reprise</option>
+            <option value="outsideTemp">Température extérieure</option>
+            <option value="power">Puissance (GMV uniquement)</option>
+        </select>
+    </div>
+
+    <hr>
+    <div class="form-tips">
+        Laisser un champ ci-dessous vide pour le fournir dynamiquement via
+        <code>msg.ip</code> / <code>msg.port</code> / <code>msg.slave</code> / <code>msg.ui</code>.
+    </div>
+    <br>
+
+    <div class="form-row">
+        <label for="node-input-ip"><i class="fa fa-globe"></i> IP</label>
+        <input type="text" id="node-input-ip" placeholder="ex: 10.5.0.20 (ou vide -> msg.ip)">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-port"><i class="fa fa-plug"></i> Port</label>
+        <input type="text" id="node-input-port" placeholder="502">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-slave"><i class="fa fa-microchip"></i> Esclave</label>
+        <input type="text" id="node-input-slave" placeholder="1">
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-ui"><i class="fa fa-hashtag"></i> UI</label>
+        <input type="text" id="node-input-ui" placeholder="1 (UMATCH toujours 1)">
+    </div>
+</script>
+
+<script type="text/html" data-help-name="gree-read">
+    <p>Lit un champ d'une unité GREE (GMV ou U-Match) via le modbus-hub de la Plateforme Clim.</p>
+
+    <h3>Entrées</h3>
+    <dl class="message-properties">
+        <dt class="optional">ip / port / slave / ui / type / field <span class="property-type">divers</span></dt>
+        <dd>utilisés uniquement si le champ correspondant est laissé vide dans la config du nœud.</dd>
+    </dl>
+
+    <h3>Sorties</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">number</span></dt>
+        <dd>valeur lue (températures et consignes déjà converties en °C).</dd>
+        <dt>raw <span class="property-type">number</span></dt>
+        <dd>valeur brute du registre Modbus (avant conversion).</dd>
+    </dl>
+
+    <p>Les adresses Modbus sont calculées automatiquement selon le type (GMV / U-Match),
+    voir <code>shared/registers.py</code> côté serveur pour la table complète.</p>
+</script>
