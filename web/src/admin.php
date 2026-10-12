@@ -263,7 +263,7 @@ if(isset($_POST['valider_gate_control'])){
                     <i class="bi bi-hdd-network"></i> Sauvegarde &amp; Restauration</a>
                 </div>
                     <div class="card-body">
-                      <a href="<?php echo 'http://' . htmlspecialchars($host_ip, ENT_QUOTES, 'UTF-8') . ':1880'; ?>" class="btn btn-outline-secondary">
+                      <a href="<?php echo 'http://' . htmlspecialchars($host_ip, ENT_QUOTES, 'UTF-8') . ':1880'; ?>" class="btn btn-outline-secondary" target="_blank" rel="noopener noreferrer">
                     <i class="bi bi-hdd-network"></i> NODERED</a>
                 </div>
                 <div class="card-body">
