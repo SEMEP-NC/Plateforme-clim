@@ -1,0 +1,76 @@
+<script type="text/javascript">
+    RED.nodes.registerType('gree-faults', {
+        category: 'GREE Clim',
+        color: '#f3b567',
+        defaults: {
+            name: { value: '' },
+            unit: { value: '', type: 'gree-unit', required: false },
+            interval: { value: '30', validate: RED.validators.number() },
+            emitInitial: { value: true },
+            commEvents: { value: true }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: 'font-awesome/fa-exclamation-triangle',
+        paletteLabel: 'GREE défauts',
+        label: function () {
+            if (this.name) {
+                return this.name;
+            }
+            const u = RED.nodes.node(this.unit);
+            return 'Défauts ' + (u ? (u.name || u.ip) : '(msg)');
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="gree-faults">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Nom</label>
+        <input type="text" id="node-input-name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-unit"><i class="fa fa-snowflake-o"></i> Unité</label>
+        <input type="text" id="node-input-unit">
+    </div>
+    <div class="form-row">
+        <label for="node-input-interval"><i class="fa fa-clock-o"></i> Toutes les</label>
+        <input type="text" id="node-input-interval" style="width:80px"> secondes (0 = sur message uniquement)
+    </div>
+    <div class="form-row">
+        <label>&nbsp;</label>
+        <input type="checkbox" id="node-input-emitInitial" style="width:auto; margin:0 6px 0 0">
+        <label for="node-input-emitInitial" style="width:auto">Signaler les défauts déjà présents au démarrage</label>
+    </div>
+    <div class="form-row">
+        <label>&nbsp;</label>
+        <input type="checkbox" id="node-input-commEvents" style="width:auto; margin:0 6px 0 0">
+        <label for="node-input-commEvents" style="width:auto">Signaler la perte / le retour de communication</label>
+    </div>
+</script>
+
+<script type="text/html" data-help-name="gree-faults">
+    <p>Surveille les défauts d'une unité GREE et n'émet un message <b>que lorsqu'un
+    défaut apparaît ou disparaît</b> (idéal pour des alertes).</p>
+
+    <h3>Entrées</h3>
+    <dl class="message-properties">
+        <dt class="optional">equipment / unit <span class="property-type">object</span></dt>
+        <dd>unité à vérifier si aucune unité n'est sélectionnée (un état est mémorisé par unité).</dd>
+        <dt class="optional">reset <span class="property-type">boolean</span></dt>
+        <dd><code>true</code> : oublie les états mémorisés ; les défauts présents seront re-signalés.</dd>
+    </dl>
+
+    <h3>Sortie</h3>
+    <p>Un message par événement :</p>
+    <dl class="message-properties">
+        <dt>topic <span class="property-type">string</span></dt>
+        <dd><code>gree/fault/raised</code>, <code>gree/fault/cleared</code>,
+            <code>gree/comm/offline</code>, <code>gree/comm/online</code></dd>
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd><code>{ event, fault: {code, address, label}, equipment, equipmentLabel, active: [...], timestamp }</code></dd>
+    </dl>
+
+    <h3>Détails</h3>
+    <p>La plateforme enregistre déjà les défauts en base et envoie les mails ; ce nœud sert
+    à déclencher d'autres actions (notification, coupure, relance…).</p>
+</script>

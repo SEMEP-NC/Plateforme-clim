@@ -1,0 +1,106 @@
+<script type="text/javascript">
+    RED.nodes.registerType('gree-status', {
+        category: 'GREE Clim',
+        color: '#a6d5fa',
+        defaults: {
+            name: { value: '' },
+            unit: { value: '', type: 'gree-unit', required: false },
+            interval: { value: '0', validate: RED.validators.number() },
+            onChange: { value: false },
+            faults: { value: true },
+            locks: { value: true }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: 'font-awesome/fa-thermometer-half',
+        paletteLabel: 'GREE état',
+        label: function () {
+            if (this.name) {
+                return this.name;
+            }
+            const u = RED.nodes.node(this.unit);
+            const base = 'État ' + (u ? (u.name || u.ip) : '(msg)');
+            return Number(this.interval) > 0 ? base + ' / ' + this.interval + 's' : base;
+        },
+        labelStyle: function () {
+            return this.name ? 'node_label_italic' : '';
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="gree-status">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Nom</label>
+        <input type="text" id="node-input-name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-unit"><i class="fa fa-snowflake-o"></i> Unité</label>
+        <input type="text" id="node-input-unit">
+    </div>
+    <div class="form-tips" style="margin-bottom:12px">
+        Sans unité sélectionnée, l'unité est prise dans <code>msg.equipment</code>
+        (sortie de <i>GREE équipements</i>) ou <code>msg.unit</code>.
+    </div>
+    <div class="form-row">
+        <label for="node-input-interval"><i class="fa fa-clock-o"></i> Toutes les</label>
+        <input type="text" id="node-input-interval" style="width:80px"> secondes (0 = sur message uniquement)
+    </div>
+    <div class="form-row">
+        <label>&nbsp;</label>
+        <input type="checkbox" id="node-input-onChange" style="width:auto; margin:0 6px 0 0">
+        <label for="node-input-onChange" style="width:auto">Émettre seulement si l'état change</label>
+    </div>
+    <div class="form-row">
+        <label>&nbsp;</label>
+        <input type="checkbox" id="node-input-faults" style="width:auto; margin:0 6px 0 0">
+        <label for="node-input-faults" style="width:auto">Lire les défauts</label>
+    </div>
+    <div class="form-row">
+        <label>&nbsp;</label>
+        <input type="checkbox" id="node-input-locks" style="width:auto; margin:0 6px 0 0">
+        <label for="node-input-locks" style="width:auto">Lire les verrouillages télécommande</label>
+    </div>
+</script>
+
+<script type="text/html" data-help-name="gree-status">
+    <p>Lit l'état complet d'une unité GREE en quelques requêtes groupées et le décode.</p>
+
+    <h3>Entrées</h3>
+    <dl class="message-properties">
+        <dt class="optional">equipment / unit <span class="property-type">object</span></dt>
+        <dd>unité à lire si aucune unité n'est sélectionnée dans le nœud
+            (<code>{type, ip, port, slave, ui}</code>).</dd>
+    </dl>
+
+    <h3>Sortie</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd>
+<pre>{
+  online: true,
+  power: true,          // marche/arrêt
+  mode: 1, modeLabel: "Froid",
+  fan: 4, fanLabel: "Moyen faible",
+  setpoint: 24,         // °C
+  lowLimit: 16, highLimit: 30,
+  returnTemp: 25.3,     // °C ambiance (reprise)
+  outsideTemp: 31,      // °C
+  locks: { energy, setpoint, mode, power, lock },
+  fault: false,
+  faults: [ { code, address, label } ],
+  gateStatus, ratedPower,   // GMV uniquement
+  equipment: { type, ip, port, slave, ui, name, id },
+  timestamp: "…"
+}</pre>
+            En cas d'erreur de communication : <code>{ online: false, error }</code>.
+        </dd>
+        <dt>changed <span class="property-type">boolean</span></dt>
+        <dd>vrai si l'état diffère de la lecture précédente de la même unité.</dd>
+    </dl>
+
+    <h3>Détails</h3>
+    <p>Avec une période &gt; 0 et une unité sélectionnée, le nœud interroge l'unité tout seul.
+    Le hub garde un cache de 2 s, inutile de descendre sous 5 s.</p>
+    <p>Pour superviser tout le parc : <i>inject</i> (toutes les 60 s) → <i>GREE équipements</i>
+    (un message par équipement) → <i>GREE état</i> sans unité.</p>
+</script>

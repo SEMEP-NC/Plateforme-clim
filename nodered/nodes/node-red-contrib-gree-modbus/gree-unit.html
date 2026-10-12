@@ -1,0 +1,126 @@
+<script type="text/javascript">
+    RED.nodes.registerType('gree-unit', {
+        category: 'config',
+        defaults: {
+            name: { value: '' },
+            equipmentId: { value: '' },
+            equipType: { value: 'GMV', required: true },
+            ip: { value: '', required: true },
+            port: { value: '502', required: true, validate: RED.validators.number() },
+            slave: { value: '1', required: true, validate: RED.validators.number() },
+            ui: { value: '1', required: true, validate: RED.validators.number() }
+        },
+        label: function () {
+            if (this.name) {
+                return this.name;
+            }
+            return this.equipType + ' ' + this.ip + ' #' + this.slave +
+                (this.equipType === 'GMV' ? ' UI' + this.ui : '');
+        },
+        oneditprepare: function () {
+            const node = this;
+            const $type = $('#node-config-input-equipType');
+            const $ui = $('#node-config-input-ui');
+            const $import = $('#gree-unit-import');
+            const $msg = $('#gree-unit-import-msg');
+            let equipments = [];
+
+            function refreshUi() {
+                const split = $type.val() === 'SPLIT';
+                $ui.prop('disabled', split);
+                if (split) {
+                    $ui.val('1');
+                }
+            }
+            $type.on('change', refreshUi);
+            refreshUi();
+
+            $.getJSON('gree-modbus/equipments')
+                .done(function (data) {
+                    equipments = (data && data.equipments) || [];
+                    $import.empty().append($('<option>').val('').text('— Choisir un équipement (' + equipments.length + ') —'));
+                    equipments.forEach(function (e) {
+                        const label = e.name +
+                            (e.localisation ? ' — ' + e.localisation : '') +
+                            ' [' + e.type + ' ' + e.ip + ' #' + e.slave + (e.type === 'GMV' ? ' UI' + e.ui : '') + ']' +
+                            (e.enabled ? '' : ' (désactivé)');
+                        $import.append($('<option>').val(String(e.id)).text(label));
+                    });
+                    if (node.equipmentId) {
+                        $import.val(String(node.equipmentId));
+                    }
+                    $msg.text('');
+                })
+                .fail(function (xhr) {
+                    const err = (xhr.responseJSON && xhr.responseJSON.error) || xhr.statusText;
+                    $import.empty().append($('<option>').val('').text('Liste indisponible'));
+                    $msg.text('API plateforme injoignable : ' + err);
+                });
+
+            $import.on('change', function () {
+                const id = $(this).val();
+                const e = equipments.find(function (x) { return String(x.id) === id; });
+                $('#node-config-input-equipmentId').val(e ? e.id : '');
+                if (!e) {
+                    return;
+                }
+                $('#node-config-input-name').val(e.name);
+                $type.val(e.type);
+                $('#node-config-input-ip').val(e.ip);
+                $('#node-config-input-port').val(e.port);
+                $('#node-config-input-slave').val(e.slave);
+                $ui.val(e.ui);
+                refreshUi();
+            });
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="gree-unit">
+    <div class="form-row">
+        <label for="gree-unit-import"><i class="fa fa-download"></i> Importer</label>
+        <select id="gree-unit-import" style="width:70%"><option value="">Chargement…</option></select>
+        <div id="gree-unit-import-msg" style="margin-left:105px; color:#c00; font-size:0.9em"></div>
+        <input type="hidden" id="node-config-input-equipmentId">
+    </div>
+    <hr>
+    <div class="form-row">
+        <label for="node-config-input-name"><i class="fa fa-tag"></i> Nom</label>
+        <input type="text" id="node-config-input-name" placeholder="ex. Bureau direction">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-equipType"><i class="fa fa-list"></i> Type</label>
+        <select id="node-config-input-equipType" style="width:70%">
+            <option value="GMV">GMV (VRF centralisé)</option>
+            <option value="SPLIT">SPLIT / U-Match</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-ip"><i class="fa fa-globe"></i> IP</label>
+        <input type="text" id="node-config-input-ip" placeholder="10.5.0.20">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-port"><i class="fa fa-plug"></i> Port</label>
+        <input type="text" id="node-config-input-port" placeholder="502">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-slave"><i class="fa fa-microchip"></i> Esclave</label>
+        <input type="text" id="node-config-input-slave" placeholder="1">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-ui"><i class="fa fa-hashtag"></i> UI</label>
+        <input type="text" id="node-config-input-ui" placeholder="1 (toujours 1 en SPLIT)">
+    </div>
+</script>
+
+<script type="text/html" data-help-name="gree-unit">
+    <p>Une unité intérieure GREE, partagée par tous les nœuds <i>GREE Clim</i>.</p>
+    <p>La liste <b>Importer</b> reprend les équipements déclarés dans la plateforme
+    (service <code>api</code>) : choisir un équipement remplit automatiquement
+    type, IP, port, esclave et UI.</p>
+    <h3>Type</h3>
+    <ul>
+        <li><b>GMV</b> : plusieurs UI derrière un même esclave, adresses décalées par UI.</li>
+        <li><b>SPLIT</b> : 1 esclave = 1 unité, adresses fixes, UI toujours 1.</li>
+    </ul>
+</script>

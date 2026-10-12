@@ -62,6 +62,17 @@ def cache_set(key, value):
     cache[key] = value
     cache_time[key] = time.time()
 
+def cache_invalidate(ip, port):
+    """
+    Purge les lectures en cache d'une passerelle après une écriture, pour
+    qu'une relecture immédiate renvoie la nouvelle valeur et non celle
+    d'avant l'écriture. Clé : f"{mode}:{ip}:{port}:{device_id}:{address}:{count}"
+    """
+    prefix = f":{ip}:{port}:"
+    for key in list(cache.keys()):
+        if prefix in key:
+            cache.pop(key, None)
+            cache_time.pop(key, None)
 
 def get_lock(ip, port):
     key = f"{ip}:{port}"
@@ -308,6 +319,8 @@ async def write_worker():
                 else:
                     log.info("[WRITE SUCCESS] %s:%s addr=%s",
                              ip, port, address)
+                             
+                    cache_invalidate(ip, port)
 
                     if not future.done():
                         future.set_result({

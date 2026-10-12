@@ -1,0 +1,436 @@
+[
+  {
+    "id": "a1b2c3d4e5f60001",
+    "type": "gree-unit",
+    "name": "Unité exemple (à adapter)",
+    "equipmentId": "",
+    "equipType": "GMV",
+    "ip": "10.5.0.20",
+    "port": "502",
+    "slave": "1",
+    "ui": "1"
+  },
+  {
+    "id": "c1",
+    "type": "comment",
+    "name": "1. Une unité : état toutes les 30 s (sur changement) + commandes",
+    "x": 190,
+    "y": 40,
+    "info": "Ouvrir le nœud de config « Unité exemple » et choisir un équipement dans la liste Importer.",
+    "wires": []
+  },
+  {
+    "id": "s1",
+    "type": "gree-status",
+    "name": "",
+    "x": 190,
+    "y": 100,
+    "unit": "a1b2c3d4e5f60001",
+    "interval": "30",
+    "onChange": true,
+    "faults": true,
+    "locks": true,
+    "wires": [
+      [
+        "d1"
+      ]
+    ]
+  },
+  {
+    "id": "d1",
+    "type": "debug",
+    "name": "État unité",
+    "x": 430,
+    "y": 100,
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "wires": []
+  },
+  {
+    "id": "i1",
+    "type": "inject",
+    "name": "Allumer",
+    "x": 150,
+    "y": 160,
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "wires": [
+      [
+        "k1"
+      ]
+    ]
+  },
+  {
+    "id": "k1",
+    "type": "gree-command",
+    "name": "Froid 24°C auto",
+    "x": 380,
+    "y": 160,
+    "unit": "a1b2c3d4e5f60001",
+    "power": "on",
+    "mode": "froid",
+    "setpoint": "24",
+    "fan": "auto",
+    "readback": "2000",
+    "wires": [
+      [
+        "d2"
+      ]
+    ]
+  },
+  {
+    "id": "i2",
+    "type": "inject",
+    "name": "Éteindre",
+    "x": 150,
+    "y": 200,
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "wires": [
+      [
+        "k2"
+      ]
+    ]
+  },
+  {
+    "id": "k2",
+    "type": "gree-command",
+    "name": "Arrêt",
+    "x": 380,
+    "y": 200,
+    "unit": "a1b2c3d4e5f60001",
+    "power": "off",
+    "mode": "",
+    "setpoint": "",
+    "fan": "",
+    "readback": "2000",
+    "wires": [
+      [
+        "d2"
+      ]
+    ]
+  },
+  {
+    "id": "i3",
+    "type": "inject",
+    "name": "Consigne 26 + verrou",
+    "x": 170,
+    "y": 240,
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "{\"setpoint\":26,\"locks\":{\"setpoint\":true}}",
+    "payloadType": "json",
+    "wires": [
+      [
+        "k3"
+      ]
+    ]
+  },
+  {
+    "id": "k3",
+    "type": "gree-command",
+    "name": "",
+    "x": 400,
+    "y": 240,
+    "unit": "a1b2c3d4e5f60001",
+    "power": "",
+    "mode": "",
+    "setpoint": "",
+    "fan": "",
+    "readback": "2000",
+    "wires": [
+      [
+        "d2"
+      ]
+    ]
+  },
+  {
+    "id": "d2",
+    "type": "debug",
+    "name": "Résultat commande",
+    "x": 640,
+    "y": 200,
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "wires": []
+  },
+  {
+    "id": "c2",
+    "type": "comment",
+    "name": "2. Défauts d'une unité (événements apparition / disparition)",
+    "x": 190,
+    "y": 300,
+    "info": "",
+    "wires": []
+  },
+  {
+    "id": "f1",
+    "type": "gree-faults",
+    "name": "",
+    "x": 170,
+    "y": 350,
+    "unit": "a1b2c3d4e5f60001",
+    "interval": "30",
+    "emitInitial": true,
+    "commEvents": true,
+    "wires": [
+      [
+        "d3"
+      ]
+    ]
+  },
+  {
+    "id": "d3",
+    "type": "debug",
+    "name": "Événement défaut",
+    "x": 420,
+    "y": 350,
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "wires": []
+  },
+  {
+    "id": "c3",
+    "type": "comment",
+    "name": "3. Tout le parc : alerte si ambiance > 28 °C (toutes les 5 min)",
+    "x": 210,
+    "y": 410,
+    "info": "",
+    "wires": []
+  },
+  {
+    "id": "i4",
+    "type": "inject",
+    "name": "Toutes les 5 min",
+    "x": 160,
+    "y": 460,
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "300",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "wires": [
+      [
+        "e1"
+      ]
+    ]
+  },
+  {
+    "id": "e1",
+    "type": "gree-equipments",
+    "name": "",
+    "x": 370,
+    "y": 460,
+    "enabledOnly": true,
+    "equipType": "",
+    "group": "",
+    "output": "split",
+    "wires": [
+      [
+        "s2"
+      ]
+    ]
+  },
+  {
+    "id": "s2",
+    "type": "gree-status",
+    "name": "État (msg.equipment)",
+    "x": 570,
+    "y": 460,
+    "unit": "",
+    "interval": "0",
+    "onChange": false,
+    "faults": false,
+    "locks": false,
+    "wires": [
+      [
+        "sw1"
+      ]
+    ]
+  },
+  {
+    "id": "sw1",
+    "type": "switch",
+    "name": "> 28 °C ?",
+    "x": 760,
+    "y": 460,
+    "property": "payload.returnTemp",
+    "propertyType": "msg",
+    "rules": [
+      {
+        "t": "gt",
+        "v": "28",
+        "vt": "num"
+      }
+    ],
+    "checkall": "true",
+    "repair": false,
+    "outputs": 1,
+    "wires": [
+      [
+        "fn1"
+      ]
+    ]
+  },
+  {
+    "id": "fn1",
+    "type": "function",
+    "name": "Message alerte",
+    "x": 940,
+    "y": 460,
+    "func": "const s = msg.payload;\nmsg.payload = `${s.equipment.name || msg.topic} : ${s.returnTemp} °C (consigne ${s.setpoint} °C, ${s.power ? 'en marche' : 'à l\\'arrêt'})`;\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "wires": [
+      [
+        "d4"
+      ]
+    ]
+  },
+  {
+    "id": "d4",
+    "type": "debug",
+    "name": "Alerte chaleur",
+    "x": 1120,
+    "y": 460,
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "wires": []
+  },
+  {
+    "id": "c4",
+    "type": "comment",
+    "name": "4. Arrêt d'un groupe à 18h00 en semaine",
+    "x": 220,
+    "y": 520,
+    "info": "",
+    "wires": []
+  },
+  {
+    "id": "i5",
+    "type": "inject",
+    "name": "18h00 lun-ven",
+    "x": 160,
+    "y": 570,
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "",
+    "crontab": "00 18 * * 1,2,3,4,5",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "wires": [
+      [
+        "e2"
+      ]
+    ]
+  },
+  {
+    "id": "e2",
+    "type": "gree-equipments",
+    "name": "Groupe « Bureaux »",
+    "x": 380,
+    "y": 570,
+    "enabledOnly": true,
+    "equipType": "",
+    "group": "Bureaux",
+    "output": "split",
+    "wires": [
+      [
+        "k4"
+      ]
+    ]
+  },
+  {
+    "id": "k4",
+    "type": "gree-command",
+    "name": "Arrêt",
+    "x": 600,
+    "y": 570,
+    "unit": "",
+    "power": "off",
+    "mode": "",
+    "setpoint": "",
+    "fan": "",
+    "readback": "0",
+    "wires": [
+      [
+        "d5"
+      ]
+    ]
+  },
+  {
+    "id": "d5",
+    "type": "debug",
+    "name": "Arrêt groupe",
+    "x": 800,
+    "y": 570,
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "wires": []
+  }
+]

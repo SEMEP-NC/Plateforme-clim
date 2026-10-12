@@ -33,6 +33,17 @@ module.exports = {
         ]
     } : undefined,
 
+    // Table de registres GREE accessible dans les nœuds Function :
+    //   const gree = global.get('gree');
+    //   gree.fieldAddress('GMV', 3, 'setpoint')  -> 154
+    //   gree.modeLabel('SPLIT', 2)                -> "Chauffage"
+    functionGlobalContext: (function () {
+        try {
+            return { gree: require('node-red-contrib-gree-modbus/lib/registers.js') };
+        } catch (err) {
+            return {};
+        }
+    })(),
     editorTheme: {
         projects: {
             enabled: false

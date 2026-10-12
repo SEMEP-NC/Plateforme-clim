@@ -1,0 +1,103 @@
+<script type="text/javascript">
+    RED.nodes.registerType('gree-equipments', {
+        category: 'GREE Clim',
+        color: '#c7e9c0',
+        defaults: {
+            name: { value: '' },
+            enabledOnly: { value: true },
+            equipType: { value: '' },
+            group: { value: '' },
+            output: { value: 'split' }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: 'font-awesome/fa-list',
+        paletteLabel: 'GREE équipements',
+        label: function () {
+            if (this.name) {
+                return this.name;
+            }
+            let l = 'Équipements';
+            if (this.equipType) { l += ' ' + this.equipType; }
+            if (this.group) { l += ' [' + this.group + ']'; }
+            return l;
+        },
+        oneditprepare: function () {
+            const node = this;
+            const $group = $('#node-input-group');
+            $.getJSON('gree-modbus/groups').done(function (data) {
+                const groups = (data && data.groups) || [];
+                if (!groups.length) {
+                    return;
+                }
+                const $sel = $('<select style="width:70%">');
+                $sel.append($('<option>').val('').text('— tous —'));
+                groups.forEach(function (g) {
+                    $sel.append($('<option>').val(g.name).text(g.name));
+                });
+                $sel.val(node.group || '');
+                $sel.on('change', function () { $group.val($(this).val()); });
+                $group.hide().after($sel);
+            });
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="gree-equipments">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Nom</label>
+        <input type="text" id="node-input-name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-equipType"><i class="fa fa-list"></i> Type</label>
+        <select id="node-input-equipType" style="width:70%">
+            <option value="">Tous</option>
+            <option value="GMV">GMV</option>
+            <option value="SPLIT">SPLIT</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label for="node-input-group"><i class="fa fa-object-group"></i> Groupe</label>
+        <input type="text" id="node-input-group" placeholder="vide = tous (ou msg.group)">
+    </div>
+    <div class="form-row">
+        <label>&nbsp;</label>
+        <input type="checkbox" id="node-input-enabledOnly" style="width:auto; margin:0 6px 0 0">
+        <label for="node-input-enabledOnly" style="width:auto">Équipements activés uniquement</label>
+    </div>
+    <div class="form-row">
+        <label for="node-input-output"><i class="fa fa-sign-out"></i> Sortie</label>
+        <select id="node-input-output" style="width:70%">
+            <option value="split">Un message par équipement</option>
+            <option value="array">Un seul message (tableau)</option>
+        </select>
+    </div>
+</script>
+
+<script type="text/html" data-help-name="gree-equipments">
+    <p>Liste les équipements déclarés dans la Plateforme Clim (page Équipements),
+    pour piloter ou superviser tout le parc sans ressaisir les adresses.</p>
+
+    <h3>Entrées</h3>
+    <dl class="message-properties">
+        <dt class="optional">group <span class="property-type">string | number</span></dt>
+        <dd>nom ou id de groupe, si le champ Groupe du nœud est vide.</dd>
+        <dt class="optional">type <span class="property-type">string</span></dt>
+        <dd><code>GMV</code> ou <code>SPLIT</code>, si le champ Type du nœud est vide.</dd>
+    </dl>
+
+    <h3>Sortie</h3>
+    <dl class="message-properties">
+        <dt>equipment <span class="property-type">object</span></dt>
+        <dd>(mode « un message par équipement ») directement exploitable par
+        <i>GREE état</i>, <i>GREE commande</i> et <i>GREE défauts</i> sans unité configurée.</dd>
+        <dt>payload <span class="property-type">object | array</span></dt>
+        <dd><pre>{ id, name, localisation, type, ip, port, slave, ui, enabled,
+  groups: ["Bâtiment A"],
+  lastKnown: { state, setpoint, returnTemp, outsideTemp, fault } }</pre>
+        <code>lastKnown</code> = dernières valeurs relevées par le scheduler (sans
+        interroger le Modbus).</dd>
+    </dl>
+    <p>En mode « un message par équipement », <code>msg.parts</code> est renseigné :
+    un nœud <i>join</i> en mode automatique peut regrouper les résultats.</p>
+</script>

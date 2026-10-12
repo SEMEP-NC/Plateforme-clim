@@ -1,0 +1,132 @@
+<script type="text/javascript">
+    RED.nodes.registerType('gree-command', {
+        category: 'GREE Clim',
+        color: '#a6d5fa',
+        defaults: {
+            name: { value: '' },
+            unit: { value: '', type: 'gree-unit', required: false },
+            power: { value: '' },
+            mode: { value: '' },
+            setpoint: {
+                value: '',
+                validate: function (v) {
+                    return v === '' || (Number(v) >= 16 && Number(v) <= 30);
+                }
+            },
+            fan: { value: '' },
+            readback: { value: '2000', validate: RED.validators.number(true) }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: 'font-awesome/fa-sliders',
+        align: 'right',
+        paletteLabel: 'GREE commande',
+        label: function () {
+            if (this.name) {
+                return this.name;
+            }
+            const parts = [];
+            if (this.power) { parts.push(this.power.toUpperCase()); }
+            if (this.mode) { parts.push(this.mode); }
+            if (this.setpoint !== '') { parts.push(this.setpoint + '°C'); }
+            if (this.fan) { parts.push('vent. ' + this.fan); }
+            const u = RED.nodes.node(this.unit);
+            const target = u ? (u.name || u.ip) : '';
+            return (parts.length ? parts.join(' ') : 'Commande') + (target ? ' → ' + target : '');
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="gree-command">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Nom</label>
+        <input type="text" id="node-input-name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-unit"><i class="fa fa-snowflake-o"></i> Unité</label>
+        <input type="text" id="node-input-unit">
+    </div>
+    <hr>
+    <div class="form-tips" style="margin-bottom:12px">
+        Préréglage optionnel : les champs laissés vides ne sont pas envoyés.
+        Un <code>msg.payload</code> objet complète ou remplace ces valeurs.
+    </div>
+    <div class="form-row">
+        <label for="node-input-power"><i class="fa fa-power-off"></i> Marche</label>
+        <select id="node-input-power" style="width:70%">
+            <option value="">— inchangé —</option>
+            <option value="on">Marche</option>
+            <option value="off">Arrêt</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label for="node-input-mode"><i class="fa fa-adjust"></i> Mode</label>
+        <select id="node-input-mode" style="width:70%">
+            <option value="">— inchangé —</option>
+            <option value="froid">Froid</option>
+            <option value="chauffage">Chauffage</option>
+            <option value="deshumidification">Déshumidification</option>
+            <option value="ventilation">Ventilation</option>
+            <option value="auto">Auto</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label for="node-input-setpoint"><i class="fa fa-thermometer-half"></i> Consigne</label>
+        <input type="text" id="node-input-setpoint" style="width:80px" placeholder="16-30"> °C
+    </div>
+    <div class="form-row">
+        <label for="node-input-fan"><i class="fa fa-asterisk"></i> Ventilation</label>
+        <select id="node-input-fan" style="width:70%">
+            <option value="">— inchangé —</option>
+            <option value="auto">Auto</option>
+            <option value="low">Faible</option>
+            <option value="medium">Moyen</option>
+            <option value="high">Fort</option>
+            <option value="turbo">Turbo</option>
+        </select>
+    </div>
+    <hr>
+    <div class="form-row">
+        <label for="node-input-readback"><i class="fa fa-refresh"></i> Relire après</label>
+        <input type="text" id="node-input-readback" style="width:80px"> ms (0 = pas de relecture)
+    </div>
+</script>
+
+<script type="text/html" data-help-name="gree-command">
+    <p>Envoie une commande complète à une unité GREE (marche/arrêt, mode, consigne,
+    ventilation, limites, verrouillages) en convertissant automatiquement les valeurs
+    selon le type GMV / SPLIT.</p>
+
+    <h3>Entrées</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object | string | boolean | number</span></dt>
+        <dd>
+<pre>{
+  power: true,            // ou "on"/"off", "marche"/"arret"
+  mode: "froid",          // froid, chauffage, deshumidification, ventilation, auto (ou code numérique)
+  setpoint: 24,           // °C, 16 à 30
+  fan: "auto",            // auto, low, medium, high, turbo (ou code numérique)
+  lowLimit: 22, highLimit: 26,
+  locks: { lock: true, setpoint: false, mode: false, power: false, energy: false }
+}</pre>
+            Raccourcis : <code>"on"</code> / <code>"off"</code> / <code>true</code> / <code>false</code>
+            pour marche/arrêt, un nombre pour la consigne.
+        </dd>
+        <dt class="optional">equipment / unit <span class="property-type">object</span></dt>
+        <dd>unité cible si aucune unité n'est sélectionnée dans le nœud.</dd>
+    </dl>
+
+    <h3>Sortie</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd><code>{ success, applied: [{field, address, value, display}], command, equipment, status }</code>.
+        <code>status</code> est l'état relu après le délai configuré.
+        En cas d'échec : <code>error</code> et <code>failed</code> (l'écriture en cause) ;
+        les écritures précédentes restent appliquées.</dd>
+    </dl>
+
+    <h3>Détails</h3>
+    <p>Ordre d'écriture : mode, ventilation, consigne, limites, puis marche/arrêt, puis verrouillages.
+    L'unité démarre ainsi directement avec les bons réglages.</p>
+    <p>Un champ inconnu ou une valeur hors plage déclenche une erreur sans rien écrire.</p>
+</script>

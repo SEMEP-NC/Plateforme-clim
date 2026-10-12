@@ -1,52 +1,120 @@
-'use strict';
-
-const http = require('http');
-
-/**
- * Appel HTTP au modbus-hub existant (aucune dépendance npm supplémentaire :
- * on utilise le module natif "http", le hub étant joignable en clair sur le
- * réseau Docker interne clim_network).
- */
-function hubRequest(path, body, timeoutMs) {
-    return new Promise((resolve, reject) => {
-        const data = JSON.stringify(body);
-
-        const req = http.request(
-            {
-                hostname: 'modbus-hub',
-                port: 8500,
-                path: '/' + path,
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Content-Length': Buffer.byteLength(data)
-                },
-                timeout: timeoutMs || 5000
-            },
-            (res) => {
-                let raw = '';
-                res.on('data', (chunk) => { raw += chunk; });
-                res.on('end', () => {
-                    try {
-                        resolve(JSON.parse(raw));
-                    } catch (err) {
-                        reject(new Error('Réponse invalide du hub Modbus: ' + raw));
-                    }
-                });
+<script type="text/javascript">
+    RED.nodes.registerType('gree-write', {
+        category: 'GREE Clim',
+        color: '#a6d5fa',
+        defaults: {
+            name: { value: '' },
+            unit: { value: '', type: 'gree-unit', required: false },
+            field: { value: 'cmd' },
+            value: { value: '' },
+            equipType: { value: 'GMV' },
+            ip: { value: '' },
+            port: { value: '502' },
+            slave: { value: '1' },
+            ui: { value: '1' }
+        },
+        inputs: 1,
+        outputs: 1,
+        icon: 'font-awesome/fa-pencil',
+        align: 'right',
+        paletteLabel: 'GREE écriture',
+        label: function () {
+            if (this.name) {
+                return this.name;
             }
-        );
-
-        req.on('error', (err) => {
-            reject(new Error('Hub Modbus injoignable: ' + err.message));
-        });
-
-        req.on('timeout', () => {
-            req.destroy(new Error('Timeout hub Modbus'));
-        });
-
-        req.write(data);
-        req.end();
+            return 'Écrire ' + this.field + (this.value !== '' ? ' = ' + this.value : '');
+        },
+        oneditprepare: function () {
+            function toggle() {
+                const v = $('#node-input-unit').val();
+                $('.gree-legacy').toggle(!v || v === '_ADD_');
+            }
+            $('#node-input-unit').on('change', toggle);
+            toggle();
+        }
     });
-}
+</script>
 
-module.exports = { hubRequest };
+<script type="text/html" data-template-name="gree-write">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Nom</label>
+        <input type="text" id="node-input-name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-field"><i class="fa fa-pencil"></i> Champ</label>
+        <select id="node-input-field" style="width:70%">
+            <option value="cmd">Marche / Arrêt</option>
+            <option value="mode">Mode</option>
+            <option value="setpoint">Consigne</option>
+            <option value="fan">Vitesse ventilation</option>
+            <option value="lowLimit">Limite basse consigne</option>
+            <option value="highLimit">Limite haute consigne</option>
+            <option value="shield_lock">Verrouillage télécommande</option>
+            <option value="shield_power">Blocage marche/arrêt</option>
+            <option value="shield_mode">Blocage mode</option>
+            <option value="shield_setpoint">Blocage consigne</option>
+            <option value="shield_energy">Blocage économie d'énergie</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label for="node-input-value"><i class="fa fa-arrow-right"></i> Valeur</label>
+        <input type="text" id="node-input-value" placeholder="vide -> msg.payload (ex. on, 24, froid, true)">
+    </div>
+    <div class="form-row">
+        <label for="node-input-unit"><i class="fa fa-snowflake-o"></i> Unité</label>
+        <input type="text" id="node-input-unit">
+    </div>
+
+    <div class="gree-legacy">
+        <div class="form-tips" style="margin-bottom:12px">
+            Sans unité : adresse saisie ci-dessous, ou <code>msg.equipment</code> / <code>msg.unit</code>,
+            ou <code>msg.ip</code> / <code>msg.port</code> / <code>msg.slave</code> / <code>msg.ui</code> pour les champs vides.
+        </div>
+        <div class="form-row">
+            <label for="node-input-equipType"><i class="fa fa-list"></i> Type</label>
+            <select id="node-input-equipType" style="width:70%">
+                <option value="GMV">GMV</option>
+                <option value="SPLIT">SPLIT / U-Match</option>
+            </select>
+        </div>
+        <div class="form-row">
+            <label for="node-input-ip"><i class="fa fa-globe"></i> IP</label>
+            <input type="text" id="node-input-ip" placeholder="vide -> msg.ip">
+        </div>
+        <div class="form-row">
+            <label for="node-input-port"><i class="fa fa-plug"></i> Port</label>
+            <input type="text" id="node-input-port" placeholder="502">
+        </div>
+        <div class="form-row">
+            <label for="node-input-slave"><i class="fa fa-microchip"></i> Esclave</label>
+            <input type="text" id="node-input-slave" placeholder="1">
+        </div>
+        <div class="form-row">
+            <label for="node-input-ui"><i class="fa fa-hashtag"></i> UI</label>
+            <input type="text" id="node-input-ui" placeholder="1 (SPLIT : toujours 1)">
+        </div>
+    </div>
+</script>
+
+<script type="text/html" data-help-name="gree-write">
+    <p>Écrit <b>un seul champ</b> d'une unité GREE. Pour plusieurs champs, utiliser <i>GREE commande</i>.</p>
+
+    <h3>Entrées</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">string | number | boolean</span></dt>
+        <dd>valeur si le champ Valeur du nœud est vide :
+            <ul>
+                <li>Marche/Arrêt : <code>on</code>/<code>off</code>, <code>true</code>/<code>false</code> (170/85 acceptés)</li>
+                <li>Mode : <code>froid</code>, <code>chauffage</code>… ou code numérique</li>
+                <li>Consigne / limites : °C (16 à 30), la conversion GMV/SPLIT est automatique</li>
+                <li>Verrouillages : <code>true</code>/<code>false</code></li>
+            </ul>
+        </dd>
+    </dl>
+
+    <h3>Sorties</h3>
+    <dl class="message-properties">
+        <dt>payload <span class="property-type">object</span></dt>
+        <dd><code>{ success, error }</code></dd>
+    </dl>
+</script>

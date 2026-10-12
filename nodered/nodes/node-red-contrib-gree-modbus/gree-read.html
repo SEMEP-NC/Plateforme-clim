@@ -4,8 +4,10 @@
         color: '#a6d5fa',
         defaults: {
             name: { value: '' },
-            equipType: { value: 'GMV' },
+            unit: { value: '', type: 'gree-unit', required: false },
             field: { value: 'cmd' },
+            // Champs "à plat" (ancienne version), utilisés si aucune unité n'est sélectionnée
+            equipType: { value: 'GMV' },
             ip: { value: '' },
             port: { value: '502' },
             slave: { value: '1' },
@@ -13,13 +15,21 @@
         },
         inputs: 1,
         outputs: 1,
-        icon: 'font-awesome/fa-thermometer-half',
-        label: function () {
-            return this.name || 'GREE lecture (' + this.equipType + ')';
-        },
+        icon: 'font-awesome/fa-eye',
         paletteLabel: 'GREE lecture',
+        label: function () {
+            if (this.name) {
+                return this.name;
+            }
+            return 'Lire ' + this.field;
+        },
         oneditprepare: function () {
-            // rien de dynamique pour l'instant
+            function toggle() {
+                const v = $('#node-input-unit').val();
+                $('.gree-legacy').toggle(!v || v === '_ADD_');
+            }
+            $('#node-input-unit').on('change', toggle);
+            toggle();
         }
     });
 </script>
@@ -27,17 +37,8 @@
 <script type="text/html" data-template-name="gree-read">
     <div class="form-row">
         <label for="node-input-name"><i class="fa fa-tag"></i> Nom</label>
-        <input type="text" id="node-input-name" placeholder="Nom du nœud">
+        <input type="text" id="node-input-name">
     </div>
-
-    <div class="form-row">
-        <label for="node-input-equipType"><i class="fa fa-list"></i> Type</label>
-        <select id="node-input-equipType" style="width:70%">
-            <option value="GMV">GMV (système centralisé)</option>
-            <option value="UMATCH">U-Match (split / multi-split)</option>
-        </select>
-    </div>
-
     <div class="form-row">
         <label for="node-input-field"><i class="fa fa-thermometer-half"></i> Champ</label>
         <select id="node-input-field" style="width:70%">
@@ -49,55 +50,57 @@
             <option value="highLimit">Limite haute consigne</option>
             <option value="returnTemp">Température de reprise</option>
             <option value="outsideTemp">Température extérieure</option>
-            <option value="power">Puissance (GMV uniquement)</option>
+            <option value="power">Puissance nominale (GMV)</option>
+            <option value="gateStatus">Gate control (GMV)</option>
         </select>
     </div>
-
-    <hr>
-    <div class="form-tips">
-        Laisser un champ ci-dessous vide pour le fournir dynamiquement via
-        <code>msg.ip</code> / <code>msg.port</code> / <code>msg.slave</code> / <code>msg.ui</code>.
-    </div>
-    <br>
-
     <div class="form-row">
-        <label for="node-input-ip"><i class="fa fa-globe"></i> IP</label>
-        <input type="text" id="node-input-ip" placeholder="ex: 10.5.0.20 (ou vide -> msg.ip)">
+        <label for="node-input-unit"><i class="fa fa-snowflake-o"></i> Unité</label>
+        <input type="text" id="node-input-unit">
     </div>
 
-    <div class="form-row">
-        <label for="node-input-port"><i class="fa fa-plug"></i> Port</label>
-        <input type="text" id="node-input-port" placeholder="502">
-    </div>
-
-    <div class="form-row">
-        <label for="node-input-slave"><i class="fa fa-microchip"></i> Esclave</label>
-        <input type="text" id="node-input-slave" placeholder="1">
-    </div>
-
-    <div class="form-row">
-        <label for="node-input-ui"><i class="fa fa-hashtag"></i> UI</label>
-        <input type="text" id="node-input-ui" placeholder="1 (UMATCH toujours 1)">
+    <div class="gree-legacy">
+        <div class="form-tips" style="margin-bottom:12px">
+            Sans unité : adresse saisie ci-dessous, ou <code>msg.equipment</code> / <code>msg.unit</code>,
+            ou <code>msg.ip</code> / <code>msg.port</code> / <code>msg.slave</code> / <code>msg.ui</code> pour les champs vides.
+        </div>
+        <div class="form-row">
+            <label for="node-input-equipType"><i class="fa fa-list"></i> Type</label>
+            <select id="node-input-equipType" style="width:70%">
+                <option value="GMV">GMV</option>
+                <option value="SPLIT">SPLIT / U-Match</option>
+            </select>
+        </div>
+        <div class="form-row">
+            <label for="node-input-ip"><i class="fa fa-globe"></i> IP</label>
+            <input type="text" id="node-input-ip" placeholder="vide -> msg.ip">
+        </div>
+        <div class="form-row">
+            <label for="node-input-port"><i class="fa fa-plug"></i> Port</label>
+            <input type="text" id="node-input-port" placeholder="502">
+        </div>
+        <div class="form-row">
+            <label for="node-input-slave"><i class="fa fa-microchip"></i> Esclave</label>
+            <input type="text" id="node-input-slave" placeholder="1">
+        </div>
+        <div class="form-row">
+            <label for="node-input-ui"><i class="fa fa-hashtag"></i> UI</label>
+            <input type="text" id="node-input-ui" placeholder="1 (SPLIT : toujours 1)">
+        </div>
     </div>
 </script>
 
 <script type="text/html" data-help-name="gree-read">
-    <p>Lit un champ d'une unité GREE (GMV ou U-Match) via le modbus-hub de la Plateforme Clim.</p>
-
-    <h3>Entrées</h3>
-    <dl class="message-properties">
-        <dt class="optional">ip / port / slave / ui / type / field <span class="property-type">divers</span></dt>
-        <dd>utilisés uniquement si le champ correspondant est laissé vide dans la config du nœud.</dd>
-    </dl>
+    <p>Lit <b>un seul champ</b> d'une unité GREE. Pour l'état complet, utiliser <i>GREE état</i>.</p>
 
     <h3>Sorties</h3>
     <dl class="message-properties">
         <dt>payload <span class="property-type">number</span></dt>
-        <dd>valeur lue (températures et consignes déjà converties en °C).</dd>
+        <dd>valeur lue ; les températures sont converties en °C selon le type
+        (GMV en dixièmes, SPLIT en degrés entiers sauf la reprise).</dd>
         <dt>raw <span class="property-type">number</span></dt>
-        <dd>valeur brute du registre Modbus (avant conversion).</dd>
+        <dd>valeur brute du registre.</dd>
+        <dt>label <span class="property-type">string</span></dt>
+        <dd>libellé pour Marche/Arrêt (ON/OFF), Mode et Ventilation.</dd>
     </dl>
-
-    <p>Les adresses Modbus sont calculées automatiquement selon le type (GMV / U-Match),
-    voir <code>shared/registers.py</code> côté serveur pour la table complète.</p>
 </script>

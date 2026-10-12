@@ -146,12 +146,16 @@ services:
       TZ: ${TZ}
       NODERED_USER: ${NODERED_USER}
       NODERED_PASSWORD_HASH: ${NODERED_PASSWORD_HASH}
+      MODBUS_HUB_URL: http://modbus-hub:8500
+      PLATFORM_API_URL: http://api:5001
     volumes:
       - ./nodered/data:/data
       - ./nodered/settings.js:/data/settings.js:ro
       - ./nodered/nodes/node-red-contrib-gree-modbus:/data/node_modules/node-red-contrib-gree-modbus
     depends_on:
       modbus-hub:
+        condition: service_started
+      api:
         condition: service_started
     networks:
     - clim_network
