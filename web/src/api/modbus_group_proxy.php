@@ -133,7 +133,7 @@ if ($action === 'write_group') {
                     "ip" => $eq['ip'],
                     "port" => $port,
                     "slave" => $eq['slave_id'],
-                    "type" => "coil",
+                    "type" => "coils",
                     "address" => $addr,
                     "value" => (bool)$shields[$i],
                     "UI" => $eq['UI'],
