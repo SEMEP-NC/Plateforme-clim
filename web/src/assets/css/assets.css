@@ -29,6 +29,11 @@
 
     }
 
+    .form-control::placeholder,
+    .form-select::placeholder {
+        color: #eeeeee !important;
+        opacity: 1 !important;
+    }
 
     .table {
 
