@@ -1,5 +1,7 @@
 import smtplib
 import traceback
+import socket
+import ssl
 
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -147,69 +149,73 @@ def build_mail(faults):
     return subject, html
 
 
+
 def send_mail(account, recipients, subject, html):
-    """
-    Envoi SMTP
-    """
+    """Envoi SMTP en IPv4 avec validation TLS du nom d'hôte."""
 
     msg = MIMEMultipart("alternative")
-
     sender = account["sender_email"]
 
     if account["sender_name"]:
-        msg["From"] = (
-            f"{account['sender_name']} <{sender}>"
-        )
+        msg["From"] = f"{account['sender_name']} <{sender}>"
     else:
         msg["From"] = sender
 
     msg["To"] = ", ".join(recipients)
     msg["Subject"] = subject
+    msg.attach(MIMEText(html, "html", "utf-8"))
 
-    msg.attach(
-        MIMEText(
-            html,
-            "html",
-            "utf-8"
-        )
-    )
-
+    smtp_host = account["smtp_host"]
+    smtp_port = int(account["smtp_port"])
     smtp_secure = (account.get("smtp_secure") or "tls").lower()
 
-    # Connexion SMTP
-    if smtp_secure == "ssl":
-        smtp = smtplib.SMTP_SSL(
-            account["smtp_host"],
-            int(account["smtp_port"]),
-            timeout=10
-        )
-
-    else:
-        smtp = smtplib.SMTP(
-            account["smtp_host"],
-            int(account["smtp_port"]),
-            timeout=10
-        )
-
-        # STARTTLS uniquement pour le mode TLS
-        if smtp_secure == "tls":
-            smtp.starttls()
-
-    # Authentification uniquement si elle est configurée
-    # En mode "none", aucune authentification n'est effectuée.
-    if smtp_secure != "none" and account["smtp_user"]:
-        smtp.login(
-            account["smtp_user"],
-            account["smtp_password"]
-        )
-
-    smtp.sendmail(
-        sender,
-        recipients,
-        msg.as_string()
+    # Résolution DNS limitée à IPv4
+    addresses = socket.getaddrinfo(
+        smtp_host,
+        smtp_port,
+        family=socket.AF_INET,
+        type=socket.SOCK_STREAM,
     )
 
-    smtp.quit()
+    if not addresses:
+        raise OSError(f"Aucune adresse IPv4 pour {smtp_host}")
+
+    smtp_ip = addresses[0][4][0]
+    smtp = None
+
+    try:
+        if smtp_secure == "ssl":
+            # Connexion IPv4, mais certificat vérifié pour le nom SMTP.
+            smtp = smtplib.SMTP_SSL(
+                timeout=15,
+                context=ssl.create_default_context(),
+            )
+            smtp._host = smtp_host
+            smtp.connect(smtp_ip, smtp_port)
+
+        else:
+            smtp = smtplib.SMTP(timeout=15)
+            smtp._host = smtp_host
+            smtp.connect(smtp_ip, smtp_port)
+
+            if smtp_secure == "tls":
+                smtp.starttls(context=ssl.create_default_context())
+                smtp.ehlo()
+
+        if smtp_secure != "none" and account["smtp_user"]:
+            smtp.login(
+                account["smtp_user"],
+                account["smtp_password"],
+            )
+
+        smtp.sendmail(sender, recipients, msg.as_string())
+
+    finally:
+        if smtp is not None:
+            try:
+                smtp.quit()
+            except Exception:
+                smtp.close()
 
 
 
